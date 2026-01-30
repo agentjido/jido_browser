@@ -23,28 +23,22 @@ defmodule JidoBrowser.Actions.Navigate do
       timeout: [type: :integer, doc: "Timeout in milliseconds"]
     ]
 
+  alias JidoBrowser.ActionHelpers
   alias JidoBrowser.Error
 
   @impl true
   def run(params, context) do
-    session = get_session(context)
+    with {:ok, session} <- ActionHelpers.get_session(context) do
+      case JidoBrowser.navigate(session, params.url, timeout: params[:timeout]) do
+        {:ok, updated_session, result} ->
+          {:ok, %{status: "success", url: params.url, result: result, session: updated_session}}
 
-    case JidoBrowser.navigate(session, params.url, timeout: params[:timeout]) do
-      {:ok, result} ->
-        {:ok, %{status: "success", url: params.url, result: result}}
+        {:error, %Error.NavigationError{} = error} ->
+          {:error, error}
 
-      {:error, %Error.NavigationError{} = error} ->
-        {:error, error}
-
-      {:error, reason} ->
-        {:error, Error.navigation_error(params.url, reason)}
+        {:error, reason} ->
+          {:error, Error.navigation_error(params.url, reason)}
+      end
     end
-  end
-
-  defp get_session(context) do
-    context[:session] ||
-      context[:browser_session] ||
-      get_in(context, [:tool_context, :session]) ||
-      raise "No browser session in context. Start one with JidoBrowser.start_session/1"
   end
 end

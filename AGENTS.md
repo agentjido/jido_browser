@@ -27,13 +27,50 @@ JidoBrowser provides browser automation for Jido AI agents using an adapter patt
 - **JidoBrowser.Adapters.Vibium** - Default adapter using Vibium Go binary (WebDriver BiDi)
 - **JidoBrowser.Adapters.Web** - Alternative adapter using chrismccord/web CLI
 
+### Skill
+
+- **JidoBrowser.Skill** - Jido.Skill bundling all browser actions with lifecycle management
+
 ### Actions (Jido.Action implementations)
 
+**Session Lifecycle:**
+- **JidoBrowser.Actions.StartSession** - Start a new browser session
+- **JidoBrowser.Actions.EndSession** - End the current session
+- **JidoBrowser.Actions.GetStatus** - Get session status
+
+**Navigation:**
 - **JidoBrowser.Actions.Navigate** - Navigate to URL
+- **JidoBrowser.Actions.Back** - Go back in history
+- **JidoBrowser.Actions.Forward** - Go forward in history
+- **JidoBrowser.Actions.Reload** - Reload current page
+- **JidoBrowser.Actions.GetUrl** - Get current URL
+- **JidoBrowser.Actions.GetTitle** - Get page title
+
+**Interaction:**
 - **JidoBrowser.Actions.Click** - Click element by selector
 - **JidoBrowser.Actions.Type** - Type text into element
+- **JidoBrowser.Actions.Hover** - Hover over element
+- **JidoBrowser.Actions.Focus** - Focus on element
+- **JidoBrowser.Actions.Scroll** - Scroll page or element
+- **JidoBrowser.Actions.SelectOption** - Select dropdown option
+
+**Waiting/Synchronization:**
+- **JidoBrowser.Actions.Wait** - Wait for specified time
+- **JidoBrowser.Actions.WaitForSelector** - Wait for element state
+- **JidoBrowser.Actions.WaitForNavigation** - Wait for navigation
+
+**Element Queries:**
+- **JidoBrowser.Actions.Query** - Query elements matching selector
+- **JidoBrowser.Actions.GetText** - Get element text content
+- **JidoBrowser.Actions.GetAttribute** - Get element attribute
+- **JidoBrowser.Actions.IsVisible** - Check element visibility
+
+**Content Extraction:**
+- **JidoBrowser.Actions.Snapshot** - LLM-optimized page snapshot
 - **JidoBrowser.Actions.Screenshot** - Capture screenshot
 - **JidoBrowser.Actions.ExtractContent** - Extract page content as markdown
+
+**Advanced:**
 - **JidoBrowser.Actions.Evaluate** - Execute JavaScript
 
 ## Code Style Guidelines

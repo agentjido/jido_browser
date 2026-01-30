@@ -57,11 +57,12 @@ defmodule JidoBrowser.MixProject do
   defp deps do
     [
       # Core Jido dependencies
-      {:jido_action, "~> 1.0", optional: true},
+      jido_dep(:jido, "../jido", "~> 2.0.0-rc"),
+      jido_dep(:jido_action, "../jido_action", "~> 1.3.0"),
 
       # Schema & Errors
-      {:zoi, "~> 0.14"},
-      {:splode, "~> 0.2"},
+      {:zoi, "~> 0.16", override: true},
+      {:splode, "~> 0.3.0", override: true},
 
       # HTTP client for adapter communication
       {:req, "~> 0.5"},
@@ -76,11 +77,25 @@ defmodule JidoBrowser.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
-      {:doctor, "~> 0.21", only: :dev, runtime: false},
+      {:doctor, "~> 0.21", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: [:dev, :test]},
       {:git_hooks, "~> 0.8", only: [:dev, :test], runtime: false},
       {:mimic, "~> 1.11", only: :test}
     ]
+  end
+
+  defp jido_dep(app, rel_path, hex_req, extra_opts \\ []) do
+    path = Path.expand(rel_path, __DIR__)
+
+    if File.dir?(path) and File.exists?(Path.join(path, "mix.exs")) do
+      {app, Keyword.merge([path: rel_path, override: true], extra_opts)}
+    else
+      {app, hex_req, extra_opts}
+    end
+    |> case do
+      {app, opts} when is_list(opts) -> {app, opts}
+      {app, req, opts} -> {app, req, opts}
+    end
   end
 
   defp aliases do
@@ -110,19 +125,53 @@ defmodule JidoBrowser.MixProject do
       groups_for_modules: [
         Core: [
           JidoBrowser,
-          JidoBrowser.Session
+          JidoBrowser.Session,
+          JidoBrowser.Skill
         ],
         Adapters: [
           JidoBrowser.Adapter,
           JidoBrowser.Adapters.Vibium,
           JidoBrowser.Adapters.Web
         ],
-        Actions: [
+        "Session Lifecycle": [
+          JidoBrowser.Actions.StartSession,
+          JidoBrowser.Actions.EndSession,
+          JidoBrowser.Actions.GetStatus
+        ],
+        Navigation: [
           JidoBrowser.Actions.Navigate,
+          JidoBrowser.Actions.Back,
+          JidoBrowser.Actions.Forward,
+          JidoBrowser.Actions.Reload,
+          JidoBrowser.Actions.GetUrl,
+          JidoBrowser.Actions.GetTitle
+        ],
+        Interaction: [
           JidoBrowser.Actions.Click,
           JidoBrowser.Actions.Type,
+          JidoBrowser.Actions.Hover,
+          JidoBrowser.Actions.Focus,
+          JidoBrowser.Actions.Scroll,
+          JidoBrowser.Actions.SelectOption
+        ],
+        Waiting: [
+          JidoBrowser.Actions.Wait,
+          JidoBrowser.Actions.WaitForSelector,
+          JidoBrowser.Actions.WaitForNavigation
+        ],
+        "Element Queries": [
+          JidoBrowser.Actions.Query,
+          JidoBrowser.Actions.GetText,
+          JidoBrowser.Actions.GetAttribute,
+          JidoBrowser.Actions.IsVisible
+        ],
+        "Content Extraction": [
+          JidoBrowser.Actions.Snapshot,
           JidoBrowser.Actions.Screenshot,
           JidoBrowser.Actions.ExtractContent
+        ],
+        Advanced: [
+          JidoBrowser.Actions.Evaluate
         ],
         Errors: [
           JidoBrowser.Error
@@ -150,7 +199,8 @@ defmodule JidoBrowser.MixProject do
       flags: [
         :error_handling,
         :unknown
-      ]
+      ],
+      ignore_warnings: ".dialyzer_ignore.exs"
     ]
   end
 end

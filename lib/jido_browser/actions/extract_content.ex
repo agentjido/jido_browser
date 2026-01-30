@@ -28,32 +28,28 @@ defmodule JidoBrowser.Actions.ExtractContent do
       format: [type: {:in, [:markdown, :html]}, default: :markdown, doc: "Output format"]
     ]
 
+  alias JidoBrowser.ActionHelpers
   alias JidoBrowser.Error
 
   @impl true
   def run(params, context) do
-    session = get_session(context)
-    opts = Keyword.new(params) |> Keyword.take([:selector, :format])
+    with {:ok, session} <- ActionHelpers.get_session(context) do
+      opts = Keyword.new(params) |> Keyword.take([:selector, :format])
 
-    case JidoBrowser.extract_content(session, opts) do
-      {:ok, %{content: content, format: format}} ->
-        {:ok,
-         %{
-           status: "success",
-           content: content,
-           format: format,
-           length: String.length(content)
-         }}
+      case JidoBrowser.extract_content(session, opts) do
+        {:ok, updated_session, %{content: content, format: format}} ->
+          {:ok,
+           %{
+             status: "success",
+             content: content,
+             format: format,
+             length: String.length(content),
+             session: updated_session
+           }}
 
-      {:error, reason} ->
-        {:error, Error.adapter_error("Extract content failed", %{reason: reason})}
+        {:error, reason} ->
+          {:error, Error.adapter_error("Extract content failed", %{reason: reason})}
+      end
     end
-  end
-
-  defp get_session(context) do
-    context[:session] ||
-      context[:browser_session] ||
-      get_in(context, [:tool_context, :session]) ||
-      raise "No browser session in context"
   end
 end

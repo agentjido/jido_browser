@@ -2,7 +2,7 @@ defmodule JidoBrowser.Adapters.Vibium do
   @moduledoc """
   Vibium adapter for browser automation.
 
-  Uses the Vibium Go binary which provides:
+  Uses the Vibium clicker binary which provides:
   - WebDriver BiDi protocol (standard-based)
   - Automatic Chrome download and management
   - Built-in MCP server support
@@ -10,40 +10,41 @@ defmodule JidoBrowser.Adapters.Vibium do
 
   ## Installation
 
-  The Vibium binary is automatically downloaded on first use.
-  You can also install it manually:
+  Install via mix task:
 
-      npm install -g vibium
+      mix jido_browser.install vibium
+
+  Or manually:
+
+      npm install -g vibium @vibium/darwin-arm64
 
   ## Configuration
 
       config :jido_browser,
         adapter: JidoBrowser.Adapters.Vibium,
         vibium: [
-          binary_path: "/usr/local/bin/vibium",
-          port: 9515
+          binary_path: "/path/to/clicker",
+          headless: true
         ]
 
   """
 
   @behaviour JidoBrowser.Adapter
 
-  alias JidoBrowser.Session
   alias JidoBrowser.Error
+  alias JidoBrowser.Session
 
-  @default_port 9515
   @default_timeout 30_000
 
   @impl true
   def start_session(opts \\ []) do
-    port = opts[:port] || config(:port, @default_port)
     headless = Keyword.get(opts, :headless, true)
 
-    case ensure_vibium_running(port, headless) do
-      {:ok, connection} ->
+    case find_clicker_binary() do
+      {:ok, binary} ->
         Session.new(%{
           adapter: __MODULE__,
-          connection: connection,
+          connection: %{binary: binary, headless: headless, current_url: nil},
           opts: Map.new(opts)
         })
 
@@ -53,178 +54,285 @@ defmodule JidoBrowser.Adapters.Vibium do
   end
 
   @impl true
-  def end_session(%Session{connection: connection}) do
-    case send_command(connection, "browser_quit", %{}) do
-      {:ok, _} -> :ok
-      {:error, reason} -> {:error, Error.adapter_error("Failed to quit browser", %{reason: reason})}
-    end
+  def end_session(%Session{}) do
+    :ok
   end
 
   @impl true
-  def navigate(%Session{connection: connection}, url, _opts) do
-    case send_command(connection, "browser_navigate", %{url: url}) do
-      {:ok, result} -> {:ok, %{url: url, result: result}}
-      {:error, reason} -> {:error, Error.navigation_error(url, reason)}
-    end
-  end
+  def navigate(%Session{connection: connection} = session, url, opts) do
+    timeout = opts[:timeout] || @default_timeout
 
-  @impl true
-  def click(%Session{connection: connection}, selector, opts) do
-    params = %{selector: selector}
-    params = if opts[:text], do: Map.put(params, :text, opts[:text]), else: params
-
-    case send_command(connection, "browser_click", params) do
-      {:ok, result} -> {:ok, %{selector: selector, result: result}}
-      {:error, reason} -> {:error, Error.element_error("click", selector, reason)}
-    end
-  end
-
-  @impl true
-  def type(%Session{connection: connection}, selector, text, _opts) do
-    case send_command(connection, "browser_type", %{selector: selector, text: text}) do
-      {:ok, result} -> {:ok, %{selector: selector, result: result}}
-      {:error, reason} -> {:error, Error.element_error("type", selector, reason)}
-    end
-  end
-
-  @impl true
-  def screenshot(%Session{connection: connection}, opts) do
-    params = %{}
-    params = if opts[:full_page], do: Map.put(params, :full_page, true), else: params
-
-    case send_command(connection, "browser_screenshot", params) do
-      {:ok, %{"data" => base64_data}} ->
-        {:ok, %{bytes: Base.decode64!(base64_data), mime: "image/png"}}
-
-      {:ok, result} ->
-        {:ok, %{bytes: result, mime: "image/png"}}
+    case run_clicker(connection, ["navigate", url], timeout) do
+      {:ok, output} ->
+        updated_connection = Map.put(connection, :current_url, url)
+        updated_session = %{session | connection: updated_connection}
+        {:ok, updated_session, %{url: url, output: output}}
 
       {:error, reason} ->
-        {:error, Error.adapter_error("Screenshot failed", %{reason: reason})}
+        {:error, Error.navigation_error(url, reason)}
     end
   end
 
   @impl true
-  def extract_content(%Session{connection: connection}, opts) do
-    selector = opts[:selector] || "body"
-    format = opts[:format] || :markdown
+  def click(%Session{connection: connection} = session, selector, opts) do
+    case connection.current_url do
+      nil ->
+        {:error, Error.navigation_error(nil, :no_current_url)}
 
-    # Vibium returns markdown by default
-    case send_command(connection, "browser_find", %{selector: selector}) do
-      {:ok, %{"text" => content}} ->
-        {:ok, %{content: content, format: format}}
+      url ->
+        timeout = opts[:timeout] || @default_timeout
+        args = ["click", url, selector]
 
-      {:ok, result} when is_binary(result) ->
-        {:ok, %{content: result, format: format}}
+        case run_clicker(connection, args, timeout) do
+          {:ok, output} ->
+            {:ok, session, %{selector: selector, output: output}}
 
-      {:error, reason} ->
-        {:error, Error.element_error("extract", selector, reason)}
+          {:error, reason} ->
+            {:error, Error.element_error("click", selector, reason)}
+        end
     end
   end
 
   @impl true
-  def evaluate(%Session{connection: connection}, script, _opts) do
-    # Note: Vibium may not support arbitrary JS evaluation
-    # This is a placeholder for when/if that feature is added
-    case send_command(connection, "browser_evaluate", %{script: script}) do
-      {:ok, result} -> {:ok, %{result: result}}
-      {:error, reason} -> {:error, Error.adapter_error("Evaluate failed", %{reason: reason})}
+  def type(%Session{connection: connection} = session, selector, text, opts) do
+    case connection.current_url do
+      nil ->
+        {:error, Error.navigation_error(nil, :no_current_url)}
+
+      url ->
+        timeout = opts[:timeout] || @default_timeout
+        args = ["type", url, selector, text]
+
+        case run_clicker(connection, args, timeout) do
+          {:ok, output} ->
+            {:ok, session, %{selector: selector, output: output}}
+
+          {:error, reason} ->
+            {:error, Error.element_error("type", selector, reason)}
+        end
+    end
+  end
+
+  @impl true
+  def screenshot(%Session{connection: connection} = session, opts) do
+    case connection.current_url do
+      nil ->
+        {:error, Error.navigation_error(nil, :no_current_url)}
+
+      url ->
+        format = opts[:format] || :png
+
+        case validate_screenshot_format(format) do
+          :ok -> take_png_screenshot(session, connection, url, opts)
+          {:error, _} = error -> error
+        end
+    end
+  end
+
+  defp validate_screenshot_format(:png), do: :ok
+
+  defp validate_screenshot_format(:jpeg) do
+    {:error,
+     Error.adapter_error("Vibium adapter only supports PNG screenshots", %{
+       requested_format: :jpeg,
+       supported_formats: [:png]
+     })}
+  end
+
+  defp validate_screenshot_format(other) do
+    {:error,
+     Error.adapter_error("Unsupported screenshot format", %{
+       requested_format: other,
+       supported_formats: [:png]
+     })}
+  end
+
+  defp take_png_screenshot(session, connection, url, opts) do
+    timeout = opts[:timeout] || @default_timeout
+    full_page = opts[:full_page] || false
+
+    with_tmp_file("jido_browser_screenshot", ".png", fn path ->
+      args = build_screenshot_args(url, path, full_page)
+
+      with {:ok, _output} <- run_clicker(connection, args, timeout),
+           {:ok, bytes} <- File.read(path) do
+        {:ok, session, %{bytes: bytes, mime: "image/png", format: :png}}
+      else
+        {:error, reason} when is_atom(reason) ->
+          {:error, Error.adapter_error("Failed to read screenshot", %{reason: reason})}
+
+        {:error, reason} ->
+          {:error, Error.adapter_error("Screenshot failed", %{reason: reason})}
+      end
+    end)
+  end
+
+  defp build_screenshot_args(url, path, full_page) do
+    args = ["screenshot", url, "--output", path]
+    if full_page, do: args ++ ["--full-page"], else: args
+  end
+
+  @impl true
+  def extract_content(%Session{connection: connection} = session, opts) do
+    case connection.current_url do
+      nil ->
+        {:error, Error.navigation_error(nil, :no_current_url)}
+
+      url ->
+        timeout = opts[:timeout] || @default_timeout
+        selector = opts[:selector] || "body"
+        format = opts[:format] || :markdown
+        args = build_extract_args(url, selector, format)
+
+        case run_clicker(connection, args, timeout) do
+          {:ok, content} ->
+            {:ok, session, %{content: content, format: format}}
+
+          {:error, reason} ->
+            {:error, Error.adapter_error("Extract content failed", %{reason: reason})}
+        end
+    end
+  end
+
+  defp build_extract_args(url, selector, :html), do: ["find", url, selector, "--html"]
+  defp build_extract_args(url, selector, :markdown), do: ["find", url, selector, "--markdown"]
+  defp build_extract_args(url, selector, :text), do: ["find", url, selector]
+
+  @impl true
+  def evaluate(%Session{connection: connection} = session, script, opts) do
+    case connection.current_url do
+      nil ->
+        {:error, Error.navigation_error(nil, :no_current_url)}
+
+      url ->
+        timeout = opts[:timeout] || @default_timeout
+        args = ["eval", url, script]
+
+        case run_clicker(connection, args, timeout) do
+          {:ok, result} ->
+            parsed_result = parse_js_result(result)
+            {:ok, session, %{result: parsed_result}}
+
+          {:error, reason} ->
+            {:error, Error.adapter_error("Evaluate failed", %{reason: reason})}
+        end
+    end
+  end
+
+  @spec parse_js_result(binary()) :: term()
+  defp parse_js_result(result) do
+    case Jason.decode(result) do
+      {:ok, decoded} -> decoded
+      {:error, _} -> result
     end
   end
 
   # Private helpers
 
-  defp ensure_vibium_running(port, headless) do
-    base_url = "http://localhost:#{port}"
+  defp run_clicker(%{binary: binary, headless: headless}, args, timeout) do
+    full_args = if headless, do: ["--headless" | args], else: args
 
-    case check_vibium_health(base_url) do
-      :ok ->
-        {:ok, %{base_url: base_url, port: port}}
+    port =
+      Port.open({:spawn_executable, binary}, [
+        :binary,
+        :exit_status,
+        :stderr_to_stdout,
+        args: full_args
+      ])
 
-      :not_running ->
-        start_vibium_process(port, headless)
+    collect_output(port, [], timeout)
+  end
+
+  # Use iodata accumulation for O(n) performance instead of O(n²) string concat
+  defp collect_output(port, acc, timeout) do
+    receive do
+      {^port, {:data, data}} ->
+        collect_output(port, [acc | [data]], timeout)
+
+      {^port, {:exit_status, 0}} ->
+        {:ok, acc |> IO.iodata_to_binary() |> String.trim()}
+
+      {^port, {:exit_status, code}} ->
+        output = IO.iodata_to_binary(acc)
+        {:error, "clicker exited with code #{code}: #{output}"}
+    after
+      timeout ->
+        Port.close(port)
+        {:error, "Command timed out after #{timeout}ms"}
     end
   end
 
-  defp check_vibium_health(base_url) do
-    case Req.get("#{base_url}/health", receive_timeout: 1_000) do
-      {:ok, %{status: 200}} -> :ok
-      _ -> :not_running
+  defp find_clicker_binary do
+    case config(:binary_path) do
+      path when is_binary(path) and path != "" ->
+        if File.exists?(path), do: {:ok, path}, else: {:error, "Binary not found at #{path}"}
+
+      _ ->
+        case find_clicker_from_npm() do
+          path when is_binary(path) -> {:ok, path}
+          nil -> find_clicker_in_path()
+        end
+    end
+  end
+
+  defp find_clicker_in_path do
+    case System.find_executable("clicker") do
+      path when is_binary(path) ->
+        {:ok, path}
+
+      nil ->
+        {:error, "Vibium clicker binary not found. Install with: mix jido_browser.install vibium"}
+    end
+  end
+
+  defp find_clicker_from_npm do
+    case System.cmd("npm", ["root", "-g"], stderr_to_stdout: true) do
+      {npm_root, 0} ->
+        npm_root = String.trim(npm_root)
+        platform_pkg = vibium_platform_package()
+        clicker_path = Path.join([npm_root, platform_pkg, "bin", "clicker"])
+
+        if File.exists?(clicker_path), do: clicker_path, else: nil
+
+      _ ->
+        nil
     end
   rescue
-    _ -> :not_running
+    _ -> nil
   end
 
-  defp start_vibium_process(port, headless) do
-    binary = find_vibium_binary()
+  defp vibium_platform_package do
+    os =
+      case :os.type() do
+        {:unix, :darwin} -> "darwin"
+        {:unix, :linux} -> "linux"
+        {:win32, _} -> "win32"
+      end
 
-    args = ["--port", to_string(port)]
-    args = if headless, do: args ++ ["--headless"], else: args
+    arch =
+      case :erlang.system_info(:system_architecture) |> to_string() do
+        "aarch64" <> _ -> "arm64"
+        "arm64" <> _ -> "arm64"
+        _ -> "x64"
+      end
 
-    case System.cmd(binary, args ++ ["--background"], stderr_to_stdout: true) do
-      {_, 0} ->
-        # Wait for Vibium to be ready
-        wait_for_vibium("http://localhost:#{port}", 10)
-
-      {output, code} ->
-        {:error, "Vibium exited with code #{code}: #{output}"}
-    end
-  rescue
-    e -> {:error, Exception.message(e)}
-  end
-
-  defp wait_for_vibium(_base_url, 0), do: {:error, "Vibium failed to start"}
-
-  defp wait_for_vibium(base_url, retries) do
-    case check_vibium_health(base_url) do
-      :ok -> {:ok, %{base_url: base_url}}
-      :not_running ->
-        Process.sleep(500)
-        wait_for_vibium(base_url, retries - 1)
-    end
-  end
-
-  defp find_vibium_binary do
-    config(:binary_path) ||
-      System.find_executable("vibium") ||
-      System.find_executable("npx") |> vibium_via_npx() ||
-      raise "Vibium binary not found. Install with: npm install -g vibium"
-  end
-
-  defp vibium_via_npx(nil), do: nil
-  defp vibium_via_npx(_npx), do: "npx"
-
-  defp send_command(%{base_url: base_url}, method, params) do
-    url = "#{base_url}/mcp"
-
-    body = %{
-      jsonrpc: "2.0",
-      id: System.unique_integer([:positive]),
-      method: "tools/call",
-      params: %{
-        name: method,
-        arguments: params
-      }
-    }
-
-    case Req.post(url, json: body, receive_timeout: @default_timeout) do
-      {:ok, %{status: 200, body: %{"result" => result}}} ->
-        {:ok, result}
-
-      {:ok, %{status: 200, body: %{"error" => error}}} ->
-        {:error, error}
-
-      {:ok, %{status: status, body: body}} ->
-        {:error, "HTTP #{status}: #{inspect(body)}"}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    "@vibium/#{os}-#{arch}"
   end
 
   defp config(key, default \\ nil) do
     :jido_browser
     |> Application.get_env(:vibium, [])
     |> Keyword.get(key, default)
+  end
+
+  # Execute function with a temp file, ensuring cleanup even on errors
+  defp with_tmp_file(prefix, suffix, fun) do
+    path = Path.join(System.tmp_dir!(), "#{prefix}_#{System.unique_integer()}#{suffix}")
+
+    try do
+      fun.(path)
+    after
+      File.rm(path)
+    end
   end
 end

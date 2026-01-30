@@ -35,8 +35,8 @@ defmodule JidoBrowser.Adapters.Web do
 
   @behaviour JidoBrowser.Adapter
 
-  alias JidoBrowser.Session
   alias JidoBrowser.Error
+  alias JidoBrowser.Session
 
   @default_timeout 30_000
 
@@ -58,12 +58,14 @@ defmodule JidoBrowser.Adapters.Web do
   end
 
   @impl true
-  def navigate(%Session{} = session, url, opts) do
+  def navigate(%Session{connection: connection} = session, url, opts) do
     timeout = opts[:timeout] || @default_timeout
 
-    case run_web_command([url], timeout: timeout, profile: session.connection.profile) do
+    case run_web_command([url], timeout: timeout, profile: connection.profile) do
       {:ok, output} ->
-        {:ok, %{url: url, content: output}}
+        updated_connection = Map.put(connection, :current_url, url)
+        updated_session = %{session | connection: updated_connection}
+        {:ok, updated_session, %{url: url, content: output}}
 
       {:error, reason} ->
         {:error, Error.navigation_error(url, reason)}
@@ -71,121 +73,245 @@ defmodule JidoBrowser.Adapters.Web do
   end
 
   @impl true
-  def click(%Session{} = session, selector, opts) do
-    url = session.connection.current_url || raise "No current URL - navigate first"
-    timeout = opts[:timeout] || @default_timeout
+  def click(%Session{connection: connection} = session, selector, opts) do
+    case connection.current_url do
+      nil ->
+        {:error, Error.navigation_error(nil, :no_current_url)}
 
-    args = [url, "--click", selector]
-    args = if opts[:text], do: args ++ ["--text", opts[:text]], else: args
+      url ->
+        timeout = opts[:timeout] || @default_timeout
+        args = [url, "--click", selector]
+        args = if opts[:text], do: args ++ ["--text", opts[:text]], else: args
 
-    case run_web_command(args, timeout: timeout, profile: session.connection.profile) do
-      {:ok, output} ->
-        {:ok, %{selector: selector, content: output}}
-
-      {:error, reason} ->
-        {:error, Error.element_error("click", selector, reason)}
-    end
-  end
-
-  @impl true
-  def type(%Session{} = session, selector, text, opts) do
-    url = session.connection.current_url || raise "No current URL - navigate first"
-    timeout = opts[:timeout] || @default_timeout
-
-    args = [url, "--fill", "#{selector}=#{text}"]
-
-    case run_web_command(args, timeout: timeout, profile: session.connection.profile) do
-      {:ok, output} ->
-        {:ok, %{selector: selector, content: output}}
-
-      {:error, reason} ->
-        {:error, Error.element_error("type", selector, reason)}
-    end
-  end
-
-  @impl true
-  def screenshot(%Session{} = session, opts) do
-    url = session.connection.current_url || raise "No current URL - navigate first"
-    timeout = opts[:timeout] || @default_timeout
-
-    # Create temp file for screenshot
-    path = Path.join(System.tmp_dir!(), "jido_browser_#{System.unique_integer()}.png")
-
-    args = [url, "--screenshot", path]
-
-    case run_web_command(args, timeout: timeout, profile: session.connection.profile) do
-      {:ok, _output} ->
-        case File.read(path) do
-          {:ok, bytes} ->
-            File.rm(path)
-            {:ok, %{bytes: bytes, mime: "image/png"}}
+        case run_web_command(args, timeout: timeout, profile: connection.profile) do
+          {:ok, output} ->
+            {:ok, session, %{selector: selector, content: output}}
 
           {:error, reason} ->
-            {:error, Error.adapter_error("Failed to read screenshot", %{reason: reason})}
+            {:error, Error.element_error("click", selector, reason)}
         end
-
-      {:error, reason} ->
-        {:error, Error.adapter_error("Screenshot failed", %{reason: reason})}
     end
   end
 
   @impl true
-  def extract_content(%Session{} = session, opts) do
-    url = session.connection.current_url || raise "No current URL - navigate first"
-    timeout = opts[:timeout] || @default_timeout
+  def type(%Session{connection: connection} = session, selector, text, opts) do
+    case connection.current_url do
+      nil ->
+        {:error, Error.navigation_error(nil, :no_current_url)}
 
-    # web CLI returns markdown by default
-    case run_web_command([url], timeout: timeout, profile: session.connection.profile) do
-      {:ok, content} ->
-        {:ok, %{content: content, format: :markdown}}
+      url ->
+        timeout = opts[:timeout] || @default_timeout
+        args = [url, "--fill", "#{selector}=#{text}"]
 
-      {:error, reason} ->
-        {:error, Error.adapter_error("Extract content failed", %{reason: reason})}
+        case run_web_command(args, timeout: timeout, profile: connection.profile) do
+          {:ok, output} ->
+            {:ok, session, %{selector: selector, content: output}}
+
+          {:error, reason} ->
+            {:error, Error.element_error("type", selector, reason)}
+        end
     end
   end
 
   @impl true
-  def evaluate(%Session{} = session, script, opts) do
-    url = session.connection.current_url || raise "No current URL - navigate first"
+  def screenshot(%Session{connection: connection} = session, opts) do
+    case connection.current_url do
+      nil ->
+        {:error, Error.navigation_error(nil, :no_current_url)}
+
+      url ->
+        format = opts[:format] || :png
+
+        case validate_screenshot_format(format) do
+          :ok -> take_png_screenshot(session, connection, url, opts)
+          {:error, _} = error -> error
+        end
+    end
+  end
+
+  defp validate_screenshot_format(:png), do: :ok
+
+  defp validate_screenshot_format(:jpeg) do
+    {:error,
+     Error.adapter_error("Web adapter only supports PNG screenshots", %{
+       requested_format: :jpeg,
+       supported_formats: [:png]
+     })}
+  end
+
+  defp validate_screenshot_format(other) do
+    {:error,
+     Error.adapter_error("Unsupported screenshot format", %{
+       requested_format: other,
+       supported_formats: [:png]
+     })}
+  end
+
+  defp take_png_screenshot(session, connection, url, opts) do
     timeout = opts[:timeout] || @default_timeout
+    full_page = opts[:full_page] || false
 
-    args = [url, "--js", script]
+    with_tmp_file("jido_browser_screenshot", ".png", fn path ->
+      args = build_screenshot_args(url, path, full_page)
 
-    case run_web_command(args, timeout: timeout, profile: session.connection.profile) do
-      {:ok, output} ->
-        {:ok, %{result: output}}
+      with {:ok, _output} <- run_web_command(args, timeout: timeout, profile: connection.profile),
+           {:ok, bytes} <- File.read(path) do
+        {:ok, session, %{bytes: bytes, mime: "image/png", format: :png}}
+      else
+        {:error, reason} when is_atom(reason) ->
+          {:error, Error.adapter_error("Failed to read screenshot", %{reason: reason})}
 
-      {:error, reason} ->
-        {:error, Error.adapter_error("Evaluate failed", %{reason: reason})}
+        {:error, reason} ->
+          {:error, Error.adapter_error("Screenshot failed", %{reason: reason})}
+      end
+    end)
+  end
+
+  defp build_screenshot_args(url, path, full_page) do
+    args = [url, "--screenshot", path]
+    if full_page, do: args ++ ["--full-page"], else: args
+  end
+
+  @impl true
+  def extract_content(%Session{connection: connection} = session, opts) do
+    case connection.current_url do
+      nil ->
+        {:error, Error.navigation_error(nil, :no_current_url)}
+
+      url ->
+        timeout = opts[:timeout] || @default_timeout
+        format = opts[:format] || :markdown
+        # Note: Web adapter does not support :selector option - it extracts full page
+        # The facade documents this limitation
+        args = build_extract_args(url, format)
+
+        case run_web_command(args, timeout: timeout, profile: connection.profile) do
+          {:ok, content} ->
+            {:ok, session, %{content: content, format: format}}
+
+          {:error, reason} ->
+            {:error, Error.adapter_error("Extract content failed", %{reason: reason})}
+        end
+    end
+  end
+
+  defp build_extract_args(url, :html), do: [url, "--html"]
+  defp build_extract_args(url, :text), do: [url, "--text"]
+  defp build_extract_args(url, :markdown), do: [url]
+
+  @impl true
+  def evaluate(%Session{connection: connection} = session, script, opts) do
+    case connection.current_url do
+      nil ->
+        {:error, Error.navigation_error(nil, :no_current_url)}
+
+      url ->
+        timeout = opts[:timeout] || @default_timeout
+        args = [url, "--js", script]
+
+        case run_web_command(args, timeout: timeout, profile: connection.profile) do
+          {:ok, output} ->
+            parsed_result = parse_js_result(output)
+            {:ok, session, %{result: parsed_result}}
+
+          {:error, reason} ->
+            {:error, Error.adapter_error("Evaluate failed", %{reason: reason})}
+        end
+    end
+  end
+
+  @spec parse_js_result(binary()) :: term()
+  defp parse_js_result(result) do
+    case Jason.decode(result) do
+      {:ok, decoded} -> decoded
+      {:error, _} -> result
     end
   end
 
   # Private helpers
 
+  @spec run_web_command(list(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
   defp run_web_command(args, opts) do
-    binary = find_web_binary()
-    timeout = opts[:timeout] || @default_timeout
-    profile = opts[:profile]
+    case find_web_binary() do
+      {:ok, binary} ->
+        timeout = opts[:timeout] || @default_timeout
+        profile = opts[:profile]
 
-    full_args = if profile, do: ["--profile", profile | args], else: args
+        full_args = if profile, do: ["--profile", profile | args], else: args
 
-    case System.cmd(binary, full_args, stderr_to_stdout: true, timeout: timeout) do
-      {output, 0} -> {:ok, String.trim(output)}
-      {output, code} -> {:error, "web exited with code #{code}: #{output}"}
+        try do
+          run_with_timeout(binary, full_args, timeout)
+        rescue
+          e -> {:error, Exception.message(e)}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
-  rescue
-    e -> {:error, Exception.message(e)}
   end
 
+  defp run_with_timeout(binary, args, timeout) do
+    port =
+      Port.open({:spawn_executable, binary}, [
+        :binary,
+        :exit_status,
+        :stderr_to_stdout,
+        args: args
+      ])
+
+    collect_output(port, [], timeout)
+  end
+
+  # Use iodata accumulation for O(n) performance instead of O(n²) string concat
+  defp collect_output(port, acc, timeout) do
+    receive do
+      {^port, {:data, data}} ->
+        collect_output(port, [acc | [data]], timeout)
+
+      {^port, {:exit_status, 0}} ->
+        {:ok, acc |> IO.iodata_to_binary() |> String.trim()}
+
+      {^port, {:exit_status, code}} ->
+        output = IO.iodata_to_binary(acc)
+        {:error, "web exited with code #{code}: #{output}"}
+    after
+      timeout ->
+        Port.close(port)
+        {:error, "Command timed out after #{timeout}ms"}
+    end
+  end
+
+  @spec find_web_binary() :: {:ok, String.t()} | {:error, String.t()}
   defp find_web_binary do
-    config(:binary_path) ||
-      System.find_executable("web") ||
-      raise "web binary not found. Install from: https://github.com/chrismccord/web"
+    case config(:binary_path) do
+      path when is_binary(path) and path != "" ->
+        {:ok, path}
+
+      _ ->
+        case System.find_executable("web") do
+          path when is_binary(path) ->
+            {:ok, path}
+
+          nil ->
+            {:error, "web binary not found. Install from: https://github.com/chrismccord/web"}
+        end
+    end
   end
 
   defp config(key, default \\ nil) do
     :jido_browser
     |> Application.get_env(:web, [])
     |> Keyword.get(key, default)
+  end
+
+  # Execute function with a temp file, ensuring cleanup even on errors
+  defp with_tmp_file(prefix, suffix, fun) do
+    path = Path.join(System.tmp_dir!(), "#{prefix}_#{System.unique_integer()}#{suffix}")
+
+    try do
+      fun.(path)
+    after
+      File.rm(path)
+    end
   end
 end

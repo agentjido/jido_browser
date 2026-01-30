@@ -24,26 +24,21 @@ defmodule JidoBrowser.Actions.Evaluate do
       timeout: [type: :integer, doc: "Timeout in milliseconds"]
     ]
 
+  alias JidoBrowser.ActionHelpers
   alias JidoBrowser.Error
 
   @impl true
   def run(params, context) do
-    session = get_session(context)
-    opts = Keyword.new(params) |> Keyword.take([:timeout])
+    with {:ok, session} <- ActionHelpers.get_session(context) do
+      opts = Keyword.new(params) |> Keyword.take([:timeout])
 
-    case JidoBrowser.evaluate(session, params.script, opts) do
-      {:ok, %{result: result}} ->
-        {:ok, %{status: "success", result: result}}
+      case JidoBrowser.evaluate(session, params.script, opts) do
+        {:ok, updated_session, %{result: result}} ->
+          {:ok, %{status: "success", result: result, session: updated_session}}
 
-      {:error, reason} ->
-        {:error, Error.adapter_error("Evaluate failed", %{reason: reason})}
+        {:error, reason} ->
+          {:error, Error.adapter_error("Evaluate failed", %{reason: reason})}
+      end
     end
-  end
-
-  defp get_session(context) do
-    context[:session] ||
-      context[:browser_session] ||
-      get_in(context, [:tool_context, :session]) ||
-      raise "No browser session in context"
   end
 end

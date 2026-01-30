@@ -127,14 +127,78 @@ config :jido_browser, :web,
 
 ## Available Actions
 
+### Session Lifecycle
+| Action | Description |
+|--------|-------------|
+| `StartSession` | Start a new browser session |
+| `EndSession` | End the current session |
+| `GetStatus` | Get session status (url, title, alive) |
+
+### Navigation
 | Action | Description |
 |--------|-------------|
 | `Navigate` | Navigate to a URL |
+| `Back` | Go back in browser history |
+| `Forward` | Go forward in browser history |
+| `Reload` | Reload current page |
+| `GetUrl` | Get current page URL |
+| `GetTitle` | Get current page title |
+
+### Interaction
+| Action | Description |
+|--------|-------------|
 | `Click` | Click an element by CSS selector |
 | `Type` | Type text into an input element |
+| `Hover` | Hover over an element |
+| `Focus` | Focus on an element |
+| `Scroll` | Scroll page or element |
+| `SelectOption` | Select option from dropdown |
+
+### Waiting/Synchronization
+| Action | Description |
+|--------|-------------|
+| `Wait` | Wait for specified milliseconds |
+| `WaitForSelector` | Wait for element (visible/hidden/attached/detached) |
+| `WaitForNavigation` | Wait for page navigation |
+
+### Element Queries
+| Action | Description |
+|--------|-------------|
+| `Query` | Query elements matching selector |
+| `GetText` | Get text content of element |
+| `GetAttribute` | Get attribute value from element |
+| `IsVisible` | Check if element is visible |
+
+### Content Extraction
+| Action | Description |
+|--------|-------------|
+| `Snapshot` | Get comprehensive page snapshot (LLM-optimized) |
 | `Screenshot` | Capture page screenshot |
 | `ExtractContent` | Extract page content as markdown/HTML |
-| `Evaluate` | Execute JavaScript |
+
+### Advanced
+| Action | Description |
+|--------|-------------|
+| `Evaluate` | Execute arbitrary JavaScript |
+
+## Using JidoBrowser.Skill
+
+The recommended way to use JidoBrowser with Jido agents is via the Skill:
+
+```elixir
+defmodule MyBrowsingAgent do
+  use Jido.Agent,
+    name: "web_browser",
+    description: "An agent that can browse the web",
+    skills: [{JidoBrowser.Skill, [headless: true]}]
+end
+```
+
+The Skill provides:
+- Session lifecycle management
+- 26 browser automation actions
+- Signal routing (`browser.*` patterns)
+- Error diagnostics with page context
 
 ## License
 

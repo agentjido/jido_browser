@@ -25,29 +25,24 @@ defmodule JidoBrowser.Actions.Type do
       timeout: [type: :integer, doc: "Timeout in milliseconds"]
     ]
 
+  alias JidoBrowser.ActionHelpers
   alias JidoBrowser.Error
 
   @impl true
   def run(params, context) do
-    session = get_session(context)
-    opts = Keyword.new(params) |> Keyword.take([:clear, :timeout])
+    with {:ok, session} <- ActionHelpers.get_session(context) do
+      opts = Keyword.new(params) |> Keyword.take([:clear, :timeout])
 
-    case JidoBrowser.type(session, params.selector, params.text, opts) do
-      {:ok, result} ->
-        {:ok, %{status: "success", selector: params.selector, result: result}}
+      case JidoBrowser.type(session, params.selector, params.text, opts) do
+        {:ok, updated_session, result} ->
+          {:ok, %{status: "success", selector: params.selector, result: result, session: updated_session}}
 
-      {:error, %Error.ElementError{} = error} ->
-        {:error, error}
+        {:error, %Error.ElementError{} = error} ->
+          {:error, error}
 
-      {:error, reason} ->
-        {:error, Error.element_error("type", params.selector, reason)}
+        {:error, reason} ->
+          {:error, Error.element_error("type", params.selector, reason)}
+      end
     end
-  end
-
-  defp get_session(context) do
-    context[:session] ||
-      context[:browser_session] ||
-      get_in(context, [:tool_context, :session]) ||
-      raise "No browser session in context"
   end
 end

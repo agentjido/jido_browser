@@ -1,5 +1,4 @@
 import Config
 
 # Development configuration
-config :jido_browser, :vibium,
-  port: 9515
+config :jido_browser, :vibium, port: 9515
