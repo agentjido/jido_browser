@@ -29,8 +29,13 @@ defmodule JidoBrowser.MixProject do
       dialyzer: dialyzer(),
 
       # Test coverage
-      test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: [
+      test_coverage: [tool: ExCoveralls]
+    ]
+  end
+
+  def cli do
+    [
+      preferred_envs: [
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.html": :test,
