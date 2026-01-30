@@ -56,24 +56,18 @@ defmodule JidoBrowser.MixProject do
 
   defp deps do
     [
-      # Core Jido dependencies
-      jido_dep(:jido, "../jido", "~> 2.0.0-rc"),
-      jido_dep(:jido_action, "../jido_action", "~> 1.3.0"),
+      # Jido ecosystem
+      {:jido, "~> 2.0.0-rc.2"},
+      {:jido_action, "~> 2.0.0-rc.2"},
 
-      # Schema & Errors
-      {:zoi, "~> 0.16", override: true},
-      {:splode, "~> 0.3.0", override: true},
-
-      # HTTP client for adapter communication
+      # Runtime
+      {:zoi, "~> 0.16"},
+      {:splode, "~> 0.3.0"},
       {:req, "~> 0.5"},
-
-      # JSON
       {:jason, "~> 1.4"},
-
-      # UUID
       {:uniq, "~> 0.6"},
 
-      # Dev/Test dependencies
+      # Dev/Test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
@@ -82,20 +76,6 @@ defmodule JidoBrowser.MixProject do
       {:git_hooks, "~> 0.8", only: [:dev, :test], runtime: false},
       {:mimic, "~> 1.11", only: :test}
     ]
-  end
-
-  defp jido_dep(app, rel_path, hex_req, extra_opts \\ []) do
-    path = Path.expand(rel_path, __DIR__)
-
-    if File.dir?(path) and File.exists?(Path.join(path, "mix.exs")) do
-      {app, Keyword.merge([path: rel_path, override: true], extra_opts)}
-    else
-      {app, hex_req, extra_opts}
-    end
-    |> case do
-      {app, opts} when is_list(opts) -> {app, opts}
-      {app, req, opts} -> {app, req, opts}
-    end
   end
 
   defp aliases do
