@@ -288,19 +288,22 @@ defmodule JidoBrowser.Adapters.Web do
         {:ok, path}
 
       _ ->
-        case System.find_executable("web") do
-          path when is_binary(path) ->
-            {:ok, path}
+        find_web_in_path_or_install()
+    end
+  end
 
-          nil ->
-            # Check jido_browser install path
-            jido_path = Path.join(JidoBrowser.Installer.default_install_path(), "web")
+  defp find_web_in_path_or_install do
+    case System.find_executable("web") do
+      path when is_binary(path) ->
+        {:ok, path}
 
-            if File.exists?(jido_path) do
-              {:ok, jido_path}
-            else
-              {:error, "web binary not found. Install with: mix jido_browser.install web"}
-            end
+      nil ->
+        jido_path = Path.join(JidoBrowser.Installer.default_install_path(), "web")
+
+        if File.exists?(jido_path) do
+          {:ok, jido_path}
+        else
+          {:error, "web binary not found. Install with: mix jido_browser.install web"}
         end
     end
   end

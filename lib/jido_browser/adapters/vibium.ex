@@ -315,7 +315,6 @@ defmodule JidoBrowser.Adapters.Vibium do
       :linux_amd64 -> "@vibium/linux-x64"
       :linux_arm64 -> "@vibium/linux-arm64"
       :windows_amd64 -> "@vibium/win32-x64"
-      other -> raise "Unsupported platform: #{other}"
     end
   end
 

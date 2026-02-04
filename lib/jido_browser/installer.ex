@@ -252,16 +252,14 @@ defmodule JidoBrowser.Installer do
   defp install_web(install_path, force) do
     target = Path.join(install_path, web_binary_name())
 
-    cond do
-      File.exists?(target) and not force ->
-        Logger.info("web already installed at #{target}. Use --force to overwrite.")
-        :ok
-
-      true ->
-        File.mkdir_p!(install_path)
-        url = web_download_url()
-        Logger.info("Downloading web from #{url}...")
-        download_binary(url, target)
+    if File.exists?(target) and not force do
+      Logger.info("web already installed at #{target}. Use --force to overwrite.")
+      :ok
+    else
+      File.mkdir_p!(install_path)
+      url = web_download_url()
+      Logger.info("Downloading web from #{url}...")
+      download_binary(url, target)
     end
   end
 
@@ -283,7 +281,6 @@ defmodule JidoBrowser.Installer do
       :linux_amd64 -> "#{base_url}/web-linux-amd64"
       :linux_arm64 -> "#{base_url}/web-linux-arm64"
       :windows_amd64 -> raise "Windows is not currently supported for the web adapter"
-      other -> raise "Unsupported platform: #{other}"
     end
   end
 
@@ -294,7 +291,6 @@ defmodule JidoBrowser.Installer do
       :linux_amd64 -> "@vibium/linux-x64"
       :linux_arm64 -> "@vibium/linux-arm64"
       :windows_amd64 -> "@vibium/win32-x64"
-      other -> raise "Unsupported platform for vibium: #{other}"
     end
   end
 
