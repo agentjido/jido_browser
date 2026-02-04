@@ -107,10 +107,18 @@ defmodule JidoBrowser.Installer do
 
   @doc """
   Returns the default installation path for binaries.
+
+  Binaries are installed into `_build/jido_browser-TARGET` where TARGET
+  is the platform identifier (e.g., `darwin_arm64`). This follows the
+  same pattern as Phoenix's Tailwind installer.
   """
   @spec default_install_path() :: String.t()
   def default_install_path do
-    Path.expand("~/.jido_browser/bin")
+    if path = Application.get_env(:jido_browser, :path) do
+      Path.expand(path)
+    else
+      Path.join(Path.dirname(Mix.Project.build_path()), "jido_browser-#{target()}")
+    end
   end
 
   @doc """
