@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-02-04
+
+### Added
+
+- `JidoBrowser.Plugin` - Jido.Plugin bundling all browser actions with lifecycle management
+- `JidoBrowser.Installer` - Automatic binary installation with platform detection
+- `mix jido_browser.install` - Mix task for installing browser backends (Vibium, Web)
+- 20 new browser actions: Back, Forward, Reload, GetUrl, GetTitle, Hover, Focus, Scroll, SelectOption, Wait, WaitForSelector, WaitForNavigation, Query, GetText, GetAttribute, IsVisible, Snapshot, StartSession, EndSession, GetStatus
+
+### Changed
+
+- Renamed `Jido.Skill` to `Jido.Plugin` following Jido 2.0 conventions
+- Installer now uses `_build/jido_browser` directory instead of `~/.jido_browser`
+- Updated dependencies: jido ~> 2.0.0-rc, jido_action ~> 2.0.0-rc
+
+### Fixed
+
+- Removed unreachable pattern matches flagged by Dialyzer
+
 ## [0.1.0] - 2025-01-29
 
 ### Added
@@ -26,5 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `JidoBrowser.Actions.ExtractContent`
   - `JidoBrowser.Actions.Evaluate`
 
-[Unreleased]: https://github.com/agentjido/jido_browser/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/agentjido/jido_browser/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/agentjido/jido_browser/compare/v0.1.0...v0.8.0
 [0.1.0]: https://github.com/agentjido/jido_browser/releases/tag/v0.1.0

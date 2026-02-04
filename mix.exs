@@ -1,7 +1,7 @@
 defmodule JidoBrowser.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.8.0"
   @source_url "https://github.com/agentjido/jido_browser"
   @description "Browser automation actions for Jido AI agents"
 
