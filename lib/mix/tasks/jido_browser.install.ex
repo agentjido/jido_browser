@@ -5,179 +5,113 @@ defmodule Mix.Tasks.JidoBrowser.Install do
 
   ## Usage
 
-      # Install all binaries
+      # Install the default adapter's binary (based on config)
       mix jido_browser.install
 
       # Install specific binary
       mix jido_browser.install web
       mix jido_browser.install vibium
 
+      # Install both
+      mix jido_browser.install web vibium
+
   ## Options
 
-      --path PATH  - Custom installation path (default: ~/bin)
-      --force      - Overwrite existing binaries
+      --path PATH      - Custom installation path (default: ~/.jido_browser/bin)
+      --force          - Overwrite existing binaries
+      --if-missing     - Only install if not already present (idempotent)
+
+  ## Platform Support
+
+  This installer automatically detects your platform:
+
+  - **macOS** (Apple Silicon and Intel)
+  - **Linux** (x86_64 and ARM64)
+  - **Windows** (x86_64, vibium only)
+
+  ## Recommended Setup
+
+  Add to your `mix.exs` aliases for automatic installation:
+
+      defp aliases do
+        [
+          setup: ["deps.get", "jido_browser.install --if-missing"],
+          test: ["jido_browser.install --if-missing", "test"]
+        ]
+      end
 
   """
   use Mix.Task
 
-  @default_install_path Path.expand("~/bin")
+  alias JidoBrowser.Installer
 
   @impl Mix.Task
   def run(args) do
     {opts, binaries, _} =
-      OptionParser.parse(args, strict: [path: :string, force: :boolean])
+      OptionParser.parse(args,
+        strict: [path: :string, force: :boolean, if_missing: :boolean]
+      )
 
-    install_path = opts[:path] || @default_install_path
-    force? = opts[:force] || false
+    if_missing = opts[:if_missing] || false
+    force = opts[:force] || false
+    install_path = opts[:path]
 
-    File.mkdir_p!(install_path)
+    binaries =
+      case binaries do
+        [] -> [default_binary()]
+        list -> Enum.map(list, &String.to_atom/1)
+      end
 
-    binaries = if binaries == [], do: ["web", "vibium"], else: binaries
+    Mix.shell().info("JidoBrowser Installer")
+    Mix.shell().info("Platform: #{Installer.target()}")
+    Mix.shell().info("")
 
     Enum.each(binaries, fn binary ->
-      case binary do
-        "web" -> install_web(install_path, force?)
-        "vibium" -> install_vibium(install_path, force?)
-        other -> Mix.shell().error("Unknown binary: #{other}. Use 'web' or 'vibium'.")
-      end
+      install_binary(binary, install_path, force, if_missing)
     end)
   end
 
-  defp install_web(install_path, force?) do
-    target = Path.join(install_path, "web")
+  defp default_binary do
+    adapter = Application.get_env(:jido_browser, :adapter, JidoBrowser.Adapters.Vibium)
 
-    if File.exists?(target) and not force? do
-      Mix.shell().info("web already installed at #{target}. Use --force to overwrite.")
-      :ok
-    else
-      Mix.shell().info("Installing web CLI...")
-
-      platform = detect_platform()
-
-      url =
-        case platform do
-          :darwin_arm64 ->
-            "https://raw.githubusercontent.com/chrismccord/web/main/web-darwin-arm64"
-
-          :darwin_amd64 ->
-            "https://raw.githubusercontent.com/chrismccord/web/main/web-darwin-amd64"
-
-          :linux_amd64 ->
-            "https://raw.githubusercontent.com/chrismccord/web/main/web-linux-amd64"
-
-          _ ->
-            Mix.raise("Unsupported platform: #{platform}")
-        end
-
-      download_binary(url, target)
-      Mix.shell().info("✓ web installed to #{target}")
+    case adapter do
+      JidoBrowser.Adapters.Vibium -> :vibium
+      JidoBrowser.Adapters.Web -> :web
+      _ -> :vibium
     end
   end
 
-  defp install_vibium(_install_path, _force?) do
-    Mix.shell().info("Installing vibium via npm...")
+  defp install_binary(binary, install_path, force, if_missing) when binary in [:vibium, :web] do
+    already_installed = Installer.installed?(binary)
 
-    case System.find_executable("npm") do
-      nil ->
-        Mix.raise("npm not found. Install Node.js first or install vibium manually.")
+    cond do
+      if_missing and already_installed ->
+        path = Installer.bin_path(binary)
+        Mix.shell().info("✓ #{binary} already installed at #{path}")
 
-      npm ->
-        platform_pkg = vibium_platform_package()
+      already_installed and not force ->
+        path = Installer.bin_path(binary)
+        Mix.shell().info("#{binary} already installed at #{path}. Use --force to reinstall.")
 
-        case System.cmd(npm, ["install", "-g", "vibium", platform_pkg], stderr_to_stdout: true) do
-          {output, 0} ->
-            Mix.shell().info(output)
-            run_vibium_install()
-            Mix.shell().info("✓ vibium installed globally via npm")
+      true ->
+        Mix.shell().info("Installing #{binary}...")
 
-          {output, code} ->
-            Mix.shell().error("npm install failed (exit #{code}): #{output}")
+        opts = [force: force]
+        opts = if install_path, do: Keyword.put(opts, :path, install_path), else: opts
+
+        case Installer.install(binary, opts) do
+          :ok ->
+            Mix.shell().info("✓ #{binary} installed successfully")
+
+          {:error, reason} ->
+            Mix.shell().error("✗ Failed to install #{binary}: #{reason}")
         end
     end
+
+    Mix.shell().info("")
   end
 
-  defp run_vibium_install do
-    case find_clicker_binary() do
-      nil ->
-        Mix.shell().warn("Could not find clicker binary to run install")
-
-      clicker ->
-        Mix.shell().info("Installing Chrome for Testing...")
-
-        case System.cmd(clicker, ["install"], stderr_to_stdout: true) do
-          {output, 0} ->
-            Mix.shell().info(output)
-
-          {output, code} ->
-            Mix.shell().warn("Chrome install returned #{code}: #{output}")
-        end
-    end
+  defp install_binary(other, _install_path, _force, _if_missing) do
+    Mix.shell().error("Unknown binary: #{other}. Use 'web' or 'vibium'.")
   end
-
-  defp find_clicker_binary do
-    case System.cmd("npm", ["root", "-g"], stderr_to_stdout: true) do
-      {npm_root, 0} ->
-        npm_root = String.trim(npm_root)
-        platform_pkg = vibium_platform_package()
-        clicker_path = Path.join([npm_root, platform_pkg, "bin", "clicker"])
-
-        if File.exists?(clicker_path), do: clicker_path, else: nil
-
-      _ ->
-        nil
-    end
-  rescue
-    _ -> nil
-  end
-
-  defp vibium_platform_package do
-    platform = detect_platform()
-
-    case platform do
-      :darwin_arm64 -> "@vibium/darwin-arm64"
-      :darwin_amd64 -> "@vibium/darwin-x64"
-      :linux_amd64 -> "@vibium/linux-x64"
-      :linux_arm64 -> "@vibium/linux-arm64"
-      _ -> Mix.raise("Unsupported platform for vibium: #{platform}")
-    end
-  end
-
-  defp download_binary(url, target) do
-    Mix.shell().info("Downloading from #{url}...")
-
-    case System.cmd("curl", ["-L", "-o", target, url], stderr_to_stdout: true) do
-      {_, 0} ->
-        File.chmod!(target, 0o755)
-
-      {output, code} ->
-        Mix.raise("Download failed (exit #{code}): #{output}")
-    end
-  end
-
-  defp detect_platform do
-    os = detect_os()
-    arch = detect_arch()
-    :"#{os}_#{arch}"
-  end
-
-  defp detect_os do
-    case :os.type() do
-      {:unix, :darwin} -> :darwin
-      {:unix, :linux} -> :linux
-      {:win32, _} -> :windows
-      other -> other
-    end
-  end
-
-  defp detect_arch do
-    :erlang.system_info(:system_architecture)
-    |> to_string()
-    |> parse_arch()
-  end
-
-  defp parse_arch("aarch64" <> _), do: :arm64
-  defp parse_arch("arm64" <> _), do: :arm64
-  defp parse_arch("x86_64" <> _), do: :amd64
-  defp parse_arch("amd64" <> _), do: :amd64
-  defp parse_arch(other), do: String.to_atom(other)
 end

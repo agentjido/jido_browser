@@ -293,7 +293,14 @@ defmodule JidoBrowser.Adapters.Web do
             {:ok, path}
 
           nil ->
-            {:error, "web binary not found. Install from: https://github.com/chrismccord/web"}
+            # Check jido_browser install path
+            jido_path = Path.join(JidoBrowser.Installer.default_install_path(), "web")
+
+            if File.exists?(jido_path) do
+              {:ok, jido_path}
+            else
+              {:error, "web binary not found. Install with: mix jido_browser.install web"}
+            end
         end
     end
   end

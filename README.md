@@ -22,21 +22,63 @@ def deps do
 end
 ```
 
-### Browser Backend
+### Automatic Binary Installation
 
-JidoBrowser supports multiple browser backends via adapters:
-
-**Vibium (Recommended)**
+After adding the dependency, install the browser backend:
 
 ```bash
-npm install -g vibium
+mix jido_browser.install
 ```
 
-**chrismccord/web**
+This automatically detects your platform (macOS, Linux, Windows) and installs the appropriate binary.
+
+### Recommended Setup
+
+Add to your `mix.exs` aliases for automatic installation:
+
+```elixir
+defp aliases do
+  [
+    setup: ["deps.get", "jido_browser.install --if-missing"],
+    test: ["jido_browser.install --if-missing", "test"]
+  ]
+end
+```
+
+### Platform Support
+
+| Platform | Vibium | Web |
+|----------|--------|-----|
+| macOS (Apple Silicon) | ✓ | ✓ |
+| macOS (Intel) | ✓ | ✓ |
+| Linux (x86_64) | ✓ | ✓ |
+| Linux (ARM64) | ✓ | ✓ |
+| Windows (x86_64) | ✓ | ✗ |
+
+### Browser Backends
+
+**Vibium (Default)** - Uses npm for installation:
 
 ```bash
+mix jido_browser.install vibium
+```
+
+**chrismccord/web** - Direct binary download:
+
+```bash
+mix jido_browser.install web
+```
+
+### Manual Installation (if needed)
+
+**Vibium:**
+```bash
+npm install -g vibium @vibium/darwin-arm64  # or your platform
+```
+
+**Web:**
+```bash
 # Download from https://github.com/chrismccord/web
-# Or build from source
 git clone https://github.com/chrismccord/web
 cd web && make && sudo cp web /usr/local/bin/
 ```

@@ -281,7 +281,14 @@ defmodule JidoBrowser.Adapters.Vibium do
         {:ok, path}
 
       nil ->
-        {:error, "Vibium clicker binary not found. Install with: mix jido_browser.install vibium"}
+        # Check jido_browser install path
+        jido_path = Path.join(JidoBrowser.Installer.default_install_path(), "clicker")
+
+        if File.exists?(jido_path) do
+          {:ok, jido_path}
+        else
+          {:error, "Vibium clicker binary not found. Install with: mix jido_browser.install vibium"}
+        end
     end
   end
 
@@ -302,21 +309,14 @@ defmodule JidoBrowser.Adapters.Vibium do
   end
 
   defp vibium_platform_package do
-    os =
-      case :os.type() do
-        {:unix, :darwin} -> "darwin"
-        {:unix, :linux} -> "linux"
-        {:win32, _} -> "win32"
-      end
-
-    arch =
-      case :erlang.system_info(:system_architecture) |> to_string() do
-        "aarch64" <> _ -> "arm64"
-        "arm64" <> _ -> "arm64"
-        _ -> "x64"
-      end
-
-    "@vibium/#{os}-#{arch}"
+    case JidoBrowser.Installer.target() do
+      :darwin_arm64 -> "@vibium/darwin-arm64"
+      :darwin_amd64 -> "@vibium/darwin-x64"
+      :linux_amd64 -> "@vibium/linux-x64"
+      :linux_arm64 -> "@vibium/linux-arm64"
+      :windows_amd64 -> "@vibium/win32-x64"
+      other -> raise "Unsupported platform: #{other}"
+    end
   end
 
   defp config(key, default \\ nil) do
