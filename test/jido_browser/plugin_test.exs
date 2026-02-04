@@ -1,35 +1,35 @@
-defmodule JidoBrowser.SkillTest do
+defmodule JidoBrowser.PluginTest do
   use ExUnit.Case, async: true
 
-  alias JidoBrowser.Skill
+  alias JidoBrowser.Plugin
 
-  describe "skill metadata" do
+  describe "plugin metadata" do
     test "has correct name" do
-      assert Skill.name() == "browser"
+      assert Plugin.name() == "browser"
     end
 
     test "has correct state_key" do
-      assert Skill.state_key() == :browser
+      assert Plugin.state_key() == :browser
     end
 
     test "has correct category" do
-      assert Skill.category() == "browser"
+      assert Plugin.category() == "browser"
     end
 
     test "has expected tags" do
-      tags = Skill.tags()
+      tags = Plugin.tags()
       assert "browser" in tags
       assert "web" in tags
       assert "automation" in tags
     end
 
     test "has 26 actions" do
-      actions = Skill.actions()
+      actions = Plugin.actions()
       assert length(actions) == 26
     end
 
     test "includes all expected action modules" do
-      actions = Skill.actions()
+      actions = Plugin.actions()
 
       # Session lifecycle
       assert JidoBrowser.Actions.StartSession in actions
@@ -70,27 +70,27 @@ defmodule JidoBrowser.SkillTest do
 
   describe "router/1" do
     test "returns 26 routes" do
-      routes = Skill.router(%{})
+      routes = Plugin.router(%{})
       assert length(routes) == 26
     end
 
     test "maps browser.navigate to Navigate action" do
-      routes = Skill.router(%{})
+      routes = Plugin.router(%{})
       assert {"browser.navigate", JidoBrowser.Actions.Navigate} in routes
     end
 
     test "maps browser.snapshot to Snapshot action" do
-      routes = Skill.router(%{})
+      routes = Plugin.router(%{})
       assert {"browser.snapshot", JidoBrowser.Actions.Snapshot} in routes
     end
 
     test "maps browser.click to Click action" do
-      routes = Skill.router(%{})
+      routes = Plugin.router(%{})
       assert {"browser.click", JidoBrowser.Actions.Click} in routes
     end
 
     test "all routes have browser. prefix" do
-      routes = Skill.router(%{})
+      routes = Plugin.router(%{})
 
       for {pattern, _action} <- routes do
         assert String.starts_with?(pattern, "browser.")
@@ -100,12 +100,12 @@ defmodule JidoBrowser.SkillTest do
 
   describe "mount/2" do
     test "returns ok tuple with initial state" do
-      assert {:ok, state} = Skill.mount(%{}, %{})
+      assert {:ok, state} = Plugin.mount(%{}, %{})
       assert is_map(state)
     end
 
     test "initializes with default values" do
-      {:ok, state} = Skill.mount(%{}, %{})
+      {:ok, state} = Plugin.mount(%{}, %{})
 
       assert state.session == nil
       assert state.headless == true
@@ -116,46 +116,46 @@ defmodule JidoBrowser.SkillTest do
     end
 
     test "accepts headless config override" do
-      {:ok, state} = Skill.mount(%{}, %{headless: false})
+      {:ok, state} = Plugin.mount(%{}, %{headless: false})
       assert state.headless == false
     end
 
     test "accepts timeout config override" do
-      {:ok, state} = Skill.mount(%{}, %{timeout: 60_000})
+      {:ok, state} = Plugin.mount(%{}, %{timeout: 60_000})
       assert state.timeout == 60_000
     end
 
     test "accepts viewport config override" do
-      {:ok, state} = Skill.mount(%{}, %{viewport: %{width: 1920, height: 1080}})
+      {:ok, state} = Plugin.mount(%{}, %{viewport: %{width: 1920, height: 1080}})
       assert state.viewport == %{width: 1920, height: 1080}
     end
 
     test "accepts base_url config" do
-      {:ok, state} = Skill.mount(%{}, %{base_url: "https://example.com"})
+      {:ok, state} = Plugin.mount(%{}, %{base_url: "https://example.com"})
       assert state.base_url == "https://example.com"
     end
 
     test "accepts adapter config" do
-      {:ok, state} = Skill.mount(%{}, %{adapter: JidoBrowser.Adapters.Web})
+      {:ok, state} = Plugin.mount(%{}, %{adapter: JidoBrowser.Adapters.Web})
       assert state.adapter == JidoBrowser.Adapters.Web
     end
   end
 
   describe "signal_patterns/0" do
     test "returns list of signal patterns" do
-      patterns = Skill.signal_patterns()
+      patterns = Plugin.signal_patterns()
       assert is_list(patterns)
       assert length(patterns) == 26
     end
 
     test "all patterns have browser. prefix" do
-      for pattern <- Skill.signal_patterns() do
+      for pattern <- Plugin.signal_patterns() do
         assert String.starts_with?(pattern, "browser.")
       end
     end
 
     test "includes expected patterns" do
-      patterns = Skill.signal_patterns()
+      patterns = Plugin.signal_patterns()
 
       assert "browser.navigate" in patterns
       assert "browser.click" in patterns
@@ -166,14 +166,14 @@ defmodule JidoBrowser.SkillTest do
 
   describe "handle_signal/2" do
     test "returns continue" do
-      assert {:ok, :continue} = Skill.handle_signal(%{}, %{})
+      assert {:ok, :continue} = Plugin.handle_signal(%{}, %{})
     end
   end
 
   describe "transform_result/3" do
     test "passes through successful results" do
       result = {:ok, %{status: "success"}}
-      assert Skill.transform_result(:some_action, result, %{}) == result
+      assert Plugin.transform_result(:some_action, result, %{}) == result
     end
 
     test "enhances error results when session available" do
@@ -186,7 +186,7 @@ defmodule JidoBrowser.SkillTest do
       }
 
       error_result = {:error, %{message: "Element not found"}}
-      result = Skill.transform_result(:click, error_result, context)
+      result = Plugin.transform_result(:click, error_result, context)
 
       assert {:error, enhanced} = result
       assert enhanced.diagnostics.url == "https://example.com"

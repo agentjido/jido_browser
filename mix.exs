@@ -57,8 +57,8 @@ defmodule JidoBrowser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.0.0-rc.2"},
-      {:jido_action, "~> 2.0.0-rc.2"},
+      {:jido, "~> 2.0.0-rc"},
+      {:jido_action, "~> 2.0.0-rc"},
 
       # Runtime
       {:zoi, "~> 0.16"},
@@ -106,7 +106,7 @@ defmodule JidoBrowser.MixProject do
         Core: [
           JidoBrowser,
           JidoBrowser.Session,
-          JidoBrowser.Skill
+          JidoBrowser.Plugin
         ],
         Adapters: [
           JidoBrowser.Adapter,

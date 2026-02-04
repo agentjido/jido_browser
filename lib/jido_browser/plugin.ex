@@ -1,4 +1,4 @@
-# Ensure actions are compiled before the skill
+# Ensure actions are compiled before the plugin
 require JidoBrowser.Actions.Back
 require JidoBrowser.Actions.Click
 require JidoBrowser.Actions.EndSession
@@ -26,18 +26,18 @@ require JidoBrowser.Actions.Wait
 require JidoBrowser.Actions.WaitForNavigation
 require JidoBrowser.Actions.WaitForSelector
 
-defmodule JidoBrowser.Skill do
+defmodule JidoBrowser.Plugin do
   @moduledoc """
-  A Jido.Skill providing browser automation capabilities for AI agents.
+  A Jido.Plugin providing browser automation capabilities for AI agents.
 
-  This skill owns browser session lifecycle and provides a complete set of
+  This plugin owns browser session lifecycle and provides a complete set of
   actions for web navigation, interaction, and content extraction.
 
   ## Usage
 
       defmodule MyAgent do
         use Jido.Agent,
-          skills: [{JidoBrowser.Skill, [headless: true]}]
+          plugins: [{JidoBrowser.Plugin, [headless: true]}]
       end
 
   ## Configuration Options
@@ -58,7 +58,7 @@ defmodule JidoBrowser.Skill do
   * `Evaluate` - Execute JavaScript in the browser
   """
 
-  use Jido.Skill,
+  use Jido.Plugin,
     name: "browser",
     state_key: :browser,
     actions: [
@@ -101,7 +101,7 @@ defmodule JidoBrowser.Skill do
     tags: ["browser", "web", "automation", "scraping"],
     vsn: "1.0.0"
 
-  @impl Jido.Skill
+  @impl Jido.Plugin
   def mount(_agent, config) do
     initial_state = %{
       session: nil,
@@ -130,7 +130,7 @@ defmodule JidoBrowser.Skill do
     })
   end
 
-  @impl Jido.Skill
+  @impl Jido.Plugin
   def router(_config) do
     [
       # Session lifecycle
@@ -169,19 +169,15 @@ defmodule JidoBrowser.Skill do
     ]
   end
 
-  @impl Jido.Skill
+  @impl Jido.Plugin
   def handle_signal(_signal, _context) do
     {:ok, :continue}
   end
 
-  @impl Jido.Skill
+  @impl Jido.Plugin
   def transform_result(_action, {:ok, result}, _context) when is_map(result) do
-    # Automatically persist the returned session to skill_state
-    # This ensures the next action uses the updated session without
-    # requiring callers to manually thread it through
     case Map.get(result, :session) do
       %JidoBrowser.Session{} = session ->
-        # Extract URL/title from session for diagnostics
         current_url = get_in(session, [:connection, :current_url])
 
         state_updates = %{
@@ -199,8 +195,6 @@ defmodule JidoBrowser.Skill do
   def transform_result(_action, {:error, error} = _result, context) do
     case get_diagnostics(context) do
       {:ok, diagnostics} ->
-        # Wrap error with diagnostics without corrupting exception structs
-        # This preserves pattern matching on error types like %Error.NavigationError{}
         {:error, %{error: error, diagnostics: diagnostics}}
 
       _ ->

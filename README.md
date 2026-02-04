@@ -181,20 +181,20 @@ config :jido_browser, :web,
 |--------|-------------|
 | `Evaluate` | Execute arbitrary JavaScript |
 
-## Using JidoBrowser.Skill
+## Using JidoBrowser.Plugin
 
-The recommended way to use JidoBrowser with Jido agents is via the Skill:
+The recommended way to use JidoBrowser with Jido agents is via the Plugin:
 
 ```elixir
 defmodule MyBrowsingAgent do
   use Jido.Agent,
     name: "web_browser",
     description: "An agent that can browse the web",
-    skills: [{JidoBrowser.Skill, [headless: true]}]
+    plugins: [{JidoBrowser.Plugin, [headless: true]}]
 end
 ```
 
-The Skill provides:
+The Plugin provides:
 - Session lifecycle management
 - 26 browser automation actions
 - Signal routing (`browser.*` patterns)

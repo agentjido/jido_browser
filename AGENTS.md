@@ -27,9 +27,9 @@ JidoBrowser provides browser automation for Jido AI agents using an adapter patt
 - **JidoBrowser.Adapters.Vibium** - Default adapter using Vibium Go binary (WebDriver BiDi)
 - **JidoBrowser.Adapters.Web** - Alternative adapter using chrismccord/web CLI
 
-### Skill
+### Plugin
 
-- **JidoBrowser.Skill** - Jido.Skill bundling all browser actions with lifecycle management
+- **JidoBrowser.Plugin** - Jido.Plugin bundling all browser actions with lifecycle management
 
 ### Actions (Jido.Action implementations)
 
