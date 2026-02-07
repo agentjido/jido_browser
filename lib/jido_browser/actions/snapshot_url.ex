@@ -50,43 +50,48 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
     case JidoBrowser.start_session(adapter: JidoBrowser.Adapters.Web) do
       {:ok, session} ->
         try do
-          case JidoBrowser.navigate(session, url) do
-            {:ok, session, _nav_result} ->
-              js =
-                snapshot_js(
-                  selector,
-                  include_links,
-                  include_forms,
-                  include_headings,
-                  max_content_length
-                )
-
-              case JidoBrowser.evaluate(session, js, []) do
-                {:ok, _session, %{result: result}} when is_map(result) ->
-                  {:ok, Map.put(result, :status, "success")}
-
-                {:ok, _session, %{result: result}} when is_binary(result) ->
-                  case Jason.decode(result) do
-                    {:ok, decoded} when is_map(decoded) ->
-                      {:ok, Map.put(decoded, :status, "success")}
-
-                    _ ->
-                      fallback_read_page(session, url, selector, max_content_length)
-                  end
-
-                _ ->
-                  fallback_read_page(session, url, selector, max_content_length)
-              end
-
-            {:error, reason} ->
-              {:error, "Failed to navigate to #{url}: #{inspect(reason)}"}
-          end
+          perform_snapshot(session, url, selector, include_links, include_forms, include_headings, max_content_length)
         after
           JidoBrowser.end_session(session)
         end
 
       {:error, reason} ->
         {:error, "Failed to start browser session: #{inspect(reason)}"}
+    end
+  end
+
+  defp perform_snapshot(session, url, selector, include_links, include_forms, include_headings, max_content_length) do
+    case JidoBrowser.navigate(session, url) do
+      {:ok, session, _nav_result} ->
+        evaluate_snapshot(session, url, selector, include_links, include_forms, include_headings, max_content_length)
+
+      {:error, reason} ->
+        {:error, "Failed to navigate to #{url}: #{inspect(reason)}"}
+    end
+  end
+
+  defp evaluate_snapshot(session, url, selector, include_links, include_forms, include_headings, max_content_length) do
+    js = snapshot_js(selector, include_links, include_forms, include_headings, max_content_length)
+
+    case JidoBrowser.evaluate(session, js, []) do
+      {:ok, _session, %{result: result}} when is_map(result) ->
+        {:ok, Map.put(result, :status, "success")}
+
+      {:ok, _session, %{result: result}} when is_binary(result) ->
+        handle_string_result(result, session, url, selector, max_content_length)
+
+      _ ->
+        fallback_read_page(session, url, selector, max_content_length)
+    end
+  end
+
+  defp handle_string_result(result, session, url, selector, max_content_length) do
+    case Jason.decode(result) do
+      {:ok, decoded} when is_map(decoded) ->
+        {:ok, Map.put(decoded, :status, "success")}
+
+      _ ->
+        fallback_read_page(session, url, selector, max_content_length)
     end
   end
 
