@@ -50,33 +50,34 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
     case JidoBrowser.start_session(adapter: JidoBrowser.Adapters.Web) do
       {:ok, session} ->
         try do
-          with {:ok, session, _nav_result} <- JidoBrowser.navigate(session, url) do
-            js =
-              snapshot_js(
-                selector,
-                include_links,
-                include_forms,
-                include_headings,
-                max_content_length
-              )
+          case JidoBrowser.navigate(session, url) do
+            {:ok, session, _nav_result} ->
+              js =
+                snapshot_js(
+                  selector,
+                  include_links,
+                  include_forms,
+                  include_headings,
+                  max_content_length
+                )
 
-            case JidoBrowser.evaluate(session, js, []) do
-              {:ok, _session, %{result: result}} when is_map(result) ->
-                {:ok, Map.put(result, :status, "success")}
+              case JidoBrowser.evaluate(session, js, []) do
+                {:ok, _session, %{result: result}} when is_map(result) ->
+                  {:ok, Map.put(result, :status, "success")}
 
-              {:ok, _session, %{result: result}} when is_binary(result) ->
-                case Jason.decode(result) do
-                  {:ok, decoded} when is_map(decoded) ->
-                    {:ok, Map.put(decoded, :status, "success")}
+                {:ok, _session, %{result: result}} when is_binary(result) ->
+                  case Jason.decode(result) do
+                    {:ok, decoded} when is_map(decoded) ->
+                      {:ok, Map.put(decoded, :status, "success")}
 
-                  _ ->
-                    fallback_read_page(session, url, selector, max_content_length)
-                end
+                    _ ->
+                      fallback_read_page(session, url, selector, max_content_length)
+                  end
 
-              _ ->
-                fallback_read_page(session, url, selector, max_content_length)
-            end
-          else
+                _ ->
+                  fallback_read_page(session, url, selector, max_content_length)
+              end
+
             {:error, reason} ->
               {:error, "Failed to navigate to #{url}: #{inspect(reason)}"}
           end
