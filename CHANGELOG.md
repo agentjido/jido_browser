@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-02-06
+
+### Changed
+
+- Renamed `Plugin.router/1` to `Plugin.signal_routes/1` to align with Jido 2.0.0-rc.4 Plugin API
+
+### Fixed
+
+- Removed invalid `@impl` from `Plugin.router/1` callback
+
+### Chore
+
+- Upgraded `jido` to ~> 2.0.0-rc.4
+- Upgraded `jido_action` to ~> 2.0.0-rc.4
+
 ## [0.8.0] - 2025-02-04
 
 ### Added
