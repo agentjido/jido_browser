@@ -25,6 +25,9 @@ require JidoBrowser.Actions.Type
 require JidoBrowser.Actions.Wait
 require JidoBrowser.Actions.WaitForNavigation
 require JidoBrowser.Actions.WaitForSelector
+require JidoBrowser.Actions.ReadPage
+require JidoBrowser.Actions.SnapshotUrl
+require JidoBrowser.Actions.SearchWeb
 
 defmodule JidoBrowser.Plugin do
   @moduledoc """
@@ -94,7 +97,11 @@ defmodule JidoBrowser.Plugin do
       JidoBrowser.Actions.Screenshot,
       JidoBrowser.Actions.ExtractContent,
       # Advanced
-      JidoBrowser.Actions.Evaluate
+      JidoBrowser.Actions.Evaluate,
+      # Self-contained composite actions (manage own session)
+      JidoBrowser.Actions.ReadPage,
+      JidoBrowser.Actions.SnapshotUrl,
+      JidoBrowser.Actions.SearchWeb
     ],
     description: "Browser automation for web navigation, interaction, and content extraction",
     category: "browser",
@@ -165,7 +172,11 @@ defmodule JidoBrowser.Plugin do
       {"browser.screenshot", JidoBrowser.Actions.Screenshot},
       {"browser.extract", JidoBrowser.Actions.ExtractContent},
       # Advanced
-      {"browser.evaluate", JidoBrowser.Actions.Evaluate}
+      {"browser.evaluate", JidoBrowser.Actions.Evaluate},
+      # Self-contained composite actions
+      {"browser.read_page", JidoBrowser.Actions.ReadPage},
+      {"browser.snapshot_url", JidoBrowser.Actions.SnapshotUrl},
+      {"browser.search_web", JidoBrowser.Actions.SearchWeb}
     ]
   end
 
@@ -253,7 +264,11 @@ defmodule JidoBrowser.Plugin do
       "browser.screenshot",
       "browser.extract",
       # Advanced
-      "browser.evaluate"
+      "browser.evaluate",
+      # Self-contained composite actions
+      "browser.read_page",
+      "browser.snapshot_url",
+      "browser.search_web"
     ]
   end
 end
