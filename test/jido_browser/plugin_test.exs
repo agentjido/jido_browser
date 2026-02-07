@@ -68,29 +68,29 @@ defmodule JidoBrowser.PluginTest do
     end
   end
 
-  describe "router/1" do
+  describe "signal_routes/1" do
     test "returns 26 routes" do
-      routes = Plugin.router(%{})
+      routes = Plugin.signal_routes(%{})
       assert length(routes) == 26
     end
 
     test "maps browser.navigate to Navigate action" do
-      routes = Plugin.router(%{})
+      routes = Plugin.signal_routes(%{})
       assert {"browser.navigate", JidoBrowser.Actions.Navigate} in routes
     end
 
     test "maps browser.snapshot to Snapshot action" do
-      routes = Plugin.router(%{})
+      routes = Plugin.signal_routes(%{})
       assert {"browser.snapshot", JidoBrowser.Actions.Snapshot} in routes
     end
 
     test "maps browser.click to Click action" do
-      routes = Plugin.router(%{})
+      routes = Plugin.signal_routes(%{})
       assert {"browser.click", JidoBrowser.Actions.Click} in routes
     end
 
     test "all routes have browser. prefix" do
-      routes = Plugin.router(%{})
+      routes = Plugin.signal_routes(%{})
 
       for {pattern, _action} <- routes do
         assert String.starts_with?(pattern, "browser.")

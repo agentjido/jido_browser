@@ -131,7 +131,7 @@ defmodule JidoBrowser.Plugin do
   end
 
   @impl Jido.Plugin
-  def router(_config) do
+  def signal_routes(_config) do
     [
       # Session lifecycle
       {"browser.start_session", JidoBrowser.Actions.StartSession},
