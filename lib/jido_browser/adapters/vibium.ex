@@ -195,7 +195,7 @@ defmodule JidoBrowser.Adapters.Vibium do
   end
 
   defp build_extract_args(url, selector, :html), do: ["find", url, selector, "--html"]
-  defp build_extract_args(url, selector, :markdown), do: ["find", url, selector, "--markdown"]
+  defp build_extract_args(url, selector, :markdown), do: ["find", url, selector]
   defp build_extract_args(url, selector, :text), do: ["find", url, selector]
 
   @impl true
