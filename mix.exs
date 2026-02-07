@@ -57,8 +57,8 @@ defmodule JidoBrowser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.0.0-rc"},
-      {:jido_action, "~> 2.0.0-rc"},
+      {:jido, "~> 2.0.0-rc.4"},
+      {:jido_action, "~> 2.0.0-rc.4"},
 
       # Runtime
       {:zoi, "~> 0.16"},
