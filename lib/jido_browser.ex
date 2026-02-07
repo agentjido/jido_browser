@@ -72,7 +72,11 @@ defmodule JidoBrowser do
   @spec start_session(keyword()) :: {:ok, Session.t()} | {:error, term()}
   def start_session(opts \\ []) do
     adapter = opts[:adapter] || configured_adapter()
-    adapter.start_session(opts)
+
+    case adapter.start_session(opts) do
+      %Session{} = session -> {:ok, session}
+      error -> error
+    end
   end
 
   @doc """

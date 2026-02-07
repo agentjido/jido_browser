@@ -14,8 +14,9 @@ defmodule JidoBrowserTest do
         })
       end)
 
+      # Mock returns bare session, adapter wraps with {:ok, ...}
       assert {:ok, %Session{adapter: JidoBrowser.Adapters.Vibium}} =
-               JidoBrowser.start_session()
+               JidoBrowser.start_session(adapter: JidoBrowser.Adapters.Vibium)
     end
 
     test "accepts custom adapter" do
@@ -26,6 +27,7 @@ defmodule JidoBrowserTest do
         })
       end)
 
+      # Mock returns bare session, adapter wraps with {:ok, ...}
       assert {:ok, %Session{adapter: JidoBrowser.Adapters.Web}} =
                JidoBrowser.start_session(adapter: JidoBrowser.Adapters.Web)
     end

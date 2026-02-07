@@ -82,9 +82,15 @@ defmodule JidoBrowser.Actions.SearchWeb do
 
   defp get_api_key do
     case Application.get_env(:jido_browser, :brave_api_key) || System.get_env("BRAVE_SEARCH_API_KEY") do
-      nil -> {:error, "Brave Search API key not configured. Set :brave_api_key in :jido_browser config or BRAVE_SEARCH_API_KEY env var."}
-      "" -> {:error, "Brave Search API key is empty"}
-      key -> {:ok, key}
+      nil ->
+        {:error,
+         "Brave Search API key not configured. Set :brave_api_key in :jido_browser config or BRAVE_SEARCH_API_KEY env var."}
+
+      "" ->
+        {:error, "Brave Search API key is empty"}
+
+      key ->
+        {:ok, key}
     end
   end
 

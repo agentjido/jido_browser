@@ -63,7 +63,7 @@ defmodule JidoBrowser.Adapter do
   @doc """
   Starts a new browser session.
   """
-  @callback start_session(opts :: keyword()) :: {:ok, Session.t()} | {:error, term()}
+  @callback start_session(opts :: keyword()) :: Session.t() | {:error, term()}
 
   @doc """
   Ends a browser session and cleans up resources.
