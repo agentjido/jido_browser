@@ -44,7 +44,7 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
     include_headings = Map.get(params, :include_headings, true)
     max_content_length = Map.get(params, :max_content_length, 50_000)
 
-    case JidoBrowser.start_session(headless: true) do
+    case JidoBrowser.start_session(adapter: JidoBrowser.Adapters.Web) do
       {:ok, session} ->
         try do
           with {:ok, session, _nav_result} <- JidoBrowser.navigate(session, url) do
