@@ -39,7 +39,7 @@ defmodule JidoBrowser.Actions.ReadPage do
     selector = Map.get(params, :selector, "body")
     format = Map.get(params, :format, :markdown)
 
-    case JidoBrowser.start_session(headless: true) do
+    case JidoBrowser.start_session(adapter: JidoBrowser.Adapters.Web) do
       {:ok, session} ->
         try do
           with {:ok, session, _nav_result} <- JidoBrowser.navigate(session, url),
