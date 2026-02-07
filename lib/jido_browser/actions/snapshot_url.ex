@@ -6,6 +6,11 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
   Combines navigation with the full Snapshot extraction (content, links,
   forms, headings) in a single call with automatic session management.
 
+  When the adapter supports JavaScript evaluation (e.g. Vibium), returns
+  a rich snapshot with structured links, forms, and headings. When using
+  a text-only adapter (e.g. Web), falls back to content extraction via
+  ReadPage-style markdown output.
+
   ## Usage with Jido Agent
 
       tools: [JidoBrowser.Actions.SnapshotUrl]
@@ -33,8 +38,6 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
       max_content_length: [type: :integer, default: 50_000, doc: "Truncate content at this length"]
     ]
 
-  alias JidoBrowser.Error
-
   @impl true
   def run(params, _context) do
     url = params.url
@@ -57,9 +60,22 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
                 max_content_length
               )
 
-            session
-            |> JidoBrowser.evaluate(js, [])
-            |> handle_snapshot_result()
+            case JidoBrowser.evaluate(session, js, []) do
+              {:ok, _session, %{result: result}} when is_map(result) ->
+                {:ok, Map.put(result, :status, "success")}
+
+              {:ok, _session, %{result: result}} when is_binary(result) ->
+                case Jason.decode(result) do
+                  {:ok, decoded} when is_map(decoded) ->
+                    {:ok, Map.put(decoded, :status, "success")}
+
+                  _ ->
+                    fallback_read_page(session, url, selector, max_content_length)
+                end
+
+              _ ->
+                fallback_read_page(session, url, selector, max_content_length)
+            end
           else
             {:error, reason} ->
               {:error, "Failed to navigate to #{url}: #{inspect(reason)}"}
@@ -73,26 +89,22 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
     end
   end
 
-  defp handle_snapshot_result({:ok, _session, %{result: result}}) when is_map(result) do
-    {:ok, Map.put(result, :status, "success")}
-  end
+  defp fallback_read_page(session, url, selector, max_content_length) do
+    case JidoBrowser.extract_content(session, selector: selector, format: :markdown) do
+      {:ok, _session, %{content: content}} ->
+        truncated = String.slice(content, 0, max_content_length)
 
-  defp handle_snapshot_result({:ok, _session, %{result: result}}) when is_binary(result) do
-    case Jason.decode(result) do
-      {:ok, decoded} when is_map(decoded) ->
-        {:ok, Map.put(decoded, :status, "success")}
+        {:ok,
+         %{
+           url: url,
+           content: truncated,
+           status: "success",
+           fallback: true
+         }}
 
-      _ ->
-        {:error, Error.adapter_error("Snapshot returned non-JSON result", %{result: result})}
+      {:error, reason} ->
+        {:error, "Snapshot failed and fallback extraction also failed: #{inspect(reason)}"}
     end
-  end
-
-  defp handle_snapshot_result({:ok, _session, %{result: result}}) do
-    {:error, Error.adapter_error("Snapshot returned unexpected result", %{result: result})}
-  end
-
-  defp handle_snapshot_result({:error, reason}) do
-    {:error, Error.adapter_error("Snapshot failed", %{reason: reason})}
   end
 
   defp snapshot_js(selector, include_links, include_forms, include_headings, max_content_length) do
