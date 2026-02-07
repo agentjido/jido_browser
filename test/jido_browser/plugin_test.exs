@@ -23,9 +23,9 @@ defmodule JidoBrowser.PluginTest do
       assert "automation" in tags
     end
 
-    test "has 26 actions" do
+    test "has 29 actions" do
       actions = Plugin.actions()
-      assert length(actions) == 26
+      assert length(actions) == 29
     end
 
     test "includes all expected action modules" do
@@ -71,7 +71,7 @@ defmodule JidoBrowser.PluginTest do
   describe "signal_routes/1" do
     test "returns 26 routes" do
       routes = Plugin.signal_routes(%{})
-      assert length(routes) == 26
+      assert length(routes) == 29
     end
 
     test "maps browser.navigate to Navigate action" do
@@ -145,7 +145,7 @@ defmodule JidoBrowser.PluginTest do
     test "returns list of signal patterns" do
       patterns = Plugin.signal_patterns()
       assert is_list(patterns)
-      assert length(patterns) == 26
+      assert length(patterns) == 29
     end
 
     test "all patterns have browser. prefix" do

@@ -1,9 +1,12 @@
 defmodule JidoBrowser.Actions.SearchWeb do
   @moduledoc """
-  Self-contained action that searches the web and returns structured results.
+  Search the web using the Brave Search API and return structured results.
 
-  Uses DuckDuckGo's HTML interface via the Web adapter (Firefox-based)
-  to avoid CAPTCHA blocks that headless Chrome triggers.
+  Requires a Brave Search API key, configured via application config:
+
+      config :jido_browser, :brave_api_key, "your-key"
+
+  Or via the `BRAVE_SEARCH_API_KEY` environment variable.
 
   ## Usage with Jido Agent
 
@@ -18,126 +21,93 @@ defmodule JidoBrowser.Actions.SearchWeb do
   use Jido.Action,
     name: "search_web",
     description:
-      "Search the web using DuckDuckGo and return structured results " <>
-        "with titles, URLs, and snippets. No API key required.",
+      "Search the web using Brave Search API and return structured results " <>
+        "with titles, URLs, and snippets.",
     category: "Browser",
-    tags: ["browser", "web", "search", "duckduckgo"],
+    tags: ["browser", "web", "search", "brave"],
     vsn: "1.0.0",
     schema: [
       query: [type: :string, required: true, doc: "Search query"],
-      max_results: [type: :integer, default: 10, doc: "Maximum number of results to return"]
+      max_results: [type: :integer, default: 10, doc: "Maximum number of results to return (max 20)"],
+      country: [type: :string, default: "us", doc: "Country code for results (e.g. us, gb, de)"],
+      search_lang: [type: :string, default: "en", doc: "Language code for results"],
+      freshness: [type: :string, doc: "Freshness filter: pd (24h), pw (week), pm (month), py (year)"]
     ]
+
+  @brave_api_url "https://api.search.brave.com/res/v1/web/search"
 
   @impl true
   def run(params, _context) do
-    query = params.query
-    max_results = Map.get(params, :max_results, 10)
-    search_url = "https://html.duckduckgo.com/html/?q=#{URI.encode_www_form(query)}"
+    with {:ok, api_key} <- get_api_key() do
+      query = params.query
+      max_results = min(Map.get(params, :max_results, 10), 20)
 
-    case JidoBrowser.start_session(adapter: JidoBrowser.Adapters.Web) do
-      {:ok, session} ->
-        try do
-          case JidoBrowser.navigate(session, search_url) do
-            {:ok, _session, %{content: content}} ->
-              results = parse_results(content, max_results)
-              {:ok, %{query: query, results: results, count: length(results)}}
+      query_params =
+        %{
+          q: query,
+          count: max_results,
+          country: Map.get(params, :country, "us"),
+          search_lang: Map.get(params, :search_lang, "en"),
+          text_decorations: false
+        }
+        |> maybe_put(:freshness, Map.get(params, :freshness))
 
-            {:ok, _session, _other} ->
-              {:ok, %{query: query, results: [], count: 0}}
+      case Req.get(@brave_api_url,
+             headers: [
+               {"X-Subscription-Token", api_key},
+               {"Accept", "application/json"},
+               {"Accept-Encoding", "gzip"}
+             ],
+             params: query_params,
+             receive_timeout: 15_000
+           ) do
+        {:ok, %Req.Response{status: 200, body: body}} ->
+          results = parse_results(body, max_results)
+          {:ok, %{query: query, results: results, count: length(results)}}
 
-            {:error, reason} ->
-              {:error, "Failed to search: #{inspect(reason)}"}
-          end
-        after
-          JidoBrowser.end_session(session)
-        end
+        {:ok, %Req.Response{status: 401}} ->
+          {:error, "Brave Search API: invalid API key"}
 
-      {:error, reason} ->
-        {:error, "Failed to start browser session: #{inspect(reason)}"}
+        {:ok, %Req.Response{status: 429}} ->
+          {:error, "Brave Search API: rate limit exceeded"}
+
+        {:ok, %Req.Response{status: status, body: body}} ->
+          {:error, "Brave Search API error (#{status}): #{inspect(body)}"}
+
+        {:error, reason} ->
+          {:error, "Brave Search API request failed: #{inspect(reason)}"}
+      end
     end
   end
 
-  defp parse_results(content, max_results) do
-    content
-    |> String.split(~r/\n-{10,}\n/)
-    |> Enum.drop(1)
-    |> Enum.chunk_every(2)
-    |> Enum.flat_map(fn chunk -> parse_result_chunk(chunk) end)
-    |> Enum.reject(&ad_result?/1)
-    |> Enum.with_index(1)
-    |> Enum.map(fn {result, rank} -> Map.put(result, :rank, rank) end)
-    |> Enum.take(max_results)
-  end
-
-  defp parse_result_chunk([title_section | rest]) do
-    title_line = String.trim(title_section)
-
-    case extract_title_and_url(title_line) do
-      {title, url} ->
-        snippet =
-          case rest do
-            [body | _] -> extract_snippet(body)
-            _ -> ""
-          end
-
-        [%{title: title, url: url, snippet: snippet}]
-
-      nil ->
-        []
+  defp get_api_key do
+    case Application.get_env(:jido_browser, :brave_api_key) || System.get_env("BRAVE_SEARCH_API_KEY") do
+      nil -> {:error, "Brave Search API key not configured. Set :brave_api_key in :jido_browser config or BRAVE_SEARCH_API_KEY env var."}
+      "" -> {:error, "Brave Search API key is empty"}
+      key -> {:ok, key}
     end
   end
 
-  defp parse_result_chunk(_), do: []
-
-  defp extract_title_and_url(text) do
-    case Regex.run(~r/^(.+?)\s*\(/, text) do
-      [_, title] ->
-        url = extract_url(text)
-        if url, do: {String.trim(title), url}, else: nil
-
-      _ ->
-        nil
-    end
-  end
-
-  defp extract_url(text) do
-    cond do
-      match = Regex.run(~r/uddg=(https?%3A%2F%2F[^&\s]+)/, text) ->
-        [_, encoded] = match
-        URI.decode_www_form(encoded)
-
-      match = Regex.run(~r/\(\s*(https?:\/\/[^\s)]+)\s*\)/, text) ->
-        [_, url] = match
-        url
-
-      true ->
-        nil
-    end
-  end
-
-  defp ad_result?(%{url: url}) do
-    String.contains?(url, "duckduckgo.com/y.js") or
-      String.contains?(url, "bing.com/aclick")
-  end
-
-  defp extract_snippet(body) do
+  defp parse_results(body, max_results) do
     body
-    |> String.replace(~r/\(\s*\/\/duckduckgo\.com[^)]*\)/, "")
-    |> String.replace(~r/&rut=[a-f0-9]+\s*\)/, "")
-    |> String.split("\n")
-    |> Enum.reject(fn line ->
-      trimmed = String.trim(line)
-
-      trimmed == "" or
-        String.starts_with?(trimmed, "(") or
-        String.contains?(trimmed, "duckduckgo.com") or
-        String.match?(trimmed, ~r/^&rut=/) or
-        String.match?(trimmed, ~r/^\*?\*?[a-z\-]+\.[a-z].*\.[a-z]/) or
-        String.match?(trimmed, ~r/^http/)
+    |> get_in(["web", "results"])
+    |> case do
+      nil -> []
+      results -> results
+    end
+    |> Enum.take(max_results)
+    |> Enum.with_index(1)
+    |> Enum.map(fn {result, rank} ->
+      %{
+        rank: rank,
+        title: result["title"] || "",
+        url: result["url"] || "",
+        snippet: result["description"] || "",
+        age: result["age"]
+      }
     end)
-    |> Enum.map_join(" ", &String.trim/1)
-    |> String.replace(~r/\*/, "")
-    |> String.replace(~r/\s+/, " ")
-    |> String.trim()
   end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 end

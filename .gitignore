@@ -20,6 +20,9 @@
 /doc/
 erl_crash.dump
 
+# Environment
+.env
+
 # OS
 .DS_Store
 Thumbs.db
