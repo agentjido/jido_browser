@@ -17,7 +17,7 @@ Add `jido_browser` to your dependencies:
 ```elixir
 def deps do
   [
-    {:jido_browser, "~> 0.8.0"}
+    {:jido_browser, "~> 0.8.1"}
   ]
 end
 ```
@@ -90,19 +90,19 @@ cd web && make && sudo cp web /usr/local/bin/
 {:ok, session} = JidoBrowser.start_session()
 
 # Navigate to a page
-{:ok, _} = JidoBrowser.navigate(session, "https://example.com")
+{:ok, session, _} = JidoBrowser.navigate(session, "https://example.com")
 
 # Click an element
-{:ok, _} = JidoBrowser.click(session, "button#submit")
+{:ok, session, _} = JidoBrowser.click(session, "button#submit")
 
 # Type into an input
-{:ok, _} = JidoBrowser.type(session, "input#search", "hello world")
+{:ok, session, _} = JidoBrowser.type(session, "input#search", "hello world")
 
 # Take a screenshot
-{:ok, %{bytes: png_data}} = JidoBrowser.screenshot(session)
+{:ok, session, %{bytes: png_data}} = JidoBrowser.screenshot(session)
 
 # Extract page content as markdown (great for LLMs)
-{:ok, %{content: markdown}} = JidoBrowser.extract_content(session)
+{:ok, _session, %{content: markdown}} = JidoBrowser.extract_content(session)
 
 # End session
 :ok = JidoBrowser.end_session(session)
@@ -238,7 +238,7 @@ end
 
 The Plugin provides:
 - Session lifecycle management
-- 26 browser automation actions
+- 29 browser automation actions, including self-contained composite actions
 - Signal routing (`browser.*` patterns)
 - Error diagnostics with page context
 
