@@ -23,3 +23,11 @@ jobs:
       otp_versions: '["27", "28"]'
       elixir_versions: '["1.18", "1.19"]'
       test_command: mix test
+
+  integration:
+    name: Integration
+    uses: agentjido/github-actions/.github/workflows/elixir-test.yml@main
+    with:
+      otp_versions: '["28"]'
+      elixir_versions: '["1.19"]'
+      test_command: mix jido_browser.install vibium web --if-missing && mix test --include integration
