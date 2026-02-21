@@ -17,7 +17,7 @@ defmodule Mix.Tasks.JidoBrowser.Install do
 
   ## Options
 
-      --path PATH      - Custom installation path (default: ~/.jido_browser/bin)
+      --path PATH      - Custom installation path (default: _build/jido_browser-<target>)
       --force          - Overwrite existing binaries
       --if-missing     - Only install if not already present (idempotent)
 

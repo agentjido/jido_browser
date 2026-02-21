@@ -31,6 +31,7 @@ mix jido_browser.install
 ```
 
 This automatically detects your platform (macOS, Linux, Windows) and installs the appropriate binary.
+By default, binaries are installed to `_build/jido_browser-<target>`.
 
 ### Recommended Setup
 
@@ -142,8 +143,7 @@ config :jido_browser,
 
 # Vibium-specific options
 config :jido_browser, :vibium,
-  binary_path: "/usr/local/bin/vibium",
-  port: 9515
+  binary_path: "/usr/local/bin/clicker"
 
 # Web adapter options
 config :jido_browser, :web,

@@ -415,6 +415,22 @@ defmodule JidoBrowser.ActionsTest do
                Actions.StartSession.run(%{headless: true}, %{})
     end
 
+    test "StartSession preserves explicit headless false" do
+      stub(JidoBrowser, :start_session, fn opts ->
+        assert opts[:headless] == false
+
+        {:ok,
+         Session.new!(%{
+           adapter: JidoBrowser.Adapters.Vibium,
+           connection: %{port: 9515},
+           opts: Map.new(opts)
+         })}
+      end)
+
+      assert {:ok, %{status: "success", session: %Session{}}} =
+               Actions.StartSession.run(%{headless: false}, %{})
+    end
+
     test "StartSession with custom adapter" do
       stub(JidoBrowser, :start_session, fn opts ->
         {:ok,

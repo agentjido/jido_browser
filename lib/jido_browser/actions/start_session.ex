@@ -30,8 +30,8 @@ defmodule JidoBrowser.Actions.StartSession do
   @impl true
   def run(params, _context) do
     opts = [
-      headless: params[:headless] || true,
-      timeout: params[:timeout] || 30_000
+      headless: Map.get(params, :headless, true),
+      timeout: Map.get(params, :timeout, 30_000)
     ]
 
     opts = if params[:adapter], do: [{:adapter, params[:adapter]} | opts], else: opts
