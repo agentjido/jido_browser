@@ -1,56 +1,34 @@
-# Jido Browser - LLM Usage Rules
+# Jido Browser Usage Rules
 
-## Overview
+## Intent
+Use browser automation as explicit, session-scoped actions that are safe for agent/tool execution.
 
-JidoBrowser provides browser automation actions for AI agents. Use these rules when generating code that uses JidoBrowser.
+## Core Contracts
+- Start a session before interaction and always end it.
+- Pass session context explicitly (`tool_context.session` or equivalent).
+- Keep selectors resilient and pair interactions with explicit wait conditions.
+- Keep adapter-specific behavior behind the `JidoBrowser.Adapter` contract.
+- Preserve stable tagged tuple results and typed errors.
 
-## Key Patterns
+## Library Author Patterns
+- Build browser actions as single-purpose primitives (navigate, click, type, extract).
+- Add higher-level workflows by composing actions in agents/plans, not by inflating one action.
+- Keep screenshot/snapshot/content extraction paths deterministic for AI consumption.
+- Validate action params with clear schema constraints.
 
-### Session Management
+## QA Patterns
+- Cover both adapters for contract-level behavior.
+- Mark known noisy integration tests with `@tag capture_log: true` when necessary.
+- Run install/setup checks (`mix jido_browser.install --if-missing`) in CI smoke flows.
 
-Always start a session before browser operations:
+## Avoid
+- Hidden global browser session state.
+- Hardcoded brittle selectors without wait/retry semantics.
+- Long-running sessions without lifecycle cleanup.
 
-```elixir
-{:ok, session} = JidoBrowser.start_session()
-# ... operations ...
-:ok = JidoBrowser.end_session(session)
-```
-
-### Context Injection for Agents
-
-When using with Jido agents, inject the session via `tool_context`:
-
-```elixir
-def on_before_cmd(_agent, _cmd, context) do
-  {:ok, session} = JidoBrowser.start_session()
-  {:ok, Map.put(context, :tool_context, %{session: session})}
-end
-```
-
-### Available Actions
-
-- `JidoBrowser.Actions.Navigate` - Navigate to URL
-- `JidoBrowser.Actions.Click` - Click element
-- `JidoBrowser.Actions.Type` - Type into input
-- `JidoBrowser.Actions.Screenshot` - Capture screenshot
-- `JidoBrowser.Actions.ExtractContent` - Get page content as markdown
-- `JidoBrowser.Actions.Evaluate` - Run JavaScript
-
-### Error Handling
-
-All operations return `{:ok, result}` or `{:error, JidoBrowser.Error.*}`:
-
-```elixir
-case JidoBrowser.navigate(session, url) do
-  {:ok, result} -> handle_success(result)
-  {:error, %JidoBrowser.Error.NavigationError{}} -> handle_nav_error()
-  {:error, %JidoBrowser.Error.TimeoutError{}} -> handle_timeout()
-end
-```
-
-## Don'ts
-
-- Don't create sessions without ending them
-- Don't hardcode selectors that may change
-- Don't assume elements exist without checking
-- Don't run browser operations without a session in context
+## References
+- `README.md`
+- `AGENTS.md`
+- `lib/jido_browser/actions/`
+- https://hexdocs.pm/jido_browser
+- https://hexdocs.pm/usage_rules/readme.html#usage-rules

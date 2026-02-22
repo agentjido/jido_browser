@@ -1,7 +1,7 @@
 defmodule JidoBrowser.MixProject do
   use Mix.Project
 
-  @version "0.8.1"
+  @version "1.0.0"
   @source_url "https://github.com/agentjido/jido_browser"
   @description "Browser automation actions for Jido AI agents"
   @otp_release List.to_string(:erlang.system_info(:otp_release))
@@ -59,8 +59,8 @@ defmodule JidoBrowser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.0.0-rc.4"},
-      {:jido_action, "~> 2.0.0-rc.4"},
+      {:jido, "~> 2.0"},
+      {:jido_action, "~> 2.0"},
 
       # Runtime
       {:zoi, "~> 0.16"},

@@ -17,7 +17,7 @@ Add `jido_browser` to your dependencies:
 ```elixir
 def deps do
   [
-    {:jido_browser, "~> 0.8.1"}
+    {:jido_browser, "~> 1.0"}
   ]
 end
 ```

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-22
+
+### Changed
+
+- Promote package line from `0.8.x` to stable `1.0.0` for the Jido 2.0 ecosystem
+- Upgrade ecosystem deps to stable ranges: `jido ~> 2.0`, `jido_action ~> 2.0`
+- Update installation docs/examples to use `{:jido_browser, "~> 1.0"}`
+
+### Fixed
+
+- Harden integration fixture server to handle closed sockets without crashing task processes
+
 ## [0.8.1] - 2026-02-06
 
 ### Changed
@@ -60,6 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `JidoBrowser.Actions.ExtractContent`
   - `JidoBrowser.Actions.Evaluate`
 
-[Unreleased]: https://github.com/agentjido/jido_browser/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/agentjido/jido_browser/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/agentjido/jido_browser/compare/v0.8.1...v1.0.0
+[0.8.1]: https://github.com/agentjido/jido_browser/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/agentjido/jido_browser/compare/v0.1.0...v0.8.0
 [0.1.0]: https://github.com/agentjido/jido_browser/releases/tag/v0.1.0
