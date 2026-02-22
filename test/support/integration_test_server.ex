@@ -1,6 +1,8 @@
 defmodule JidoBrowser.TestSupport.IntegrationTestServer do
   @moduledoc false
 
+  require Logger
+
   @type server :: %{
           listener: :gen_tcp.socket(),
           acceptor: pid(),
@@ -83,7 +85,14 @@ defmodule JidoBrowser.TestSupport.IntegrationTestServer do
           build_response({"400 Bad Request", "<html><body>Bad Request</body></html>"})
       end
 
-    :ok = :gen_tcp.send(socket, response)
+    case :gen_tcp.send(socket, response) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        Logger.debug("Integration fixture response send skipped: #{inspect(reason)}")
+    end
+
     :gen_tcp.close(socket)
   end
 
