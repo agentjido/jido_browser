@@ -1,7 +1,7 @@
-defmodule JidoBrowser.PluginTest do
+defmodule Jido.Browser.PluginTest do
   use ExUnit.Case, async: true
 
-  alias JidoBrowser.Plugin
+  alias Jido.Browser.Plugin
 
   describe "plugin metadata" do
     test "has correct name" do
@@ -32,39 +32,39 @@ defmodule JidoBrowser.PluginTest do
       actions = Plugin.actions()
 
       # Session lifecycle
-      assert JidoBrowser.Actions.StartSession in actions
-      assert JidoBrowser.Actions.EndSession in actions
-      assert JidoBrowser.Actions.GetStatus in actions
+      assert Jido.Browser.Actions.StartSession in actions
+      assert Jido.Browser.Actions.EndSession in actions
+      assert Jido.Browser.Actions.GetStatus in actions
 
       # Navigation
-      assert JidoBrowser.Actions.Navigate in actions
-      assert JidoBrowser.Actions.Back in actions
-      assert JidoBrowser.Actions.Forward in actions
-      assert JidoBrowser.Actions.Reload in actions
+      assert Jido.Browser.Actions.Navigate in actions
+      assert Jido.Browser.Actions.Back in actions
+      assert Jido.Browser.Actions.Forward in actions
+      assert Jido.Browser.Actions.Reload in actions
 
       # Interaction
-      assert JidoBrowser.Actions.Click in actions
-      assert JidoBrowser.Actions.Type in actions
-      assert JidoBrowser.Actions.Hover in actions
-      assert JidoBrowser.Actions.Scroll in actions
+      assert Jido.Browser.Actions.Click in actions
+      assert Jido.Browser.Actions.Type in actions
+      assert Jido.Browser.Actions.Hover in actions
+      assert Jido.Browser.Actions.Scroll in actions
 
       # Waiting
-      assert JidoBrowser.Actions.Wait in actions
-      assert JidoBrowser.Actions.WaitForSelector in actions
-      assert JidoBrowser.Actions.WaitForNavigation in actions
+      assert Jido.Browser.Actions.Wait in actions
+      assert Jido.Browser.Actions.WaitForSelector in actions
+      assert Jido.Browser.Actions.WaitForNavigation in actions
 
       # Queries
-      assert JidoBrowser.Actions.Query in actions
-      assert JidoBrowser.Actions.GetText in actions
-      assert JidoBrowser.Actions.IsVisible in actions
+      assert Jido.Browser.Actions.Query in actions
+      assert Jido.Browser.Actions.GetText in actions
+      assert Jido.Browser.Actions.IsVisible in actions
 
       # Extraction
-      assert JidoBrowser.Actions.Snapshot in actions
-      assert JidoBrowser.Actions.Screenshot in actions
-      assert JidoBrowser.Actions.ExtractContent in actions
+      assert Jido.Browser.Actions.Snapshot in actions
+      assert Jido.Browser.Actions.Screenshot in actions
+      assert Jido.Browser.Actions.ExtractContent in actions
 
       # Advanced
-      assert JidoBrowser.Actions.Evaluate in actions
+      assert Jido.Browser.Actions.Evaluate in actions
     end
   end
 
@@ -76,17 +76,17 @@ defmodule JidoBrowser.PluginTest do
 
     test "maps browser.navigate to Navigate action" do
       routes = Plugin.signal_routes(%{})
-      assert {"browser.navigate", JidoBrowser.Actions.Navigate} in routes
+      assert {"browser.navigate", Jido.Browser.Actions.Navigate} in routes
     end
 
     test "maps browser.snapshot to Snapshot action" do
       routes = Plugin.signal_routes(%{})
-      assert {"browser.snapshot", JidoBrowser.Actions.Snapshot} in routes
+      assert {"browser.snapshot", Jido.Browser.Actions.Snapshot} in routes
     end
 
     test "maps browser.click to Click action" do
       routes = Plugin.signal_routes(%{})
-      assert {"browser.click", JidoBrowser.Actions.Click} in routes
+      assert {"browser.click", Jido.Browser.Actions.Click} in routes
     end
 
     test "all routes have browser. prefix" do
@@ -136,8 +136,8 @@ defmodule JidoBrowser.PluginTest do
     end
 
     test "accepts adapter config" do
-      {:ok, state} = Plugin.mount(%{}, %{adapter: JidoBrowser.Adapters.Web})
-      assert state.adapter == JidoBrowser.Adapters.Web
+      {:ok, state} = Plugin.mount(%{}, %{adapter: Jido.Browser.Adapters.Web})
+      assert state.adapter == Jido.Browser.Adapters.Web
     end
   end
 

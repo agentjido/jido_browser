@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.Back do
+defmodule Jido.Browser.Actions.Back do
   @moduledoc """
   Jido Action for navigating back in browser history.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.Back]
+      tools: [Jido.Browser.Actions.Back]
 
       # The agent can then call:
       # back()
@@ -17,20 +17,20 @@ defmodule JidoBrowser.Actions.Back do
     description: "Navigate back in browser history",
     category: "Browser",
     tags: ["browser", "navigation", "history", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       timeout: [type: :integer, doc: "Timeout in milliseconds"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = if params[:timeout], do: [timeout: params[:timeout]], else: []
 
-      case JidoBrowser.evaluate(session, "window.history.back()", opts) do
+      case Jido.Browser.evaluate(session, "window.history.back()", opts) do
         {:ok, updated_session, _} ->
           {:ok, %{status: "success", action: "back", session: updated_session}}
 

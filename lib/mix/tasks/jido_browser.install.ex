@@ -1,7 +1,7 @@
 defmodule Mix.Tasks.JidoBrowser.Install do
   @shortdoc "Install browser automation binaries (web, vibium)"
   @moduledoc """
-  Install browser automation binaries for JidoBrowser.
+  Install browser automation binaries for Jido.Browser.
 
   ## Usage
 
@@ -43,7 +43,7 @@ defmodule Mix.Tasks.JidoBrowser.Install do
   """
   use Mix.Task
 
-  alias JidoBrowser.Installer
+  alias Jido.Browser.Installer
 
   @impl Mix.Task
   def run(args) do
@@ -62,7 +62,7 @@ defmodule Mix.Tasks.JidoBrowser.Install do
         list -> Enum.map(list, &String.to_atom/1)
       end
 
-    Mix.shell().info("JidoBrowser Installer")
+    Mix.shell().info("Jido.Browser Installer")
     Mix.shell().info("Platform: #{Installer.target()}")
     Mix.shell().info("")
 
@@ -72,11 +72,11 @@ defmodule Mix.Tasks.JidoBrowser.Install do
   end
 
   defp default_binary do
-    adapter = Application.get_env(:jido_browser, :adapter, JidoBrowser.Adapters.Vibium)
+    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.Vibium)
 
     case adapter do
-      JidoBrowser.Adapters.Vibium -> :vibium
-      JidoBrowser.Adapters.Web -> :web
+      Jido.Browser.Adapters.Vibium -> :vibium
+      Jido.Browser.Adapters.Web -> :web
       _ -> :vibium
     end
   end

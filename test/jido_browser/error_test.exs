@@ -1,7 +1,7 @@
-defmodule JidoBrowser.ErrorTest do
+defmodule Jido.Browser.ErrorTest do
   use ExUnit.Case, async: true
 
-  alias JidoBrowser.Error
+  alias Jido.Browser.Error
 
   describe "adapter_error/2" do
     test "creates AdapterError" do

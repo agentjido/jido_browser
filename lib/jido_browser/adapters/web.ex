@@ -1,4 +1,4 @@
-defmodule JidoBrowser.Adapters.Web do
+defmodule Jido.Browser.Adapters.Web do
   @moduledoc """
   Adapter using chrismccord/web CLI.
 
@@ -18,7 +18,7 @@ defmodule JidoBrowser.Adapters.Web do
   ## Configuration
 
       config :jido_browser,
-        adapter: JidoBrowser.Adapters.Web,
+        adapter: Jido.Browser.Adapters.Web,
         web: [
           binary_path: "/usr/local/bin/web",
           profile: "default"
@@ -33,10 +33,11 @@ defmodule JidoBrowser.Adapters.Web do
 
   """
 
-  @behaviour JidoBrowser.Adapter
+  @behaviour Jido.Browser.Adapter
 
-  alias JidoBrowser.Error
-  alias JidoBrowser.Session
+  alias Jido.Browser.Error
+  alias Jido.Browser.Installer
+  alias Jido.Browser.Session
 
   @default_timeout 30_000
 
@@ -298,7 +299,7 @@ defmodule JidoBrowser.Adapters.Web do
         {:ok, path}
 
       nil ->
-        jido_path = Path.join(JidoBrowser.Installer.default_install_path(), "web")
+        jido_path = Path.join(Installer.default_install_path(), "web")
 
         if File.exists?(jido_path) do
           {:ok, jido_path}

@@ -1,10 +1,10 @@
-defmodule JidoBrowser.Adapters.ContractTest do
+defmodule Jido.Browser.Adapters.ContractTest do
   @moduledoc """
   Contract tests to verify adapter implementations match documented behavior.
   """
   use ExUnit.Case, async: true
 
-  alias JidoBrowser.Adapters.Test, as: TestAdapter
+  alias Jido.Browser.Adapters.Test, as: TestAdapter
 
   setup do
     {:ok, session} = TestAdapter.start_session([])

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Rename the public Elixir namespace from `JidoBrowser.*` to `Jido.Browser.*`
+- Keep source and test files in `lib/jido_browser/**` and `test/jido_browser/**` while exposing the `Jido.Browser.*` namespace
+
+### Fixed
+
+- Sync `mix.lock` with the stable `jido ~> 2.0` / `jido_action ~> 2.0` dependency declarations in `mix.exs`
+
 ## [1.0.0] - 2026-02-22
 
 ### Changed
@@ -38,8 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `JidoBrowser.Plugin` - Jido.Plugin bundling all browser actions with lifecycle management
-- `JidoBrowser.Installer` - Automatic binary installation with platform detection
+- `Jido.Browser.Plugin` - Jido.Plugin bundling all browser actions with lifecycle management
+- `Jido.Browser.Installer` - Automatic binary installation with platform detection
 - `mix jido_browser.install` - Mix task for installing browser backends (Vibium, Web)
 - 20 new browser actions: Back, Forward, Reload, GetUrl, GetTitle, Hover, Focus, Scroll, SelectOption, Wait, WaitForSelector, WaitForNavigation, Query, GetText, GetAttribute, IsVisible, Snapshot, StartSession, EndSession, GetStatus
 
@@ -58,19 +67,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release
-- Core `JidoBrowser` module with session management
-- `JidoBrowser.Session` struct with Zoi schema
-- `JidoBrowser.Adapter` behaviour for pluggable backends
-- `JidoBrowser.Adapters.Vibium` - Vibium/WebDriver BiDi adapter
-- `JidoBrowser.Adapters.Web` - chrismccord/web CLI adapter
-- `JidoBrowser.Error` module with Splode error types
+- Core `Jido.Browser` module with session management
+- `Jido.Browser.Session` struct with Zoi schema
+- `Jido.Browser.Adapter` behaviour for pluggable backends
+- `Jido.Browser.Adapters.Vibium` - Vibium/WebDriver BiDi adapter
+- `Jido.Browser.Adapters.Web` - chrismccord/web CLI adapter
+- `Jido.Browser.Error` module with Splode error types
 - Jido Actions:
-  - `JidoBrowser.Actions.Navigate`
-  - `JidoBrowser.Actions.Click`
-  - `JidoBrowser.Actions.Type`
-  - `JidoBrowser.Actions.Screenshot`
-  - `JidoBrowser.Actions.ExtractContent`
-  - `JidoBrowser.Actions.Evaluate`
+  - `Jido.Browser.Actions.Navigate`
+  - `Jido.Browser.Actions.Click`
+  - `Jido.Browser.Actions.Type`
+  - `Jido.Browser.Actions.Screenshot`
+  - `Jido.Browser.Actions.ExtractContent`
+  - `Jido.Browser.Actions.Evaluate`
 
 [Unreleased]: https://github.com/agentjido/jido_browser/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/agentjido/jido_browser/compare/v0.8.1...v1.0.0

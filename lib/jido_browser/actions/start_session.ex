@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.StartSession do
+defmodule Jido.Browser.Actions.StartSession do
   @moduledoc """
   Jido Action for starting a new browser session.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.StartSession]
+      tools: [Jido.Browser.Actions.StartSession]
 
       # The agent can then call:
       # start_session(headless: true, timeout: 30000)
@@ -18,14 +18,14 @@ defmodule JidoBrowser.Actions.StartSession do
     description: "Start a new browser session",
     category: "Browser",
     tags: ["browser", "session", "lifecycle"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       headless: [type: :boolean, default: true, doc: "Run in headless mode"],
       timeout: [type: :integer, default: 30_000, doc: "Default timeout in ms"],
       adapter: [type: :atom, doc: "Browser adapter module"]
     ]
 
-  alias JidoBrowser.Error
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, _context) do
@@ -36,7 +36,7 @@ defmodule JidoBrowser.Actions.StartSession do
 
     opts = if params[:adapter], do: [{:adapter, params[:adapter]} | opts], else: opts
 
-    case JidoBrowser.start_session(opts) do
+    case Jido.Browser.start_session(opts) do
       {:ok, session} ->
         {:ok,
          %{

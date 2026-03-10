@@ -1,4 +1,4 @@
-defmodule JidoBrowser.Adapters.VibiumIntegrationTest do
+defmodule Jido.Browser.Adapters.VibiumIntegrationTest do
   @moduledoc """
   Integration tests for the Vibium adapter against a local fixture server.
 
@@ -7,8 +7,8 @@ defmodule JidoBrowser.Adapters.VibiumIntegrationTest do
   """
   use ExUnit.Case, async: false
 
-  alias JidoBrowser.Adapters.Vibium
-  alias JidoBrowser.TestSupport.IntegrationTestServer
+  alias Jido.Browser.Adapters.Vibium
+  alias Jido.Browser.TestSupport.IntegrationTestServer
 
   @moduletag :integration
 

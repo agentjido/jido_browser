@@ -1,12 +1,12 @@
-defmodule JidoBrowser.CompositeActionsAndInstallerTest do
+defmodule Jido.Browser.CompositeActionsAndInstallerTest do
   use ExUnit.Case, async: false
   use Mimic
 
-  alias JidoBrowser.Actions.ReadPage
-  alias JidoBrowser.Actions.SearchWeb
-  alias JidoBrowser.Actions.SnapshotUrl
-  alias JidoBrowser.Installer
-  alias JidoBrowser.Session
+  alias Jido.Browser.Actions.ReadPage
+  alias Jido.Browser.Actions.SearchWeb
+  alias Jido.Browser.Actions.SnapshotUrl
+  alias Jido.Browser.Installer
+  alias Jido.Browser.Session
 
   setup :set_mimic_global
 
@@ -18,7 +18,7 @@ defmodule JidoBrowser.CompositeActionsAndInstallerTest do
   setup do
     session =
       Session.new!(%{
-        adapter: JidoBrowser.Adapters.Web,
+        adapter: Jido.Browser.Adapters.Web,
         connection: %{profile: "default", current_url: nil}
       })
 
@@ -27,22 +27,22 @@ defmodule JidoBrowser.CompositeActionsAndInstallerTest do
 
   describe "ReadPage.run/2" do
     test "returns content and closes session on success", %{session: session} do
-      expect(JidoBrowser, :start_session, fn opts ->
-        assert opts == [adapter: JidoBrowser.Adapters.Web]
+      expect(Jido.Browser, :start_session, fn opts ->
+        assert opts == [adapter: Jido.Browser.Adapters.Web]
         {:ok, session}
       end)
 
-      expect(JidoBrowser, :navigate, fn ^session, "https://example.com" ->
+      expect(Jido.Browser, :navigate, fn ^session, "https://example.com" ->
         {:ok, session, %{url: "https://example.com"}}
       end)
 
-      expect(JidoBrowser, :extract_content, fn ^session, opts ->
+      expect(Jido.Browser, :extract_content, fn ^session, opts ->
         assert opts[:selector] == "article"
         assert opts[:format] == :text
         {:ok, session, %{content: "Example body"}}
       end)
 
-      expect(JidoBrowser, :end_session, fn ^session -> :ok end)
+      expect(Jido.Browser, :end_session, fn ^session -> :ok end)
 
       assert {:ok, result} =
                ReadPage.run(
@@ -56,13 +56,13 @@ defmodule JidoBrowser.CompositeActionsAndInstallerTest do
     end
 
     test "returns wrapped error and closes session when navigation fails", %{session: session} do
-      expect(JidoBrowser, :start_session, fn [adapter: JidoBrowser.Adapters.Web] -> {:ok, session} end)
+      expect(Jido.Browser, :start_session, fn [adapter: Jido.Browser.Adapters.Web] -> {:ok, session} end)
 
-      expect(JidoBrowser, :navigate, fn ^session, "https://example.com" ->
+      expect(Jido.Browser, :navigate, fn ^session, "https://example.com" ->
         {:error, :navigation_failed}
       end)
 
-      expect(JidoBrowser, :end_session, fn ^session -> :ok end)
+      expect(Jido.Browser, :end_session, fn ^session -> :ok end)
 
       assert {:error, message} = ReadPage.run(%{url: "https://example.com"}, %{})
       assert message =~ "Failed to read page"
@@ -72,19 +72,19 @@ defmodule JidoBrowser.CompositeActionsAndInstallerTest do
 
   describe "SnapshotUrl.run/2" do
     test "returns rich snapshot when evaluate returns structured data", %{session: session} do
-      expect(JidoBrowser, :start_session, fn [adapter: JidoBrowser.Adapters.Web] -> {:ok, session} end)
+      expect(Jido.Browser, :start_session, fn [adapter: Jido.Browser.Adapters.Web] -> {:ok, session} end)
 
-      expect(JidoBrowser, :navigate, fn ^session, "https://example.com" ->
+      expect(Jido.Browser, :navigate, fn ^session, "https://example.com" ->
         {:ok, session, %{url: "https://example.com"}}
       end)
 
-      expect(JidoBrowser, :evaluate, fn ^session, script, [] ->
+      expect(Jido.Browser, :evaluate, fn ^session, script, [] ->
         assert script =~ "function snapshot"
 
         {:ok, session, %{result: %{"url" => "https://example.com", "title" => "Example Domain", "content" => "Hello"}}}
       end)
 
-      expect(JidoBrowser, :end_session, fn ^session -> :ok end)
+      expect(Jido.Browser, :end_session, fn ^session -> :ok end)
 
       assert {:ok, result} = SnapshotUrl.run(%{url: "https://example.com"}, %{})
       assert result[:status] == "success"
@@ -92,23 +92,23 @@ defmodule JidoBrowser.CompositeActionsAndInstallerTest do
     end
 
     test "falls back to extract_content when evaluate does not return JSON", %{session: session} do
-      expect(JidoBrowser, :start_session, fn [adapter: JidoBrowser.Adapters.Web] -> {:ok, session} end)
+      expect(Jido.Browser, :start_session, fn [adapter: Jido.Browser.Adapters.Web] -> {:ok, session} end)
 
-      expect(JidoBrowser, :navigate, fn ^session, "https://example.com" ->
+      expect(Jido.Browser, :navigate, fn ^session, "https://example.com" ->
         {:ok, session, %{url: "https://example.com"}}
       end)
 
-      expect(JidoBrowser, :evaluate, fn ^session, _script, [] ->
+      expect(Jido.Browser, :evaluate, fn ^session, _script, [] ->
         {:ok, session, %{result: "not-json"}}
       end)
 
-      expect(JidoBrowser, :extract_content, fn ^session, opts ->
+      expect(Jido.Browser, :extract_content, fn ^session, opts ->
         assert opts[:selector] == "main"
         assert opts[:format] == :markdown
         {:ok, session, %{content: "abcdefghijklmnopqrstuvwxyz"}}
       end)
 
-      expect(JidoBrowser, :end_session, fn ^session -> :ok end)
+      expect(Jido.Browser, :end_session, fn ^session -> :ok end)
 
       assert {:ok, result} =
                SnapshotUrl.run(

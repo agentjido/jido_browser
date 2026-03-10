@@ -1,23 +1,23 @@
-defmodule JidoBrowser do
+defmodule Jido.Browser do
   @moduledoc """
   Browser automation for Jido AI agents.
 
-  JidoBrowser provides a set of Jido Actions for web browsing, enabling AI agents
+  Jido.Browser provides a set of Jido Actions for web browsing, enabling AI agents
   to navigate, interact with, and extract content from web pages.
 
   ## Architecture
 
-  JidoBrowser uses an adapter pattern to support multiple browser automation backends:
+  Jido.Browser uses an adapter pattern to support multiple browser automation backends:
 
-  - `JidoBrowser.Adapters.Vibium` - Default adapter using Vibium (WebDriver BiDi)
-  - `JidoBrowser.Adapters.Web` - Adapter using chrismccord/web CLI
+  - `Jido.Browser.Adapters.Vibium` - Default adapter using Vibium (WebDriver BiDi)
+  - `Jido.Browser.Adapters.Web` - Adapter using chrismccord/web CLI
 
   ## Session State Pattern
 
   All operations return an updated session to ensure state changes are captured:
 
-      {:ok, session, result} = JidoBrowser.navigate(session, "https://example.com")
-      {:ok, session, result} = JidoBrowser.click(session, "button#submit")
+      {:ok, session, result} = Jido.Browser.navigate(session, "https://example.com")
+      {:ok, session, result} = Jido.Browser.click(session, "button#submit")
 
   Always use the returned session for subsequent operations to ensure state
   (like `current_url`) is properly tracked.
@@ -25,31 +25,31 @@ defmodule JidoBrowser do
   ## Quick Start
 
       # Start a browser session
-      {:ok, session} = JidoBrowser.start_session()
+      {:ok, session} = Jido.Browser.start_session()
 
       # Navigate to a page
-      {:ok, session, _} = JidoBrowser.navigate(session, "https://example.com")
+      {:ok, session, _} = Jido.Browser.navigate(session, "https://example.com")
 
       # Click an element (use updated session from navigate)
-      {:ok, session, _} = JidoBrowser.click(session, "button#submit")
+      {:ok, session, _} = Jido.Browser.click(session, "button#submit")
 
       # Extract page content as markdown
-      {:ok, _session, content} = JidoBrowser.extract_content(session)
+      {:ok, _session, content} = Jido.Browser.extract_content(session)
 
       # End session
-      :ok = JidoBrowser.end_session(session)
+      :ok = Jido.Browser.end_session(session)
 
   ## Configuration
 
       config :jido_browser,
-        adapter: JidoBrowser.Adapters.Vibium
+        adapter: Jido.Browser.Adapters.Vibium
 
   """
 
-  alias JidoBrowser.Error
-  alias JidoBrowser.Session
+  alias Jido.Browser.Error
+  alias Jido.Browser.Session
 
-  @default_adapter JidoBrowser.Adapters.Vibium
+  @default_adapter Jido.Browser.Adapters.Vibium
   @default_timeout 30_000
   @supported_screenshot_formats [:png]
   @supported_extract_formats [:markdown, :html, :text]
@@ -59,14 +59,14 @@ defmodule JidoBrowser do
 
   ## Options
 
-    * `:adapter` - The adapter module to use (default: `JidoBrowser.Adapters.Vibium`)
+    * `:adapter` - The adapter module to use (default: `Jido.Browser.Adapters.Vibium`)
     * `:headless` - Whether to run in headless mode (default: `true`)
     * `:timeout` - Default timeout for operations in milliseconds (default: `30_000`)
 
   ## Examples
 
-      {:ok, session} = JidoBrowser.start_session()
-      {:ok, session} = JidoBrowser.start_session(headless: false)
+      {:ok, session} = Jido.Browser.start_session()
+      {:ok, session} = Jido.Browser.start_session(headless: false)
 
   """
   @spec start_session(keyword()) :: {:ok, Session.t()} | {:error, term()}
@@ -94,7 +94,7 @@ defmodule JidoBrowser do
 
   ## Examples
 
-      {:ok, session, _} = JidoBrowser.navigate(session, "https://example.com")
+      {:ok, session, _} = Jido.Browser.navigate(session, "https://example.com")
 
   """
   @spec navigate(Session.t(), String.t(), keyword()) ::
@@ -115,8 +115,8 @@ defmodule JidoBrowser do
 
   ## Examples
 
-      {:ok, session, _} = JidoBrowser.click(session, "button#submit")
-      {:ok, session, _} = JidoBrowser.click(session, "a.nav-link", text: "About")
+      {:ok, session, _} = Jido.Browser.click(session, "button#submit")
+      {:ok, session, _} = Jido.Browser.click(session, "a.nav-link", text: "About")
 
   """
   @spec click(Session.t(), String.t(), keyword()) ::
@@ -137,7 +137,7 @@ defmodule JidoBrowser do
 
   ## Examples
 
-      {:ok, session, _} = JidoBrowser.type(session, "input#email", "user@example.com")
+      {:ok, session, _} = Jido.Browser.type(session, "input#email", "user@example.com")
 
   """
   @spec type(Session.t(), String.t(), String.t(), keyword()) ::
@@ -165,8 +165,8 @@ defmodule JidoBrowser do
 
   ## Examples
 
-      {:ok, _session, %{bytes: png_data}} = JidoBrowser.screenshot(session)
-      {:ok, _session, %{bytes: png_data}} = JidoBrowser.screenshot(session, full_page: true)
+      {:ok, _session, %{bytes: png_data}} = Jido.Browser.screenshot(session)
+      {:ok, _session, %{bytes: png_data}} = Jido.Browser.screenshot(session, full_page: true)
 
   """
   @spec screenshot(Session.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, term()}
@@ -198,8 +198,8 @@ defmodule JidoBrowser do
 
   ## Examples
 
-      {:ok, _session, %{content: markdown}} = JidoBrowser.extract_content(session)
-      {:ok, _session, %{content: html}} = JidoBrowser.extract_content(session, format: :html)
+      {:ok, _session, %{content: markdown}} = Jido.Browser.extract_content(session)
+      {:ok, _session, %{content: html}} = Jido.Browser.extract_content(session, format: :html)
 
   """
   @spec extract_content(Session.t(), keyword()) ::
@@ -233,7 +233,7 @@ defmodule JidoBrowser do
 
   ## Examples
 
-      {:ok, _session, %{result: title}} = JidoBrowser.evaluate(session, "document.title")
+      {:ok, _session, %{result: title}} = Jido.Browser.evaluate(session, "document.title")
 
   """
   @spec evaluate(Session.t(), String.t(), keyword()) ::

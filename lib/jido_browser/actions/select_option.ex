@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.SelectOption do
+defmodule Jido.Browser.Actions.SelectOption do
   @moduledoc """
   Jido Action for selecting an option from a dropdown.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.SelectOption]
+      tools: [Jido.Browser.Actions.SelectOption]
 
       # The agent can then call:
       # select_option(selector: "select#country", value: "US")
@@ -19,7 +19,7 @@ defmodule JidoBrowser.Actions.SelectOption do
     description: "Select an option from a dropdown element",
     category: "Browser",
     tags: ["browser", "interaction", "select", "form", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       selector: [type: :string, required: true, doc: "CSS selector for the select element"],
       value: [type: :string, doc: "Option value to select"],
@@ -27,8 +27,8 @@ defmodule JidoBrowser.Actions.SelectOption do
       index: [type: :integer, doc: "Option index to select (0-based)"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
@@ -36,7 +36,7 @@ defmodule JidoBrowser.Actions.SelectOption do
       selector = params.selector
       script = build_select_script(params)
 
-      case JidoBrowser.evaluate(session, script, []) do
+      case Jido.Browser.evaluate(session, script, []) do
         {:ok, updated_session, %{result: %{"selected" => true} = result}} ->
           {:ok, %{status: "success", selector: selector, result: result, session: updated_session}}
 

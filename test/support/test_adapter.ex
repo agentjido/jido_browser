@@ -1,14 +1,15 @@
-defmodule JidoBrowser.Adapters.Test do
+defmodule Jido.Browser.Adapters.Test do
   @moduledoc """
-  In-memory test adapter for JidoBrowser.
+  In-memory test adapter for Jido.Browser.
 
   Simulates browser behavior without requiring a real browser.
   Useful for unit testing actions and workflows.
   """
 
-  @behaviour JidoBrowser.Adapter
+  @behaviour Jido.Browser.Adapter
 
-  alias JidoBrowser.Session
+  alias Jido.Browser.Error
+  alias Jido.Browser.Session
 
   @impl true
   def start_session(opts \\ []) do
@@ -57,14 +58,14 @@ defmodule JidoBrowser.Adapters.Test do
 
       :jpeg ->
         {:error,
-         JidoBrowser.Error.adapter_error("Test adapter only supports PNG screenshots", %{
+         Error.adapter_error("Test adapter only supports PNG screenshots", %{
            requested_format: :jpeg,
            supported_formats: [:png]
          })}
 
       other ->
         {:error,
-         JidoBrowser.Error.adapter_error("Unsupported screenshot format", %{
+         Error.adapter_error("Unsupported screenshot format", %{
            requested_format: other,
            supported_formats: [:png]
          })}

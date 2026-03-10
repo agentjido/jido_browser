@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.Wait do
+defmodule Jido.Browser.Actions.Wait do
   @moduledoc """
   Jido Action for a simple timeout wait.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.Wait]
+      tools: [Jido.Browser.Actions.Wait]
 
       # The agent can then call:
       # wait(ms: 1000)
@@ -18,7 +18,7 @@ defmodule JidoBrowser.Actions.Wait do
     description: "Wait for a specified number of milliseconds",
     category: "Browser",
     tags: ["browser", "wait", "sync", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       ms: [type: :integer, required: true, doc: "Milliseconds to wait"]
     ]

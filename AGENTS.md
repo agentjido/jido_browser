@@ -1,4 +1,4 @@
-# AGENTS.md - JidoBrowser Guide
+# AGENTS.md - Jido.Browser Guide
 
 ## Intent
 Expose browser automation as session-scoped Jido actions with predictable adapter behavior.
@@ -15,16 +15,16 @@ Expose browser automation as session-scoped Jido actions with predictable adapte
 - `mix jido_browser.install --if-missing` before integration runs on fresh environments
 
 ## Architecture Snapshot
-- `JidoBrowser`: public API for session lifecycle + browser operations
-- `JidoBrowser.Session`: session state/schema
-- `JidoBrowser.Adapter`: behavior for backend adapters
-- Adapters: `JidoBrowser.Adapters.Vibium` (default), `JidoBrowser.Adapters.Web`
-- `JidoBrowser.Plugin`: bundles browser actions for agent integration
-- `JidoBrowser.Actions.*`: navigation, interaction, wait/query, snapshot/screenshot/extraction
+- `Jido.Browser`: public API for session lifecycle + browser operations
+- `Jido.Browser.Session`: session state/schema
+- `Jido.Browser.Adapter`: behavior for backend adapters
+- Adapters: `Jido.Browser.Adapters.Vibium` (default), `Jido.Browser.Adapters.Web`
+- `Jido.Browser.Plugin`: bundles browser actions for agent integration
+- `Jido.Browser.Actions.*`: navigation, interaction, wait/query, snapshot/screenshot/extraction
 
 ## Standards
 - Pass session/tool context explicitly; avoid hidden global session state
-- Keep adapter differences behind `JidoBrowser.Adapter` behavior boundaries
+- Keep adapter differences behind `Jido.Browser.Adapter` behavior boundaries
 - Use **Zoi-first** schemas for new structures/actions and keep error contracts explicit
 - Return stable tagged tuples from action APIs (`{:ok, ...}` / `{:error, ...}`)
 
@@ -34,7 +34,7 @@ Expose browser automation as session-scoped Jido actions with predictable adapte
 - Prefer robust selectors and explicit wait conditions to reduce flakiness
 
 ## Release Hygiene
-- Keep semver ranges stable (`~> 1.0` for `jido_browser`, `~> 2.0` peers)
+- Keep semver ranges stable (`~> 2.0` for `jido_browser`, `~> 2.0` peers)
 - Use Conventional Commits
 - Update `CHANGELOG.md` and docs when adapter/action behavior changes
 

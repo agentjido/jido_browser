@@ -8,7 +8,9 @@ Browser automation actions for Jido AI agents.
 
 ## Overview
 
-JidoBrowser provides a set of Jido Actions for web browsing, enabling AI agents to navigate, interact with, and extract content from web pages. It uses an adapter pattern to support multiple browser automation backends.
+Jido.Browser provides a set of Jido Actions for web browsing, enabling AI agents to navigate, interact with, and extract content from web pages. It uses an adapter pattern to support multiple browser automation backends.
+
+The Hex package and OTP app remain `jido_browser`, while the public Elixir namespace on `main` is `Jido.Browser.*`.
 
 ## Installation
 
@@ -17,7 +19,7 @@ Add `jido_browser` to your dependencies:
 ```elixir
 def deps do
   [
-    {:jido_browser, "~> 1.0"}
+    {:jido_browser, "~> 2.0"}
   ]
 end
 ```
@@ -88,30 +90,30 @@ cd web && make && sudo cp web /usr/local/bin/
 
 ```elixir
 # Start a browser session
-{:ok, session} = JidoBrowser.start_session()
+{:ok, session} = Jido.Browser.start_session()
 
 # Navigate to a page
-{:ok, session, _} = JidoBrowser.navigate(session, "https://example.com")
+{:ok, session, _} = Jido.Browser.navigate(session, "https://example.com")
 
 # Click an element
-{:ok, session, _} = JidoBrowser.click(session, "button#submit")
+{:ok, session, _} = Jido.Browser.click(session, "button#submit")
 
 # Type into an input
-{:ok, session, _} = JidoBrowser.type(session, "input#search", "hello world")
+{:ok, session, _} = Jido.Browser.type(session, "input#search", "hello world")
 
 # Take a screenshot
-{:ok, session, %{bytes: png_data}} = JidoBrowser.screenshot(session)
+{:ok, session, %{bytes: png_data}} = Jido.Browser.screenshot(session)
 
 # Extract page content as markdown (great for LLMs)
-{:ok, _session, %{content: markdown}} = JidoBrowser.extract_content(session)
+{:ok, _session, %{content: markdown}} = Jido.Browser.extract_content(session)
 
 # End session
-:ok = JidoBrowser.end_session(session)
+:ok = Jido.Browser.end_session(session)
 ```
 
 ## Using with Jido Agents
 
-JidoBrowser actions integrate seamlessly with Jido agents:
+Jido.Browser actions integrate seamlessly with Jido agents:
 
 ```elixir
 defmodule MyBrowsingAgent do
@@ -119,16 +121,16 @@ defmodule MyBrowsingAgent do
     name: "web_browser",
     description: "An agent that can browse the web",
     tools: [
-      JidoBrowser.Actions.Navigate,
-      JidoBrowser.Actions.Click,
-      JidoBrowser.Actions.Type,
-      JidoBrowser.Actions.Screenshot,
-      JidoBrowser.Actions.ExtractContent
+      Jido.Browser.Actions.Navigate,
+      Jido.Browser.Actions.Click,
+      Jido.Browser.Actions.Type,
+      Jido.Browser.Actions.Screenshot,
+      Jido.Browser.Actions.ExtractContent
     ]
 
   # Inject browser session via on_before_cmd hook
   def on_before_cmd(_agent, _cmd, context) do
-    {:ok, session} = JidoBrowser.start_session()
+    {:ok, session} = Jido.Browser.start_session()
     {:ok, Map.put(context, :tool_context, %{session: session})}
   end
 end
@@ -138,7 +140,7 @@ end
 
 ```elixir
 config :jido_browser,
-  adapter: JidoBrowser.Adapters.Vibium,
+  adapter: Jido.Browser.Adapters.Vibium,
   timeout: 30_000
 
 # Vibium-specific options
@@ -223,16 +225,16 @@ config :jido_browser, :web,
 |--------|-------------|
 | `Evaluate` | Execute arbitrary JavaScript |
 
-## Using JidoBrowser.Plugin
+## Using Jido.Browser.Plugin
 
-The recommended way to use JidoBrowser with Jido agents is via the Plugin:
+The recommended way to use Jido.Browser with Jido agents is via the Plugin:
 
 ```elixir
 defmodule MyBrowsingAgent do
   use Jido.Agent,
     name: "web_browser",
     description: "An agent that can browse the web",
-    plugins: [{JidoBrowser.Plugin, [headless: true]}]
+    plugins: [{Jido.Browser.Plugin, [headless: true]}]
 end
 ```
 

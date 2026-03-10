@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Compile.JidoBrowser do
-  @shortdoc "Checks for JidoBrowser binary dependencies"
+  @shortdoc "Checks for Jido.Browser binary dependencies"
   @moduledoc """
   A Mix compiler that checks if the browser automation binary is installed.
 
@@ -28,16 +28,16 @@ defmodule Mix.Tasks.Compile.JidoBrowser do
   """
   use Mix.Task.Compiler
 
-  alias JidoBrowser.Installer
+  alias Jido.Browser.Installer
 
   @impl Mix.Task.Compiler
   def run(_args) do
-    adapter = Application.get_env(:jido_browser, :adapter, JidoBrowser.Adapters.Vibium)
+    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.Vibium)
 
     binary =
       case adapter do
-        JidoBrowser.Adapters.Vibium -> :vibium
-        JidoBrowser.Adapters.Web -> :web
+        Jido.Browser.Adapters.Vibium -> :vibium
+        Jido.Browser.Adapters.Web -> :web
         _ -> :vibium
       end
 
@@ -49,7 +49,7 @@ defmodule Mix.Tasks.Compile.JidoBrowser do
       warning = """
 
       ════════════════════════════════════════════════════════════════════════════════
-      JidoBrowser: Browser binary not found!
+      Jido.Browser: Browser binary not found!
 
       The #{binary} binary is required but not installed.
       Detected platform: #{platform}

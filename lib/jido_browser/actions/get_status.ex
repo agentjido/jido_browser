@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.GetStatus do
+defmodule Jido.Browser.Actions.GetStatus do
   @moduledoc """
   Jido Action for getting the current browser session status.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.GetStatus]
+      tools: [Jido.Browser.Actions.GetStatus]
 
       # The agent can then call:
       # get_status()
@@ -19,15 +19,15 @@ defmodule JidoBrowser.Actions.GetStatus do
     description: "Get current session status (url, title, is_alive)",
     category: "Browser",
     tags: ["browser", "session", "status"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: []
 
-  alias JidoBrowser.ActionHelpers
+  alias Jido.Browser.ActionHelpers
 
   @impl true
   def run(_params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
-      case JidoBrowser.evaluate(
+      case Jido.Browser.evaluate(
              session,
              "({url: window.location.href, title: document.title})",
              []

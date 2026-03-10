@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.Hover do
+defmodule Jido.Browser.Actions.Hover do
   @moduledoc """
   Jido Action for hovering over an element.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.Hover]
+      tools: [Jido.Browser.Actions.Hover]
 
       # The agent can then call:
       # hover(selector: "button.menu")
@@ -18,14 +18,14 @@ defmodule JidoBrowser.Actions.Hover do
     description: "Hover over an element in the browser",
     category: "Browser",
     tags: ["browser", "interaction", "hover", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       selector: [type: :string, required: true, doc: "CSS selector for the element to hover"],
       timeout: [type: :integer, doc: "Timeout in milliseconds"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
@@ -46,7 +46,7 @@ defmodule JidoBrowser.Actions.Hover do
 
       opts = Keyword.new(params) |> Keyword.take([:timeout])
 
-      case JidoBrowser.evaluate(session, script, opts) do
+      case Jido.Browser.evaluate(session, script, opts) do
         {:ok, updated_session, %{result: %{"hovered" => true} = result}} ->
           {:ok, %{status: "success", selector: selector, result: result, session: updated_session}}
 

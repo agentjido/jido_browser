@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.WaitForSelector do
+defmodule Jido.Browser.Actions.WaitForSelector do
   @moduledoc """
   Jido Action for waiting for an element to appear, disappear, or change visibility.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.WaitForSelector]
+      tools: [Jido.Browser.Actions.WaitForSelector]
 
       # The agent can then call:
       # wait_for_selector(selector: "#modal")
@@ -19,7 +19,7 @@ defmodule JidoBrowser.Actions.WaitForSelector do
     description: "Wait for an element to appear, disappear, or change visibility state",
     category: "Browser",
     tags: ["browser", "wait", "sync", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       selector: [type: :string, required: true, doc: "CSS selector to wait for"],
       state: [
@@ -30,8 +30,8 @@ defmodule JidoBrowser.Actions.WaitForSelector do
       timeout: [type: :integer, default: 30_000, doc: "Maximum wait time in milliseconds"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
@@ -42,7 +42,7 @@ defmodule JidoBrowser.Actions.WaitForSelector do
 
       js = build_wait_js(selector, state, timeout)
 
-      case JidoBrowser.evaluate(session, js, []) do
+      case Jido.Browser.evaluate(session, js, []) do
         {:ok, updated_session, %{result: %{"found" => true, "elapsed" => elapsed}}} ->
           {:ok, %{status: "success", selector: selector, state: state, elapsed_ms: elapsed, session: updated_session}}
 

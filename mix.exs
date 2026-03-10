@@ -1,7 +1,7 @@
-defmodule JidoBrowser.MixProject do
+defmodule Jido.Browser.MixProject do
   use Mix.Project
 
-  @version "1.0.0"
+  @version "2.0.0"
   @source_url "https://github.com/agentjido/jido_browser"
   @description "Browser automation actions for Jido AI agents"
   @otp_release List.to_string(:erlang.system_info(:otp_release))
@@ -106,57 +106,57 @@ defmodule JidoBrowser.MixProject do
       ],
       groups_for_modules: [
         Core: [
-          JidoBrowser,
-          JidoBrowser.Session,
-          JidoBrowser.Plugin
+          Jido.Browser,
+          Jido.Browser.Session,
+          Jido.Browser.Plugin
         ],
         Adapters: [
-          JidoBrowser.Adapter,
-          JidoBrowser.Adapters.Vibium,
-          JidoBrowser.Adapters.Web
+          Jido.Browser.Adapter,
+          Jido.Browser.Adapters.Vibium,
+          Jido.Browser.Adapters.Web
         ],
         "Session Lifecycle": [
-          JidoBrowser.Actions.StartSession,
-          JidoBrowser.Actions.EndSession,
-          JidoBrowser.Actions.GetStatus
+          Jido.Browser.Actions.StartSession,
+          Jido.Browser.Actions.EndSession,
+          Jido.Browser.Actions.GetStatus
         ],
         Navigation: [
-          JidoBrowser.Actions.Navigate,
-          JidoBrowser.Actions.Back,
-          JidoBrowser.Actions.Forward,
-          JidoBrowser.Actions.Reload,
-          JidoBrowser.Actions.GetUrl,
-          JidoBrowser.Actions.GetTitle
+          Jido.Browser.Actions.Navigate,
+          Jido.Browser.Actions.Back,
+          Jido.Browser.Actions.Forward,
+          Jido.Browser.Actions.Reload,
+          Jido.Browser.Actions.GetUrl,
+          Jido.Browser.Actions.GetTitle
         ],
         Interaction: [
-          JidoBrowser.Actions.Click,
-          JidoBrowser.Actions.Type,
-          JidoBrowser.Actions.Hover,
-          JidoBrowser.Actions.Focus,
-          JidoBrowser.Actions.Scroll,
-          JidoBrowser.Actions.SelectOption
+          Jido.Browser.Actions.Click,
+          Jido.Browser.Actions.Type,
+          Jido.Browser.Actions.Hover,
+          Jido.Browser.Actions.Focus,
+          Jido.Browser.Actions.Scroll,
+          Jido.Browser.Actions.SelectOption
         ],
         Waiting: [
-          JidoBrowser.Actions.Wait,
-          JidoBrowser.Actions.WaitForSelector,
-          JidoBrowser.Actions.WaitForNavigation
+          Jido.Browser.Actions.Wait,
+          Jido.Browser.Actions.WaitForSelector,
+          Jido.Browser.Actions.WaitForNavigation
         ],
         "Element Queries": [
-          JidoBrowser.Actions.Query,
-          JidoBrowser.Actions.GetText,
-          JidoBrowser.Actions.GetAttribute,
-          JidoBrowser.Actions.IsVisible
+          Jido.Browser.Actions.Query,
+          Jido.Browser.Actions.GetText,
+          Jido.Browser.Actions.GetAttribute,
+          Jido.Browser.Actions.IsVisible
         ],
         "Content Extraction": [
-          JidoBrowser.Actions.Snapshot,
-          JidoBrowser.Actions.Screenshot,
-          JidoBrowser.Actions.ExtractContent
+          Jido.Browser.Actions.Snapshot,
+          Jido.Browser.Actions.Screenshot,
+          Jido.Browser.Actions.ExtractContent
         ],
         Advanced: [
-          JidoBrowser.Actions.Evaluate
+          Jido.Browser.Actions.Evaluate
         ],
         Errors: [
-          JidoBrowser.Error
+          Jido.Browser.Error
         ]
       ]
     ]

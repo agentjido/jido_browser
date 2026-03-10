@@ -1,4 +1,4 @@
-defmodule JidoBrowser.Actions.SearchWeb do
+defmodule Jido.Browser.Actions.SearchWeb do
   @moduledoc """
   Search the web using the Brave Search API and return structured results.
 
@@ -10,7 +10,7 @@ defmodule JidoBrowser.Actions.SearchWeb do
 
   ## Usage with Jido Agent
 
-      tools: [JidoBrowser.Actions.SearchWeb]
+      tools: [Jido.Browser.Actions.SearchWeb]
 
       # The agent can then call:
       # search_web(query: "elixir genserver tutorial")
@@ -25,7 +25,7 @@ defmodule JidoBrowser.Actions.SearchWeb do
         "with titles, URLs, and snippets.",
     category: "Browser",
     tags: ["browser", "web", "search", "brave"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       query: [type: :string, required: true, doc: "Search query"],
       max_results: [type: :integer, default: 10, doc: "Maximum number of results to return (max 20)"],

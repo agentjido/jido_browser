@@ -1,4 +1,4 @@
-defmodule JidoBrowser.Actions.SnapshotUrl do
+defmodule Jido.Browser.Actions.SnapshotUrl do
   @moduledoc """
   Self-contained action that navigates to a URL and returns a comprehensive
   LLM-friendly snapshot of the page state.
@@ -13,7 +13,7 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
 
   ## Usage with Jido Agent
 
-      tools: [JidoBrowser.Actions.SnapshotUrl]
+      tools: [Jido.Browser.Actions.SnapshotUrl]
 
       # The agent can then call:
       # snapshot_url(url: "https://example.com")
@@ -28,7 +28,7 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
         "including content, links, forms, and heading structure. Manages browser session automatically.",
     category: "Browser",
     tags: ["browser", "web", "snapshot", "observe", "ai"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       url: [type: :string, required: true, doc: "The URL to snapshot"],
       selector: [type: :string, default: "body", doc: "CSS selector to scope extraction"],
@@ -47,12 +47,12 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
     include_headings = Map.get(params, :include_headings, true)
     max_content_length = Map.get(params, :max_content_length, 50_000)
 
-    case JidoBrowser.start_session(adapter: JidoBrowser.Adapters.Web) do
+    case Jido.Browser.start_session(adapter: Jido.Browser.Adapters.Web) do
       {:ok, session} ->
         try do
           perform_snapshot(session, url, selector, include_links, include_forms, include_headings, max_content_length)
         after
-          JidoBrowser.end_session(session)
+          Jido.Browser.end_session(session)
         end
 
       {:error, reason} ->
@@ -61,7 +61,7 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
   end
 
   defp perform_snapshot(session, url, selector, include_links, include_forms, include_headings, max_content_length) do
-    case JidoBrowser.navigate(session, url) do
+    case Jido.Browser.navigate(session, url) do
       {:ok, session, _nav_result} ->
         evaluate_snapshot(session, url, selector, include_links, include_forms, include_headings, max_content_length)
 
@@ -73,7 +73,7 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
   defp evaluate_snapshot(session, url, selector, include_links, include_forms, include_headings, max_content_length) do
     js = snapshot_js(selector, include_links, include_forms, include_headings, max_content_length)
 
-    case JidoBrowser.evaluate(session, js, []) do
+    case Jido.Browser.evaluate(session, js, []) do
       {:ok, _session, %{result: result}} when is_map(result) ->
         {:ok, Map.put(result, :status, "success")}
 
@@ -96,7 +96,7 @@ defmodule JidoBrowser.Actions.SnapshotUrl do
   end
 
   defp fallback_read_page(session, url, selector, max_content_length) do
-    case JidoBrowser.extract_content(session, selector: selector, format: :markdown) do
+    case Jido.Browser.extract_content(session, selector: selector, format: :markdown) do
       {:ok, _session, %{content: content}} ->
         truncated = String.slice(content, 0, max_content_length)
 

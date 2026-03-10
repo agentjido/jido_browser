@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.Click do
+defmodule Jido.Browser.Actions.Click do
   @moduledoc """
   Jido Action for clicking an element.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.Click]
+      tools: [Jido.Browser.Actions.Click]
 
       # The agent can then call:
       # click(selector: "button#submit")
@@ -18,22 +18,22 @@ defmodule JidoBrowser.Actions.Click do
     description: "Click an element in the browser",
     category: "Browser",
     tags: ["browser", "interaction", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       selector: [type: :string, required: true, doc: "CSS selector for the element to click"],
       text: [type: :string, doc: "Optional text content to match within the selector"],
       timeout: [type: :integer, doc: "Timeout in milliseconds"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = Keyword.new(params) |> Keyword.take([:text, :timeout])
 
-      case JidoBrowser.click(session, params.selector, opts) do
+      case Jido.Browser.click(session, params.selector, opts) do
         {:ok, updated_session, result} ->
           {:ok, %{status: "success", selector: params.selector, result: result, session: updated_session}}
 

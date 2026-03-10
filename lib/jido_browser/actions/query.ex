@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.Query do
+defmodule Jido.Browser.Actions.Query do
   @moduledoc """
   Jido Action for querying elements matching a selector.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.Query]
+      tools: [Jido.Browser.Actions.Query]
 
       # The agent can then call:
       # query(selector: "div.item")
@@ -18,14 +18,14 @@ defmodule JidoBrowser.Actions.Query do
     description: "Query for elements matching a CSS selector",
     category: "Browser",
     tags: ["browser", "query", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       selector: [type: :string, required: true, doc: "CSS selector to query"],
       limit: [type: :integer, default: 10, doc: "Maximum number of elements to return"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
@@ -47,7 +47,7 @@ defmodule JidoBrowser.Actions.Query do
       })()
       """
 
-      case JidoBrowser.evaluate(session, script, []) do
+      case Jido.Browser.evaluate(session, script, []) do
         {:ok, updated_session, %{result: elements}} when is_list(elements) ->
           {:ok, %{status: "success", count: length(elements), elements: elements, session: updated_session}}
 

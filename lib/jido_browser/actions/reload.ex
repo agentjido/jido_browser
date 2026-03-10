@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.Reload do
+defmodule Jido.Browser.Actions.Reload do
   @moduledoc """
   Jido Action for reloading the current page.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.Reload]
+      tools: [Jido.Browser.Actions.Reload]
 
       # The agent can then call:
       # reload()
@@ -17,20 +17,20 @@ defmodule JidoBrowser.Actions.Reload do
     description: "Reload the current page",
     category: "Browser",
     tags: ["browser", "navigation", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       timeout: [type: :integer, doc: "Timeout in milliseconds"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = if params[:timeout], do: [timeout: params[:timeout]], else: []
 
-      case JidoBrowser.evaluate(session, "window.location.reload()", opts) do
+      case Jido.Browser.evaluate(session, "window.location.reload()", opts) do
         {:ok, updated_session, _} ->
           {:ok, %{status: "success", action: "reload", session: updated_session}}
 

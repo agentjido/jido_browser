@@ -1,6 +1,6 @@
-defmodule JidoBrowser.Error do
+defmodule Jido.Browser.Error do
   @moduledoc """
-  Centralized error handling for JidoBrowser using Splode.
+  Centralized error handling for Jido.Browser using Splode.
 
   Error classes are for classification; concrete `...Error` structs are for raising/matching.
   """

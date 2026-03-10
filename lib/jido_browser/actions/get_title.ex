@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.GetTitle do
+defmodule Jido.Browser.Actions.GetTitle do
   @moduledoc """
   Jido Action for getting the current page title.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.GetTitle]
+      tools: [Jido.Browser.Actions.GetTitle]
 
       # The agent can then call:
       # get_title()
@@ -17,20 +17,20 @@ defmodule JidoBrowser.Actions.GetTitle do
     description: "Get the current page title",
     category: "Browser",
     tags: ["browser", "navigation", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       timeout: [type: :integer, doc: "Timeout in milliseconds"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = if params[:timeout], do: [timeout: params[:timeout]], else: []
 
-      case JidoBrowser.evaluate(session, "document.title", opts) do
+      case Jido.Browser.evaluate(session, "document.title", opts) do
         {:ok, updated_session, %{result: title}} when is_binary(title) ->
           {:ok, %{status: "success", title: title, session: updated_session}}
 

@@ -1,6 +1,6 @@
 ExUnit.start(exclude: [:integration])
 
 # Enable Mimic for mocking
-Mimic.copy(JidoBrowser)
-Mimic.copy(JidoBrowser.Adapters.Vibium)
-Mimic.copy(JidoBrowser.Adapters.Web)
+Mimic.copy(Jido.Browser)
+Mimic.copy(Jido.Browser.Adapters.Vibium)
+Mimic.copy(Jido.Browser.Adapters.Web)

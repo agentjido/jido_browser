@@ -7,7 +7,7 @@ Use browser automation as explicit, session-scoped actions that are safe for age
 - Start a session before interaction and always end it.
 - Pass session context explicitly (`tool_context.session` or equivalent).
 - Keep selectors resilient and pair interactions with explicit wait conditions.
-- Keep adapter-specific behavior behind the `JidoBrowser.Adapter` contract.
+- Keep adapter-specific behavior behind the `Jido.Browser.Adapter` contract.
 - Preserve stable tagged tuple results and typed errors.
 
 ## Library Author Patterns

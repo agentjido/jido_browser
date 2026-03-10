@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.Focus do
+defmodule Jido.Browser.Actions.Focus do
   @moduledoc """
   Jido Action for focusing on an element.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.Focus]
+      tools: [Jido.Browser.Actions.Focus]
 
       # The agent can then call:
       # focus(selector: "input#email")
@@ -18,14 +18,14 @@ defmodule JidoBrowser.Actions.Focus do
     description: "Focus on an element in the browser",
     category: "Browser",
     tags: ["browser", "interaction", "focus", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       selector: [type: :string, required: true, doc: "CSS selector for the element to focus"],
       timeout: [type: :integer, doc: "Timeout in milliseconds"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
@@ -45,7 +45,7 @@ defmodule JidoBrowser.Actions.Focus do
 
       opts = Keyword.new(params) |> Keyword.take([:timeout])
 
-      case JidoBrowser.evaluate(session, script, opts) do
+      case Jido.Browser.evaluate(session, script, opts) do
         {:ok, updated_session, %{result: %{"focused" => true} = result}} ->
           {:ok, %{status: "success", selector: selector, result: result, session: updated_session}}
 

@@ -1,4 +1,4 @@
-defmodule JidoBrowser.Session do
+defmodule Jido.Browser.Session do
   @moduledoc """
   Represents an active browser session.
 
@@ -40,9 +40,9 @@ defmodule JidoBrowser.Session do
 
   ## Examples
 
-      session = JidoBrowser.Session.new!(
+      session = Jido.Browser.Session.new!(
         id: "sess_abc123",
-        adapter: JidoBrowser.Adapters.Vibium,
+        adapter: Jido.Browser.Adapters.Vibium,
         connection: pid
       )
 

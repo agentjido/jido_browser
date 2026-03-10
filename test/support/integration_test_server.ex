@@ -1,4 +1,4 @@
-defmodule JidoBrowser.TestSupport.IntegrationTestServer do
+defmodule Jido.Browser.TestSupport.IntegrationTestServer do
   @moduledoc false
 
   require Logger

@@ -1,9 +1,9 @@
-defmodule JidoBrowser.Adapter do
+defmodule Jido.Browser.Adapter do
   @moduledoc """
   Behaviour for browser automation adapters.
 
   Adapters implement the low-level browser control protocol, allowing
-  JidoBrowser to work with different browser automation backends.
+  Jido.Browser to work with different browser automation backends.
 
   ## Return Value Contract
 
@@ -20,7 +20,7 @@ defmodule JidoBrowser.Adapter do
   ## Implementing an Adapter
 
       defmodule MyAdapter do
-        @behaviour JidoBrowser.Adapter
+        @behaviour Jido.Browser.Adapter
 
         @impl true
         def start_session(opts) do
@@ -53,12 +53,12 @@ defmodule JidoBrowser.Adapter do
 
   ## Built-in Adapters
 
-  - `JidoBrowser.Adapters.Vibium` - Uses Vibium Go binary (WebDriver BiDi)
-  - `JidoBrowser.Adapters.Web` - Uses chrismccord/web CLI
+  - `Jido.Browser.Adapters.Vibium` - Uses Vibium Go binary (WebDriver BiDi)
+  - `Jido.Browser.Adapters.Web` - Uses chrismccord/web CLI
 
   """
 
-  alias JidoBrowser.Session
+  alias Jido.Browser.Session
 
   @doc """
   Starts a new browser session.

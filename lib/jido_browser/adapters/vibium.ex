@@ -1,4 +1,4 @@
-defmodule JidoBrowser.Adapters.Vibium do
+defmodule Jido.Browser.Adapters.Vibium do
   @moduledoc """
   Vibium adapter for browser automation.
 
@@ -21,7 +21,7 @@ defmodule JidoBrowser.Adapters.Vibium do
   ## Configuration
 
       config :jido_browser,
-        adapter: JidoBrowser.Adapters.Vibium,
+        adapter: Jido.Browser.Adapters.Vibium,
         vibium: [
           binary_path: "/path/to/clicker",
           headless: true
@@ -29,10 +29,11 @@ defmodule JidoBrowser.Adapters.Vibium do
 
   """
 
-  @behaviour JidoBrowser.Adapter
+  @behaviour Jido.Browser.Adapter
 
-  alias JidoBrowser.Error
-  alias JidoBrowser.Session
+  alias Jido.Browser.Error
+  alias Jido.Browser.Installer
+  alias Jido.Browser.Session
 
   @default_timeout 30_000
 
@@ -282,7 +283,7 @@ defmodule JidoBrowser.Adapters.Vibium do
 
       nil ->
         # Check jido_browser install path
-        jido_path = Path.join(JidoBrowser.Installer.default_install_path(), "clicker")
+        jido_path = Path.join(Installer.default_install_path(), "clicker")
 
         if File.exists?(jido_path) do
           {:ok, jido_path}
@@ -309,7 +310,7 @@ defmodule JidoBrowser.Adapters.Vibium do
   end
 
   defp vibium_platform_package do
-    case JidoBrowser.Installer.target() do
+    case Installer.target() do
       :darwin_arm64 -> "@vibium/darwin-arm64"
       :darwin_amd64 -> "@vibium/darwin-x64"
       :linux_amd64 -> "@vibium/linux-x64"

@@ -1,6 +1,6 @@
-defmodule JidoBrowser.Installer do
+defmodule Jido.Browser.Installer do
   @moduledoc """
-  Binary installer for JidoBrowser adapters.
+  Binary installer for Jido.Browser adapters.
 
   This module handles downloading and installing the browser automation binaries
   (vibium, web) for all supported platforms. It follows the same patterns as
@@ -131,11 +131,11 @@ defmodule JidoBrowser.Installer do
   # Private implementation
 
   defp configured_adapter_binary do
-    adapter = Application.get_env(:jido_browser, :adapter, JidoBrowser.Adapters.Vibium)
+    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.Vibium)
 
     case adapter do
-      JidoBrowser.Adapters.Vibium -> :vibium
-      JidoBrowser.Adapters.Web -> :web
+      Jido.Browser.Adapters.Vibium -> :vibium
+      Jido.Browser.Adapters.Web -> :web
       _ -> :vibium
     end
   end

@@ -1,4 +1,4 @@
-defmodule JidoBrowser.Actions.ExtractContent do
+defmodule Jido.Browser.Actions.ExtractContent do
   @moduledoc """
   Jido Action for extracting page content.
 
@@ -8,7 +8,7 @@ defmodule JidoBrowser.Actions.ExtractContent do
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.ExtractContent]
+      tools: [Jido.Browser.Actions.ExtractContent]
 
       # The agent can then call:
       # extract_content()
@@ -22,21 +22,21 @@ defmodule JidoBrowser.Actions.ExtractContent do
     description: "Extract content from the current page as markdown or HTML",
     category: "Browser",
     tags: ["browser", "content", "extract", "markdown", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       selector: [type: :string, default: "body", doc: "CSS selector to scope extraction"],
       format: [type: {:in, [:markdown, :html]}, default: :markdown, doc: "Output format"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = Keyword.new(params) |> Keyword.take([:selector, :format])
 
-      case JidoBrowser.extract_content(session, opts) do
+      case Jido.Browser.extract_content(session, opts) do
         {:ok, updated_session, %{content: content, format: format}} ->
           {:ok,
            %{

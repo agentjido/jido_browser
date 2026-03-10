@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.IsVisible do
+defmodule Jido.Browser.Actions.IsVisible do
   @moduledoc """
   Jido Action for checking if an element is visible.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.IsVisible]
+      tools: [Jido.Browser.Actions.IsVisible]
 
       # The agent can then call:
       # is_visible(selector: "#modal")
@@ -18,13 +18,13 @@ defmodule JidoBrowser.Actions.IsVisible do
     description: "Check if an element is visible",
     category: "Browser",
     tags: ["browser", "query", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       selector: [type: :string, required: true, doc: "CSS selector for the element"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
@@ -44,7 +44,7 @@ defmodule JidoBrowser.Actions.IsVisible do
       })()
       """
 
-      case JidoBrowser.evaluate(session, script, []) do
+      case Jido.Browser.evaluate(session, script, []) do
         {:ok, updated_session, %{result: %{"exists" => exists, "visible" => visible}}} ->
           {:ok, %{exists: exists, visible: visible, session: updated_session}}
 

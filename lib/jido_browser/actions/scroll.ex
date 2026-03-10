@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.Scroll do
+defmodule Jido.Browser.Actions.Scroll do
   @moduledoc """
   Jido Action for scrolling the page.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.Scroll]
+      tools: [Jido.Browser.Actions.Scroll]
 
       # The agent can then call:
       # scroll(direction: :down)
@@ -20,7 +20,7 @@ defmodule JidoBrowser.Actions.Scroll do
     description: "Scroll the page by pixels, to preset positions, or to an element",
     category: "Browser",
     tags: ["browser", "interaction", "scroll", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       x: [type: :integer, doc: "Horizontal scroll pixels"],
       y: [type: :integer, doc: "Vertical scroll pixels"],
@@ -31,15 +31,15 @@ defmodule JidoBrowser.Actions.Scroll do
       selector: [type: :string, doc: "CSS selector to scroll element into view"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       script = build_scroll_script(params)
 
-      case JidoBrowser.evaluate(session, script, []) do
+      case Jido.Browser.evaluate(session, script, []) do
         {:ok, updated_session, %{result: result}} ->
           {:ok, %{status: "success", result: result, session: updated_session}}
 

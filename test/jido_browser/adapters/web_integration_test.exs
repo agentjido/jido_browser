@@ -1,4 +1,4 @@
-defmodule JidoBrowser.Adapters.WebIntegrationTest do
+defmodule Jido.Browser.Adapters.WebIntegrationTest do
   @moduledoc """
   Integration tests for the Web adapter against a local fixture server.
 
@@ -6,8 +6,8 @@ defmodule JidoBrowser.Adapters.WebIntegrationTest do
   """
   use ExUnit.Case, async: false
 
-  alias JidoBrowser.Adapters.Web
-  alias JidoBrowser.TestSupport.IntegrationTestServer
+  alias Jido.Browser.Adapters.Web
+  alias Jido.Browser.TestSupport.IntegrationTestServer
 
   @moduletag :integration
 

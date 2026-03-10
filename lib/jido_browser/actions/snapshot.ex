@@ -1,4 +1,4 @@
-defmodule JidoBrowser.Actions.Snapshot do
+defmodule Jido.Browser.Actions.Snapshot do
   @moduledoc """
   Jido Action for comprehensive page observation.
 
@@ -9,7 +9,7 @@ defmodule JidoBrowser.Actions.Snapshot do
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.Snapshot]
+      tools: [Jido.Browser.Actions.Snapshot]
 
       # The agent can then call:
       # snapshot()
@@ -23,7 +23,7 @@ defmodule JidoBrowser.Actions.Snapshot do
     description: "Get comprehensive LLM-friendly snapshot of the current page state",
     category: "Browser",
     tags: ["browser", "snapshot", "observe", "page", "web", "ai"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       include_links: [type: :boolean, default: true, doc: "Include extracted links"],
       include_forms: [type: :boolean, default: true, doc: "Include form field info"],
@@ -32,8 +32,8 @@ defmodule JidoBrowser.Actions.Snapshot do
       selector: [type: :string, default: "body", doc: "CSS selector to scope extraction"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
@@ -47,7 +47,7 @@ defmodule JidoBrowser.Actions.Snapshot do
       js = snapshot_js(selector, include_links, include_forms, include_headings, max_content_length)
 
       session
-      |> JidoBrowser.evaluate(js, [])
+      |> Jido.Browser.evaluate(js, [])
       |> handle_snapshot_result()
     end
   end

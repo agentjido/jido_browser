@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.GetText do
+defmodule Jido.Browser.Actions.GetText do
   @moduledoc """
   Jido Action for getting text content of an element.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.GetText]
+      tools: [Jido.Browser.Actions.GetText]
 
       # The agent can then call:
       # get_text(selector: "h1")
@@ -18,14 +18,14 @@ defmodule JidoBrowser.Actions.GetText do
     description: "Get text content of an element",
     category: "Browser",
     tags: ["browser", "query", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       selector: [type: :string, required: true, doc: "CSS selector for the element"],
       all: [type: :boolean, default: false, doc: "Get text from all matching elements"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
@@ -51,7 +51,7 @@ defmodule JidoBrowser.Actions.GetText do
           """
         end
 
-      case JidoBrowser.evaluate(session, script, []) do
+      case Jido.Browser.evaluate(session, script, []) do
         {:ok, _updated_session, %{result: nil}} ->
           {:error, Error.element_error("get_text", selector, "Element not found")}
 

@@ -1,35 +1,35 @@
 # Ensure actions are compiled before the plugin
-require JidoBrowser.Actions.Back
-require JidoBrowser.Actions.Click
-require JidoBrowser.Actions.EndSession
-require JidoBrowser.Actions.Evaluate
-require JidoBrowser.Actions.ExtractContent
-require JidoBrowser.Actions.Focus
-require JidoBrowser.Actions.Forward
-require JidoBrowser.Actions.GetAttribute
-require JidoBrowser.Actions.GetStatus
-require JidoBrowser.Actions.GetText
-require JidoBrowser.Actions.GetTitle
-require JidoBrowser.Actions.GetUrl
-require JidoBrowser.Actions.Hover
-require JidoBrowser.Actions.IsVisible
-require JidoBrowser.Actions.Navigate
-require JidoBrowser.Actions.Query
-require JidoBrowser.Actions.Reload
-require JidoBrowser.Actions.Screenshot
-require JidoBrowser.Actions.Scroll
-require JidoBrowser.Actions.SelectOption
-require JidoBrowser.Actions.Snapshot
-require JidoBrowser.Actions.StartSession
-require JidoBrowser.Actions.Type
-require JidoBrowser.Actions.Wait
-require JidoBrowser.Actions.WaitForNavigation
-require JidoBrowser.Actions.WaitForSelector
-require JidoBrowser.Actions.ReadPage
-require JidoBrowser.Actions.SnapshotUrl
-require JidoBrowser.Actions.SearchWeb
+require Jido.Browser.Actions.Back
+require Jido.Browser.Actions.Click
+require Jido.Browser.Actions.EndSession
+require Jido.Browser.Actions.Evaluate
+require Jido.Browser.Actions.ExtractContent
+require Jido.Browser.Actions.Focus
+require Jido.Browser.Actions.Forward
+require Jido.Browser.Actions.GetAttribute
+require Jido.Browser.Actions.GetStatus
+require Jido.Browser.Actions.GetText
+require Jido.Browser.Actions.GetTitle
+require Jido.Browser.Actions.GetUrl
+require Jido.Browser.Actions.Hover
+require Jido.Browser.Actions.IsVisible
+require Jido.Browser.Actions.Navigate
+require Jido.Browser.Actions.Query
+require Jido.Browser.Actions.Reload
+require Jido.Browser.Actions.Screenshot
+require Jido.Browser.Actions.Scroll
+require Jido.Browser.Actions.SelectOption
+require Jido.Browser.Actions.Snapshot
+require Jido.Browser.Actions.StartSession
+require Jido.Browser.Actions.Type
+require Jido.Browser.Actions.Wait
+require Jido.Browser.Actions.WaitForNavigation
+require Jido.Browser.Actions.WaitForSelector
+require Jido.Browser.Actions.ReadPage
+require Jido.Browser.Actions.SnapshotUrl
+require Jido.Browser.Actions.SearchWeb
 
-defmodule JidoBrowser.Plugin do
+defmodule Jido.Browser.Plugin do
   @moduledoc """
   A Jido.Plugin providing browser automation capabilities for AI agents.
 
@@ -40,7 +40,7 @@ defmodule JidoBrowser.Plugin do
 
       defmodule MyAgent do
         use Jido.Agent,
-          plugins: [{JidoBrowser.Plugin, [headless: true]}]
+          plugins: [{Jido.Browser.Plugin, [headless: true]}]
       end
 
   ## Configuration Options
@@ -66,47 +66,47 @@ defmodule JidoBrowser.Plugin do
     state_key: :browser,
     actions: [
       # Session lifecycle
-      JidoBrowser.Actions.StartSession,
-      JidoBrowser.Actions.EndSession,
-      JidoBrowser.Actions.GetStatus,
+      Jido.Browser.Actions.StartSession,
+      Jido.Browser.Actions.EndSession,
+      Jido.Browser.Actions.GetStatus,
       # Navigation
-      JidoBrowser.Actions.Navigate,
-      JidoBrowser.Actions.Back,
-      JidoBrowser.Actions.Forward,
-      JidoBrowser.Actions.Reload,
-      JidoBrowser.Actions.GetUrl,
-      JidoBrowser.Actions.GetTitle,
+      Jido.Browser.Actions.Navigate,
+      Jido.Browser.Actions.Back,
+      Jido.Browser.Actions.Forward,
+      Jido.Browser.Actions.Reload,
+      Jido.Browser.Actions.GetUrl,
+      Jido.Browser.Actions.GetTitle,
       # Interaction
-      JidoBrowser.Actions.Click,
-      JidoBrowser.Actions.Type,
-      JidoBrowser.Actions.Hover,
-      JidoBrowser.Actions.Focus,
-      JidoBrowser.Actions.Scroll,
-      JidoBrowser.Actions.SelectOption,
+      Jido.Browser.Actions.Click,
+      Jido.Browser.Actions.Type,
+      Jido.Browser.Actions.Hover,
+      Jido.Browser.Actions.Focus,
+      Jido.Browser.Actions.Scroll,
+      Jido.Browser.Actions.SelectOption,
       # Waiting/synchronization
-      JidoBrowser.Actions.Wait,
-      JidoBrowser.Actions.WaitForSelector,
-      JidoBrowser.Actions.WaitForNavigation,
+      Jido.Browser.Actions.Wait,
+      Jido.Browser.Actions.WaitForSelector,
+      Jido.Browser.Actions.WaitForNavigation,
       # Element queries
-      JidoBrowser.Actions.Query,
-      JidoBrowser.Actions.GetText,
-      JidoBrowser.Actions.GetAttribute,
-      JidoBrowser.Actions.IsVisible,
+      Jido.Browser.Actions.Query,
+      Jido.Browser.Actions.GetText,
+      Jido.Browser.Actions.GetAttribute,
+      Jido.Browser.Actions.IsVisible,
       # Content extraction
-      JidoBrowser.Actions.Snapshot,
-      JidoBrowser.Actions.Screenshot,
-      JidoBrowser.Actions.ExtractContent,
+      Jido.Browser.Actions.Snapshot,
+      Jido.Browser.Actions.Screenshot,
+      Jido.Browser.Actions.ExtractContent,
       # Advanced
-      JidoBrowser.Actions.Evaluate,
+      Jido.Browser.Actions.Evaluate,
       # Self-contained composite actions (manage own session)
-      JidoBrowser.Actions.ReadPage,
-      JidoBrowser.Actions.SnapshotUrl,
-      JidoBrowser.Actions.SearchWeb
+      Jido.Browser.Actions.ReadPage,
+      Jido.Browser.Actions.SnapshotUrl,
+      Jido.Browser.Actions.SearchWeb
     ],
     description: "Browser automation for web navigation, interaction, and content extraction",
     category: "browser",
     tags: ["browser", "web", "automation", "scraping"],
-    vsn: "1.0.0"
+    vsn: "2.0.0"
 
   @impl Jido.Plugin
   def mount(_agent, config) do
@@ -141,42 +141,42 @@ defmodule JidoBrowser.Plugin do
   def signal_routes(_config) do
     [
       # Session lifecycle
-      {"browser.start_session", JidoBrowser.Actions.StartSession},
-      {"browser.end_session", JidoBrowser.Actions.EndSession},
-      {"browser.get_status", JidoBrowser.Actions.GetStatus},
+      {"browser.start_session", Jido.Browser.Actions.StartSession},
+      {"browser.end_session", Jido.Browser.Actions.EndSession},
+      {"browser.get_status", Jido.Browser.Actions.GetStatus},
       # Navigation
-      {"browser.navigate", JidoBrowser.Actions.Navigate},
-      {"browser.back", JidoBrowser.Actions.Back},
-      {"browser.forward", JidoBrowser.Actions.Forward},
-      {"browser.reload", JidoBrowser.Actions.Reload},
-      {"browser.get_url", JidoBrowser.Actions.GetUrl},
-      {"browser.get_title", JidoBrowser.Actions.GetTitle},
+      {"browser.navigate", Jido.Browser.Actions.Navigate},
+      {"browser.back", Jido.Browser.Actions.Back},
+      {"browser.forward", Jido.Browser.Actions.Forward},
+      {"browser.reload", Jido.Browser.Actions.Reload},
+      {"browser.get_url", Jido.Browser.Actions.GetUrl},
+      {"browser.get_title", Jido.Browser.Actions.GetTitle},
       # Interaction
-      {"browser.click", JidoBrowser.Actions.Click},
-      {"browser.type", JidoBrowser.Actions.Type},
-      {"browser.hover", JidoBrowser.Actions.Hover},
-      {"browser.focus", JidoBrowser.Actions.Focus},
-      {"browser.scroll", JidoBrowser.Actions.Scroll},
-      {"browser.select_option", JidoBrowser.Actions.SelectOption},
+      {"browser.click", Jido.Browser.Actions.Click},
+      {"browser.type", Jido.Browser.Actions.Type},
+      {"browser.hover", Jido.Browser.Actions.Hover},
+      {"browser.focus", Jido.Browser.Actions.Focus},
+      {"browser.scroll", Jido.Browser.Actions.Scroll},
+      {"browser.select_option", Jido.Browser.Actions.SelectOption},
       # Waiting/synchronization
-      {"browser.wait", JidoBrowser.Actions.Wait},
-      {"browser.wait_for_selector", JidoBrowser.Actions.WaitForSelector},
-      {"browser.wait_for_navigation", JidoBrowser.Actions.WaitForNavigation},
+      {"browser.wait", Jido.Browser.Actions.Wait},
+      {"browser.wait_for_selector", Jido.Browser.Actions.WaitForSelector},
+      {"browser.wait_for_navigation", Jido.Browser.Actions.WaitForNavigation},
       # Element queries
-      {"browser.query", JidoBrowser.Actions.Query},
-      {"browser.get_text", JidoBrowser.Actions.GetText},
-      {"browser.get_attribute", JidoBrowser.Actions.GetAttribute},
-      {"browser.is_visible", JidoBrowser.Actions.IsVisible},
+      {"browser.query", Jido.Browser.Actions.Query},
+      {"browser.get_text", Jido.Browser.Actions.GetText},
+      {"browser.get_attribute", Jido.Browser.Actions.GetAttribute},
+      {"browser.is_visible", Jido.Browser.Actions.IsVisible},
       # Content extraction
-      {"browser.snapshot", JidoBrowser.Actions.Snapshot},
-      {"browser.screenshot", JidoBrowser.Actions.Screenshot},
-      {"browser.extract", JidoBrowser.Actions.ExtractContent},
+      {"browser.snapshot", Jido.Browser.Actions.Snapshot},
+      {"browser.screenshot", Jido.Browser.Actions.Screenshot},
+      {"browser.extract", Jido.Browser.Actions.ExtractContent},
       # Advanced
-      {"browser.evaluate", JidoBrowser.Actions.Evaluate},
+      {"browser.evaluate", Jido.Browser.Actions.Evaluate},
       # Self-contained composite actions
-      {"browser.read_page", JidoBrowser.Actions.ReadPage},
-      {"browser.snapshot_url", JidoBrowser.Actions.SnapshotUrl},
-      {"browser.search_web", JidoBrowser.Actions.SearchWeb}
+      {"browser.read_page", Jido.Browser.Actions.ReadPage},
+      {"browser.snapshot_url", Jido.Browser.Actions.SnapshotUrl},
+      {"browser.search_web", Jido.Browser.Actions.SearchWeb}
     ]
   end
 
@@ -188,7 +188,7 @@ defmodule JidoBrowser.Plugin do
   @impl Jido.Plugin
   def transform_result(_action, {:ok, result}, _context) when is_map(result) do
     case Map.get(result, :session) do
-      %JidoBrowser.Session{} = session ->
+      %Jido.Browser.Session{} = session ->
         current_url = get_in(session, [:connection, :current_url])
 
         state_updates = %{

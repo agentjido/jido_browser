@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.WaitForNavigation do
+defmodule Jido.Browser.Actions.WaitForNavigation do
   @moduledoc """
   Jido Action for waiting for page navigation to complete.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.WaitForNavigation]
+      tools: [Jido.Browser.Actions.WaitForNavigation]
 
       # The agent can then call:
       # wait_for_navigation()
@@ -19,14 +19,14 @@ defmodule JidoBrowser.Actions.WaitForNavigation do
     description: "Wait for page navigation to complete",
     category: "Browser",
     tags: ["browser", "wait", "navigation", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       url: [type: :string, doc: "URL pattern to match (substring match)"],
       timeout: [type: :integer, default: 30_000, doc: "Maximum wait time in milliseconds"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
@@ -36,7 +36,7 @@ defmodule JidoBrowser.Actions.WaitForNavigation do
 
       js = build_wait_js(url_pattern, timeout)
 
-      case JidoBrowser.evaluate(session, js, []) do
+      case Jido.Browser.evaluate(session, js, []) do
         {:ok, updated_session, %{result: %{"url" => url, "elapsed" => elapsed}}} ->
           {:ok, %{status: "success", url: url, elapsed_ms: elapsed, session: updated_session}}
 

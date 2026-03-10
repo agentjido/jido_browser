@@ -1,16 +1,16 @@
-defmodule JidoBrowser.ActionsTest do
+defmodule Jido.Browser.ActionsTest do
   use ExUnit.Case, async: false
   use Mimic
 
-  alias JidoBrowser.Actions
-  alias JidoBrowser.Session
+  alias Jido.Browser.Actions
+  alias Jido.Browser.Session
 
   setup :set_mimic_global
 
   setup do
     session =
       Session.new!(%{
-        adapter: JidoBrowser.Adapters.Vibium,
+        adapter: Jido.Browser.Adapters.Vibium,
         connection: %{
           binary: "/usr/local/bin/clicker",
           headless: true,
@@ -24,7 +24,7 @@ defmodule JidoBrowser.ActionsTest do
 
   describe "Navigation actions" do
     test "Back navigates history back", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "history.back"
         {:ok, sess, %{result: nil}}
       end)
@@ -34,7 +34,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Forward navigates history forward", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "history.forward"
         {:ok, sess, %{result: nil}}
       end)
@@ -44,7 +44,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Reload reloads the page", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "location.reload"
         {:ok, sess, %{result: nil}}
       end)
@@ -54,7 +54,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "GetUrl returns current URL", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "location.href"
         {:ok, sess, %{result: "https://example.com/page"}}
       end)
@@ -64,7 +64,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "GetTitle returns page title", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "document.title"
         {:ok, sess, %{result: "My Page Title"}}
       end)
@@ -74,7 +74,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Navigate navigates to URL", %{context: context, session: session} do
-      stub(JidoBrowser, :navigate, fn sess, url, _opts ->
+      stub(Jido.Browser, :navigate, fn sess, url, _opts ->
         assert url == "https://example.com"
         {:ok, sess, %{url: url}}
       end)
@@ -86,7 +86,7 @@ defmodule JidoBrowser.ActionsTest do
 
   describe "Interaction actions" do
     test "Click clicks an element", %{context: context, session: session} do
-      stub(JidoBrowser, :click, fn sess, selector, _opts ->
+      stub(Jido.Browser, :click, fn sess, selector, _opts ->
         assert selector == "button#submit"
         {:ok, sess, %{selector: selector}}
       end)
@@ -96,7 +96,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Type types text into element", %{context: context, session: session} do
-      stub(JidoBrowser, :type, fn sess, selector, text, _opts ->
+      stub(Jido.Browser, :type, fn sess, selector, text, _opts ->
         assert selector == "input#email"
         assert text == "test@example.com"
         {:ok, sess, %{selector: selector, text: text}}
@@ -107,7 +107,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Scroll scrolls by pixels", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "scrollBy"
         {:ok, sess, %{result: %{"scrolled" => true, "x" => 0, "y" => 500}}}
       end)
@@ -117,7 +117,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Scroll scrolls to direction", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "scrollTo" or script =~ "scrollHeight"
         {:ok, sess, %{result: %{"scrolled" => true, "direction" => "bottom"}}}
       end)
@@ -127,7 +127,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Scroll scrolls to element by selector", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "scrollIntoView"
         assert script =~ "#target"
         {:ok, sess, %{result: %{"scrolled" => true, "selector" => "#target"}}}
@@ -138,7 +138,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Hover dispatches mouse events", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "mouseover" or script =~ "mouseenter"
         {:ok, sess, %{result: %{"hovered" => true, "selector" => "#button"}}}
       end)
@@ -148,7 +148,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Focus focuses element", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "focus"
         {:ok, sess, %{result: %{"focused" => true, "selector" => "input#email"}}}
       end)
@@ -158,7 +158,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "SelectOption selects by value", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"selected" => true, "value" => "US"}}}
       end)
 
@@ -167,7 +167,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "SelectOption selects by label", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"selected" => true, "label" => "United States", "value" => "US"}}}
       end)
 
@@ -179,7 +179,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "SelectOption selects by index", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script =~ "selectedIndex"
         {:ok, sess, %{result: %{"selected" => true, "index" => 2, "value" => "UK"}}}
       end)
@@ -201,7 +201,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "WaitForSelector waits for element", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"found" => true, "elapsed" => 150}}}
       end)
 
@@ -213,7 +213,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "WaitForNavigation waits for URL change", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"url" => "https://example.com/new", "elapsed" => 200}}}
       end)
 
@@ -224,7 +224,7 @@ defmodule JidoBrowser.ActionsTest do
 
   describe "Query actions" do
     test "Query returns matching elements", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess,
          %{
            result: [
@@ -244,7 +244,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Query returns empty list when no elements found", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: []}}
       end)
 
@@ -253,7 +253,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "GetText returns element text", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: "Hello World"}}
       end)
 
@@ -262,7 +262,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "GetText returns multiple texts when all: true", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: ["First", "Second", "Third"]}}
       end)
 
@@ -271,7 +271,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "GetAttribute returns attribute value", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: "https://example.com"}}
       end)
 
@@ -280,7 +280,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "IsVisible checks element visibility", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"exists" => true, "visible" => true}}}
       end)
 
@@ -289,7 +289,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "IsVisible returns false for hidden element", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"exists" => true, "visible" => false}}}
       end)
 
@@ -298,7 +298,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "IsVisible returns false for non-existent element", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"exists" => false, "visible" => false}}}
       end)
 
@@ -309,7 +309,7 @@ defmodule JidoBrowser.ActionsTest do
 
   describe "Content extraction actions" do
     test "Snapshot returns comprehensive page info", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess,
          %{
            result: %{
@@ -333,7 +333,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "ExtractContent returns page content", %{context: context, session: session} do
-      stub(JidoBrowser, :extract_content, fn sess, _opts ->
+      stub(Jido.Browser, :extract_content, fn sess, _opts ->
         {:ok, sess, %{content: "# Hello World\n\nThis is the page content.", format: :markdown}}
       end)
 
@@ -344,7 +344,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "ExtractContent returns HTML when format: :html", %{context: context, session: session} do
-      stub(JidoBrowser, :extract_content, fn sess, opts ->
+      stub(Jido.Browser, :extract_content, fn sess, opts ->
         assert opts[:format] == :html
         {:ok, sess, %{content: "<h1>Hello World</h1>", format: :html}}
       end)
@@ -356,7 +356,7 @@ defmodule JidoBrowser.ActionsTest do
     test "Screenshot takes a screenshot", %{context: context, session: session} do
       png_bytes = <<137, 80, 78, 71, 13, 10, 26, 10>>
 
-      stub(JidoBrowser, :screenshot, fn sess, _opts ->
+      stub(Jido.Browser, :screenshot, fn sess, _opts ->
         {:ok, sess, %{bytes: png_bytes, mime: "image/png"}}
       end)
 
@@ -367,7 +367,7 @@ defmodule JidoBrowser.ActionsTest do
     test "Screenshot takes full page screenshot", %{context: context, session: session} do
       png_bytes = <<137, 80, 78, 71>>
 
-      stub(JidoBrowser, :screenshot, fn sess, opts ->
+      stub(Jido.Browser, :screenshot, fn sess, opts ->
         assert opts[:full_page] == true
         {:ok, sess, %{bytes: png_bytes, mime: "image/png"}}
       end)
@@ -379,7 +379,7 @@ defmodule JidoBrowser.ActionsTest do
 
   describe "Evaluate action" do
     test "Evaluate executes JavaScript", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, script, _opts ->
         assert script == "1 + 1"
         {:ok, sess, %{result: 2}}
       end)
@@ -389,7 +389,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Evaluate returns complex result", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"name" => "test", "count" => 42}}}
       end)
 
@@ -400,12 +400,12 @@ defmodule JidoBrowser.ActionsTest do
 
   describe "Session actions" do
     test "StartSession starts a new session" do
-      stub(JidoBrowser, :start_session, fn opts ->
+      stub(Jido.Browser, :start_session, fn opts ->
         assert opts[:headless] == true
 
         {:ok,
          Session.new!(%{
-           adapter: JidoBrowser.Adapters.Vibium,
+           adapter: Jido.Browser.Adapters.Vibium,
            connection: %{port: opts[:port] || 9515},
            opts: Map.new(opts)
          })}
@@ -416,12 +416,12 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "StartSession preserves explicit headless false" do
-      stub(JidoBrowser, :start_session, fn opts ->
+      stub(Jido.Browser, :start_session, fn opts ->
         assert opts[:headless] == false
 
         {:ok,
          Session.new!(%{
-           adapter: JidoBrowser.Adapters.Vibium,
+           adapter: Jido.Browser.Adapters.Vibium,
            connection: %{port: 9515},
            opts: Map.new(opts)
          })}
@@ -432,7 +432,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "StartSession with custom adapter" do
-      stub(JidoBrowser, :start_session, fn opts ->
+      stub(Jido.Browser, :start_session, fn opts ->
         {:ok,
          Session.new!(%{
            adapter: opts[:adapter],
@@ -441,11 +441,11 @@ defmodule JidoBrowser.ActionsTest do
       end)
 
       assert {:ok, %{status: "success", session: %Session{}}} =
-               Actions.StartSession.run(%{adapter: JidoBrowser.Adapters.Web}, %{})
+               Actions.StartSession.run(%{adapter: Jido.Browser.Adapters.Web}, %{})
     end
 
     test "EndSession ends the session", %{context: context} do
-      stub(JidoBrowser, :end_session, fn _session ->
+      stub(Jido.Browser, :end_session, fn _session ->
         :ok
       end)
 
@@ -454,7 +454,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "GetStatus returns session info", %{context: context, session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"url" => "https://example.com", "title" => "Test"}}}
       end)
 
@@ -463,7 +463,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "GetStatus returns dead session info on error", %{context: context} do
-      stub(JidoBrowser, :evaluate, fn _session, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn _session, _script, _opts ->
         {:error, :connection_closed}
       end)
 
@@ -474,81 +474,81 @@ defmodule JidoBrowser.ActionsTest do
 
   describe "Error handling" do
     test "Back returns error on failure", %{context: context} do
-      stub(JidoBrowser, :evaluate, fn _session, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn _session, _script, _opts ->
         {:error, :timeout}
       end)
 
-      assert {:error, %JidoBrowser.Error.NavigationError{}} =
+      assert {:error, %Jido.Browser.Error.NavigationError{}} =
                Actions.Back.run(%{}, context)
     end
 
     test "Click returns error when element not found", %{context: context} do
-      stub(JidoBrowser, :click, fn _session, _selector, _opts ->
+      stub(Jido.Browser, :click, fn _session, _selector, _opts ->
         {:error, :element_not_found}
       end)
 
-      assert {:error, %JidoBrowser.Error.ElementError{}} =
+      assert {:error, %Jido.Browser.Error.ElementError{}} =
                Actions.Click.run(%{selector: "#nonexistent"}, context)
     end
 
     test "Navigate returns error on invalid URL", %{context: context} do
-      stub(JidoBrowser, :navigate, fn _session, _url, _opts ->
+      stub(Jido.Browser, :navigate, fn _session, _url, _opts ->
         {:error, :invalid_url}
       end)
 
-      assert {:error, %JidoBrowser.Error.NavigationError{}} =
+      assert {:error, %Jido.Browser.Error.NavigationError{}} =
                Actions.Navigate.run(%{url: "not-a-url"}, context)
     end
 
     test "Hover returns error when element not found", %{context: context, session: _session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"hovered" => false, "error" => "Element not found"}}}
       end)
 
-      assert {:error, %JidoBrowser.Error.ElementError{}} =
+      assert {:error, %Jido.Browser.Error.ElementError{}} =
                Actions.Hover.run(%{selector: "#nonexistent"}, context)
     end
 
     test "Focus returns error when element not found", %{context: context, session: _session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"focused" => false, "error" => "Element not found"}}}
       end)
 
-      assert {:error, %JidoBrowser.Error.ElementError{}} =
+      assert {:error, %Jido.Browser.Error.ElementError{}} =
                Actions.Focus.run(%{selector: "#nonexistent"}, context)
     end
 
     test "SelectOption returns error when element not found", %{context: context, session: _session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: %{"selected" => false, "error" => "Select element not found"}}}
       end)
 
-      assert {:error, %JidoBrowser.Error.ElementError{}} =
+      assert {:error, %Jido.Browser.Error.ElementError{}} =
                Actions.SelectOption.run(%{selector: "#nonexistent", value: "test"}, context)
     end
 
     test "GetText returns error when element not found", %{context: context, session: _session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: nil}}
       end)
 
-      assert {:error, %JidoBrowser.Error.ElementError{}} =
+      assert {:error, %Jido.Browser.Error.ElementError{}} =
                Actions.GetText.run(%{selector: "#nonexistent"}, context)
     end
 
     test "GetAttribute returns error when element not found", %{context: context, session: _session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: nil}}
       end)
 
-      assert {:error, %JidoBrowser.Error.ElementError{}} =
+      assert {:error, %Jido.Browser.Error.ElementError{}} =
                Actions.GetAttribute.run(%{selector: "#nonexistent", attribute: "href"}, context)
     end
   end
 
   describe "Context session resolution" do
     test "Actions use :session from context", %{session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: nil}}
       end)
 
@@ -556,7 +556,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Actions use :browser_session from context", %{session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: nil}}
       end)
 
@@ -564,7 +564,7 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Actions use tool_context session", %{session: session} do
-      stub(JidoBrowser, :evaluate, fn sess, _script, _opts ->
+      stub(Jido.Browser, :evaluate, fn sess, _script, _opts ->
         {:ok, sess, %{result: nil}}
       end)
 
@@ -572,19 +572,19 @@ defmodule JidoBrowser.ActionsTest do
     end
 
     test "Actions return error when no session in context" do
-      assert {:error, %JidoBrowser.Error.InvalidError{message: "No browser session in context"}} =
+      assert {:error, %Jido.Browser.Error.InvalidError{message: "No browser session in context"}} =
                Actions.Back.run(%{}, %{})
     end
   end
 
   describe "Session state contract" do
     test "navigate then click uses updated session", %{context: context, session: _session} do
-      stub(JidoBrowser, :navigate, fn sess, url, _opts ->
+      stub(Jido.Browser, :navigate, fn sess, url, _opts ->
         updated = %{sess | connection: Map.put(sess.connection, :current_url, url)}
         {:ok, updated, %{url: url}}
       end)
 
-      stub(JidoBrowser, :click, fn sess, selector, _opts ->
+      stub(Jido.Browser, :click, fn sess, selector, _opts ->
         assert sess.connection.current_url == "https://example.com"
         {:ok, sess, %{selector: selector, clicked: true}}
       end)

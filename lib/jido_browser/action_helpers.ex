@@ -1,12 +1,12 @@
-defmodule JidoBrowser.ActionHelpers do
+defmodule Jido.Browser.ActionHelpers do
   @moduledoc """
-  Shared helper functions for JidoBrowser action modules.
+  Shared helper functions for Jido.Browser action modules.
 
   Provides common utilities like session extraction with proper error handling
   (returning `{:error, reason}` tuples instead of raising).
   """
 
-  alias JidoBrowser.Error
+  alias Jido.Browser.Error
 
   @doc """
   Extracts the browser session from the action context.
@@ -24,10 +24,10 @@ defmodule JidoBrowser.ActionHelpers do
       {:ok, session}
 
       iex> get_session(%{})
-      {:error, %JidoBrowser.Error.InvalidError{message: "No browser session in context"}}
+      {:error, %Jido.Browser.Error.InvalidError{message: "No browser session in context"}}
 
   """
-  @spec get_session(map()) :: {:ok, JidoBrowser.Session.t()} | {:error, Error.InvalidError.t()}
+  @spec get_session(map()) :: {:ok, Jido.Browser.Session.t()} | {:error, Error.InvalidError.t()}
   def get_session(context) do
     case find_session(context) do
       nil -> {:error, Error.invalid_error("No browser session in context", %{})}

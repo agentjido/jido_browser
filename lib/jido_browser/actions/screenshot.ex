@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.Screenshot do
+defmodule Jido.Browser.Actions.Screenshot do
   @moduledoc """
   Jido Action for taking a screenshot.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.Screenshot]
+      tools: [Jido.Browser.Actions.Screenshot]
 
       # The agent can then call:
       # screenshot()
@@ -18,22 +18,22 @@ defmodule JidoBrowser.Actions.Screenshot do
     description: "Take a screenshot of the current page",
     category: "Browser",
     tags: ["browser", "screenshot", "capture", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       full_page: [type: :boolean, default: false, doc: "Capture the full scrollable page"],
       format: [type: {:in, [:png]}, default: :png, doc: "Image format (only PNG is currently supported)"],
       save_path: [type: :string, doc: "Optional file path to save the screenshot"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = Keyword.new(params) |> Keyword.take([:full_page, :format])
 
-      case JidoBrowser.screenshot(session, opts) do
+      case Jido.Browser.screenshot(session, opts) do
         {:ok, updated_session, %{bytes: bytes, mime: mime}} ->
           result = build_result(bytes, mime, updated_session)
           result = maybe_save_file(result, bytes, params[:save_path])

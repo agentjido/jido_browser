@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.GetAttribute do
+defmodule Jido.Browser.Actions.GetAttribute do
   @moduledoc """
   Jido Action for getting an attribute value from an element.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.GetAttribute]
+      tools: [Jido.Browser.Actions.GetAttribute]
 
       # The agent can then call:
       # get_attribute(selector: "a.link", attribute: "href")
@@ -18,14 +18,14 @@ defmodule JidoBrowser.Actions.GetAttribute do
     description: "Get an attribute value from an element",
     category: "Browser",
     tags: ["browser", "query", "web"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       selector: [type: :string, required: true, doc: "CSS selector for the element"],
       attribute: [type: :string, required: true, doc: "Attribute name to get"]
     ]
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(params, context) do
@@ -42,7 +42,7 @@ defmodule JidoBrowser.Actions.GetAttribute do
       })()
       """
 
-      case JidoBrowser.evaluate(session, script, []) do
+      case Jido.Browser.evaluate(session, script, []) do
         {:ok, _updated_session, %{result: nil}} ->
           {:error, Error.element_error("get_attribute", selector, "Element not found or attribute missing")}
 

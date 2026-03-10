@@ -1,4 +1,4 @@
-defmodule JidoBrowser.Actions.ReadPage do
+defmodule Jido.Browser.Actions.ReadPage do
   @moduledoc """
   Self-contained action that reads a web page and returns its content.
 
@@ -7,7 +7,7 @@ defmodule JidoBrowser.Actions.ReadPage do
 
   ## Usage with Jido Agent
 
-      tools: [JidoBrowser.Actions.ReadPage]
+      tools: [Jido.Browser.Actions.ReadPage]
 
       # The agent can then call:
       # read_page(url: "https://example.com")
@@ -22,7 +22,7 @@ defmodule JidoBrowser.Actions.ReadPage do
         "Manages browser session automatically.",
     category: "Browser",
     tags: ["browser", "web", "read", "content", "markdown"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: [
       url: [type: :string, required: true, doc: "The URL to read"],
       selector: [type: :string, default: "body", doc: "CSS selector to scope extraction"],
@@ -39,19 +39,19 @@ defmodule JidoBrowser.Actions.ReadPage do
     selector = Map.get(params, :selector, "body")
     format = Map.get(params, :format, :markdown)
 
-    case JidoBrowser.start_session(adapter: JidoBrowser.Adapters.Web) do
+    case Jido.Browser.start_session(adapter: Jido.Browser.Adapters.Web) do
       {:ok, session} ->
         try do
-          with {:ok, session, _nav_result} <- JidoBrowser.navigate(session, url),
+          with {:ok, session, _nav_result} <- Jido.Browser.navigate(session, url),
                {:ok, _session, %{content: content}} <-
-                 JidoBrowser.extract_content(session, selector: selector, format: format) do
+                 Jido.Browser.extract_content(session, selector: selector, format: format) do
             {:ok, %{url: url, content: content, format: format}}
           else
             {:error, reason} ->
               {:error, "Failed to read page #{url}: #{inspect(reason)}"}
           end
         after
-          JidoBrowser.end_session(session)
+          Jido.Browser.end_session(session)
         end
 
       {:error, reason} ->

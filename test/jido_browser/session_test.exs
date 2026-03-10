@@ -1,17 +1,17 @@
-defmodule JidoBrowser.SessionTest do
+defmodule Jido.Browser.SessionTest do
   use ExUnit.Case, async: true
 
-  alias JidoBrowser.Session
+  alias Jido.Browser.Session
 
   describe "new/1" do
     test "creates session with required fields" do
       assert {:ok, session} =
                Session.new(%{
-                 adapter: JidoBrowser.Adapters.Vibium,
+                 adapter: Jido.Browser.Adapters.Vibium,
                  connection: %{port: 9515}
                })
 
-      assert session.adapter == JidoBrowser.Adapters.Vibium
+      assert session.adapter == Jido.Browser.Adapters.Vibium
       assert session.connection == %{port: 9515}
       assert is_binary(session.id)
       assert %DateTime{} = session.started_at
@@ -21,7 +21,7 @@ defmodule JidoBrowser.SessionTest do
       assert {:ok, session} =
                Session.new(%{
                  id: "custom-id",
-                 adapter: JidoBrowser.Adapters.Vibium
+                 adapter: Jido.Browser.Adapters.Vibium
                })
 
       assert session.id == "custom-id"
@@ -30,7 +30,7 @@ defmodule JidoBrowser.SessionTest do
     test "defaults opts to empty map" do
       assert {:ok, session} =
                Session.new(%{
-                 adapter: JidoBrowser.Adapters.Vibium
+                 adapter: Jido.Browser.Adapters.Vibium
                })
 
       assert session.opts == %{}
@@ -41,7 +41,7 @@ defmodule JidoBrowser.SessionTest do
     test "returns session on success" do
       session =
         Session.new!(%{
-          adapter: JidoBrowser.Adapters.Vibium,
+          adapter: Jido.Browser.Adapters.Vibium,
           connection: %{port: 9515}
         })
 

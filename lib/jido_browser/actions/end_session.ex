@@ -1,11 +1,11 @@
-defmodule JidoBrowser.Actions.EndSession do
+defmodule Jido.Browser.Actions.EndSession do
   @moduledoc """
   Jido Action for ending a browser session.
 
   ## Usage with Jido Agent
 
       # In your agent's tool list
-      tools: [JidoBrowser.Actions.EndSession]
+      tools: [Jido.Browser.Actions.EndSession]
 
       # The agent can then call:
       # end_session()
@@ -18,16 +18,16 @@ defmodule JidoBrowser.Actions.EndSession do
     description: "End the current browser session",
     category: "Browser",
     tags: ["browser", "session", "lifecycle"],
-    vsn: "1.0.0",
+    vsn: "2.0.0",
     schema: []
 
-  alias JidoBrowser.ActionHelpers
-  alias JidoBrowser.Error
+  alias Jido.Browser.ActionHelpers
+  alias Jido.Browser.Error
 
   @impl true
   def run(_params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
-      case JidoBrowser.end_session(session) do
+      case Jido.Browser.end_session(session) do
         :ok ->
           {:ok, %{status: "success", message: "Session ended"}}
 
