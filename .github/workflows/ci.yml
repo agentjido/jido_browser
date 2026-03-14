@@ -141,9 +141,70 @@ jobs:
       test_command: mix test
 
   integration:
-    name: Integration
-    uses: agentjido/github-actions/.github/workflows/elixir-test.yml@main
-    with:
-      otp_versions: '["28"]'
-      elixir_versions: '["1.19"]'
-      test_command: mix jido_browser.install vibium web --if-missing && mix test --include integration
+    name: Integration / Elixir 1.19
+    runs-on: macos-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      MIX_ENV: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "28"
+          elixir-version: "1.19"
+
+      - name: Restore Hex/Mix cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.hex
+            ~/.mix
+          key: ${{ runner.os }}-beamtools-otp28-elixir1.19-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-beamtools-otp28-elixir1.19-
+
+      - name: Install Hex/Rebar
+        run: |
+          set -euo pipefail
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Restore dependencies cache
+        uses: actions/cache@v4
+        id: deps-cache
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-test-otp28-elixir1.19-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-test-otp28-elixir1.19-
+
+      - name: Remove cached rebar3 build artifacts in deps
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        run: |
+          if [ -d deps ]; then
+            find deps -maxdepth 6 -type d \( -name _build -o -name .rebar3 \) -prune -exec rm -rf {} + || true
+            find deps -maxdepth 6 -type f -name rebar3.crashdump -delete || true
+          fi
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Compile dependencies
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        run: mix deps.compile
+
+      - name: Compile project
+        run: mix compile --warnings-as-errors
+
+      - name: Install browser binaries
+        run: mix jido_browser.install vibium web --if-missing
+
+      - name: Run integration tests
+        run: mix test --include integration
