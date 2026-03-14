@@ -13,6 +13,11 @@ on:
         required: false
         type: boolean
         default: false
+      version_override:
+        description: "Optional explicit release version (use 2.0.0 for the first 2.0 release)"
+        required: false
+        type: string
+        default: ""
       skip_tests:
         description: "Skip tests before release"
         required: false
@@ -29,5 +34,6 @@ jobs:
     with:
       dry_run: ${{ inputs.dry_run }}
       hex_dry_run: ${{ inputs.hex_dry_run }}
+      version_override: ${{ inputs.version_override }}
       skip_tests: ${{ inputs.skip_tests }}
     secrets: inherit

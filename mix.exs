@@ -77,6 +77,7 @@ defmodule Jido.Browser.MixProject do
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:doctor, "~> 0.21", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: [:dev, :test]},
+      {:git_ops, "~> 2.9", only: :dev, runtime: false},
       {:git_hooks, "~> 0.8", only: [:dev, :test], runtime: false},
       {:mimic, "~> 2.3", only: :test}
     ]
