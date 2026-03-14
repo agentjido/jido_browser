@@ -2,6 +2,6 @@ import Config
 
 # Test configuration
 config :jido_browser,
-  adapter: JidoBrowser.Adapters.Web
+  adapter: Jido.Browser.Adapters.AgentBrowser
 
 config :logger, level: :warning

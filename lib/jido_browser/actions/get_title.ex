@@ -30,15 +30,9 @@ defmodule Jido.Browser.Actions.GetTitle do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = if params[:timeout], do: [timeout: params[:timeout]], else: []
 
-      case Jido.Browser.evaluate(session, "document.title", opts) do
-        {:ok, updated_session, %{result: title}} when is_binary(title) ->
-          {:ok, %{status: "success", title: title, session: updated_session}}
-
-        {:ok, updated_session, %{result: %{"value" => title}}} ->
-          {:ok, %{status: "success", title: title, session: updated_session}}
-
-        {:ok, updated_session, %{result: result}} ->
-          {:ok, %{status: "success", title: to_string(result), session: updated_session}}
+      case Jido.Browser.get_title(session, opts) do
+        {:ok, updated_session, result} ->
+          build_title_response(updated_session, result)
 
         {:error, %Error.AdapterError{} = error} ->
           {:error, error}
@@ -48,4 +42,16 @@ defmodule Jido.Browser.Actions.GetTitle do
       end
     end
   end
+
+  defp build_title_response(updated_session, result) do
+    title =
+      result
+      |> ActionHelpers.get_value(:title)
+      |> normalize_string()
+
+    {:ok, %{status: "success", title: title, session: updated_session}}
+  end
+
+  defp normalize_string(value) when is_binary(value), do: value
+  defp normalize_string(value), do: to_string(value)
 end

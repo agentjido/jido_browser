@@ -40,15 +40,9 @@ defmodule Jido.Browser.Actions.WaitForSelector do
       state = params[:state] || :visible
       timeout = params[:timeout] || 30_000
 
-      js = build_wait_js(selector, state, timeout)
-
-      case Jido.Browser.evaluate(session, js, []) do
-        {:ok, updated_session, %{result: %{"found" => true, "elapsed" => elapsed}}} ->
-          {:ok, %{status: "success", selector: selector, state: state, elapsed_ms: elapsed, session: updated_session}}
-
-        {:ok, updated_session, %{result: %{"found" => true} = result}} ->
-          elapsed = Map.get(result, "elapsed", 0)
-          {:ok, %{status: "success", selector: selector, state: state, elapsed_ms: elapsed, session: updated_session}}
+      case Jido.Browser.wait_for_selector(session, selector, state: state, timeout: timeout) do
+        {:ok, updated_session, data} ->
+          handle_wait_result(selector, state, updated_session, data)
 
         {:error, reason} ->
           {:error, Error.element_error("wait_for_selector", selector, reason)}
@@ -56,33 +50,19 @@ defmodule Jido.Browser.Actions.WaitForSelector do
     end
   end
 
-  defp build_wait_js(selector, state, timeout) do
-    state_str = Atom.to_string(state)
-    escaped_selector = String.replace(selector, "'", "\\'")
+  defp handle_wait_result(selector, state, updated_session, data) do
+    result = ActionHelpers.unwrap_result(data)
 
-    """
-    (function waitForSelector(sel, state, timeout) {
-      const start = Date.now();
-      return new Promise((resolve, reject) => {
-        function check() {
-          const el = document.querySelector(sel);
-          const elapsed = Date.now() - start;
-          if (elapsed > timeout) {
-            reject(new Error('Timeout waiting for ' + sel));
-            return;
-          }
-          let found = false;
-          if (state === 'attached') found = !!el;
-          else if (state === 'detached') found = !el;
-          else if (state === 'visible') found = el && el.offsetParent !== null;
-          else if (state === 'hidden') found = !el || el.offsetParent === null;
-          
-          if (found) resolve({found: true, elapsed: elapsed});
-          else setTimeout(check, 100);
-        }
-        check();
-      });
-    })('#{escaped_selector}', '#{state_str}', #{timeout})
-    """
+    if ActionHelpers.get_value(result, :found) == false do
+      {:error,
+       Error.element_error(
+         "wait_for_selector",
+         selector,
+         ActionHelpers.get_value(result, :error) || "Selector condition not met"
+       )}
+    else
+      elapsed = ActionHelpers.get_value(result, :elapsed) || 0
+      {:ok, %{status: "success", selector: selector, state: state, elapsed_ms: elapsed, session: updated_session}}
+    end
   end
 end

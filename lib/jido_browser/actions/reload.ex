@@ -30,9 +30,9 @@ defmodule Jido.Browser.Actions.Reload do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = if params[:timeout], do: [timeout: params[:timeout]], else: []
 
-      case Jido.Browser.evaluate(session, "window.location.reload()", opts) do
-        {:ok, updated_session, _} ->
-          {:ok, %{status: "success", action: "reload", session: updated_session}}
+      case Jido.Browser.reload(session, opts) do
+        {:ok, updated_session, result} ->
+          {:ok, %{status: "success", action: "reload", result: result, session: updated_session}}
 
         {:error, %Error.EvaluationError{} = error} ->
           {:error, error}

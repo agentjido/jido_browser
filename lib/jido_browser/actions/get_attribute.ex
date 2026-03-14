@@ -33,32 +33,30 @@ defmodule Jido.Browser.Actions.GetAttribute do
       selector = params.selector
       attribute = params.attribute
 
-      script = """
-      (function() {
-        const selector = #{Jason.encode!(selector)};
-        const attribute = #{Jason.encode!(attribute)};
-        const el = document.querySelector(selector);
-        return el ? el.getAttribute(attribute) : null;
-      })()
-      """
-
-      case Jido.Browser.evaluate(session, script, []) do
-        {:ok, _updated_session, %{result: nil}} ->
-          {:error, Error.element_error("get_attribute", selector, "Element not found or attribute missing")}
-
-        {:ok, updated_session, %{result: value}} ->
-          {:ok,
-           %{
-             status: "success",
-             selector: selector,
-             attribute: attribute,
-             value: value,
-             session: updated_session
-           }}
+      case Jido.Browser.get_attribute(session, selector, attribute) do
+        {:ok, updated_session, result} ->
+          handle_attribute_result(selector, attribute, updated_session, result)
 
         {:error, reason} ->
           {:error, Error.element_error("get_attribute", selector, reason)}
       end
+    end
+  end
+
+  defp handle_attribute_result(selector, attribute, updated_session, result) do
+    case ActionHelpers.get_value(result, :value) do
+      nil ->
+        {:error, Error.element_error("get_attribute", selector, "Element not found or attribute missing")}
+
+      value ->
+        {:ok,
+         %{
+           status: "success",
+           selector: selector,
+           attribute: attribute,
+           value: value,
+           session: updated_session
+         }}
     end
   end
 end

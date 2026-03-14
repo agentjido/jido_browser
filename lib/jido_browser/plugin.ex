@@ -1,8 +1,11 @@
 # Ensure actions are compiled before the plugin
 require Jido.Browser.Actions.Back
 require Jido.Browser.Actions.Click
+require Jido.Browser.Actions.CloseTab
+require Jido.Browser.Actions.Console
 require Jido.Browser.Actions.EndSession
 require Jido.Browser.Actions.Evaluate
+require Jido.Browser.Actions.Errors
 require Jido.Browser.Actions.ExtractContent
 require Jido.Browser.Actions.Focus
 require Jido.Browser.Actions.Forward
@@ -13,14 +16,19 @@ require Jido.Browser.Actions.GetTitle
 require Jido.Browser.Actions.GetUrl
 require Jido.Browser.Actions.Hover
 require Jido.Browser.Actions.IsVisible
+require Jido.Browser.Actions.ListTabs
+require Jido.Browser.Actions.LoadState
 require Jido.Browser.Actions.Navigate
+require Jido.Browser.Actions.NewTab
 require Jido.Browser.Actions.Query
 require Jido.Browser.Actions.Reload
+require Jido.Browser.Actions.SaveState
 require Jido.Browser.Actions.Screenshot
 require Jido.Browser.Actions.Scroll
 require Jido.Browser.Actions.SelectOption
 require Jido.Browser.Actions.Snapshot
 require Jido.Browser.Actions.StartSession
+require Jido.Browser.Actions.SwitchTab
 require Jido.Browser.Actions.Type
 require Jido.Browser.Actions.Wait
 require Jido.Browser.Actions.WaitForNavigation
@@ -69,6 +77,8 @@ defmodule Jido.Browser.Plugin do
       Jido.Browser.Actions.StartSession,
       Jido.Browser.Actions.EndSession,
       Jido.Browser.Actions.GetStatus,
+      Jido.Browser.Actions.SaveState,
+      Jido.Browser.Actions.LoadState,
       # Navigation
       Jido.Browser.Actions.Navigate,
       Jido.Browser.Actions.Back,
@@ -92,10 +102,18 @@ defmodule Jido.Browser.Plugin do
       Jido.Browser.Actions.GetText,
       Jido.Browser.Actions.GetAttribute,
       Jido.Browser.Actions.IsVisible,
+      # Tabs
+      Jido.Browser.Actions.ListTabs,
+      Jido.Browser.Actions.NewTab,
+      Jido.Browser.Actions.SwitchTab,
+      Jido.Browser.Actions.CloseTab,
       # Content extraction
       Jido.Browser.Actions.Snapshot,
       Jido.Browser.Actions.Screenshot,
       Jido.Browser.Actions.ExtractContent,
+      # Diagnostics
+      Jido.Browser.Actions.Console,
+      Jido.Browser.Actions.Errors,
       # Advanced
       Jido.Browser.Actions.Evaluate,
       # Self-contained composite actions (manage own session)
@@ -114,7 +132,7 @@ defmodule Jido.Browser.Plugin do
       session: nil,
       headless: Map.get(config, :headless, true),
       timeout: Map.get(config, :timeout, 30_000),
-      adapter: Map.get(config, :adapter),
+      adapter: Map.get(config, :adapter, Jido.Browser.Adapters.AgentBrowser),
       viewport: Map.get(config, :viewport, %{width: 1280, height: 720}),
       base_url: Map.get(config, :base_url),
       last_url: nil,
@@ -144,6 +162,8 @@ defmodule Jido.Browser.Plugin do
       {"browser.start_session", Jido.Browser.Actions.StartSession},
       {"browser.end_session", Jido.Browser.Actions.EndSession},
       {"browser.get_status", Jido.Browser.Actions.GetStatus},
+      {"browser.save_state", Jido.Browser.Actions.SaveState},
+      {"browser.load_state", Jido.Browser.Actions.LoadState},
       # Navigation
       {"browser.navigate", Jido.Browser.Actions.Navigate},
       {"browser.back", Jido.Browser.Actions.Back},
@@ -167,10 +187,18 @@ defmodule Jido.Browser.Plugin do
       {"browser.get_text", Jido.Browser.Actions.GetText},
       {"browser.get_attribute", Jido.Browser.Actions.GetAttribute},
       {"browser.is_visible", Jido.Browser.Actions.IsVisible},
+      # Tabs
+      {"browser.tab_list", Jido.Browser.Actions.ListTabs},
+      {"browser.tab_new", Jido.Browser.Actions.NewTab},
+      {"browser.tab_switch", Jido.Browser.Actions.SwitchTab},
+      {"browser.tab_close", Jido.Browser.Actions.CloseTab},
       # Content extraction
       {"browser.snapshot", Jido.Browser.Actions.Snapshot},
       {"browser.screenshot", Jido.Browser.Actions.Screenshot},
       {"browser.extract", Jido.Browser.Actions.ExtractContent},
+      # Diagnostics
+      {"browser.console", Jido.Browser.Actions.Console},
+      {"browser.errors", Jido.Browser.Actions.Errors},
       # Advanced
       {"browser.evaluate", Jido.Browser.Actions.Evaluate},
       # Self-contained composite actions
@@ -189,11 +217,13 @@ defmodule Jido.Browser.Plugin do
   def transform_result(_action, {:ok, result}, _context) when is_map(result) do
     case Map.get(result, :session) do
       %Jido.Browser.Session{} = session ->
-        current_url = get_in(session, [:connection, :current_url])
+        current_url = Map.get(result, :url) || Map.get(result, "url") || get_in(session, [:connection, :current_url])
+        current_title = Map.get(result, :title) || Map.get(result, "title") || get_in(session, [:connection, :title])
 
         state_updates = %{
           session: session,
-          last_url: current_url
+          last_url: current_url,
+          last_title: current_title
         }
 
         {:ok, result, state_updates}
@@ -236,6 +266,8 @@ defmodule Jido.Browser.Plugin do
       "browser.start_session",
       "browser.end_session",
       "browser.get_status",
+      "browser.save_state",
+      "browser.load_state",
       # Navigation
       "browser.navigate",
       "browser.back",
@@ -259,10 +291,18 @@ defmodule Jido.Browser.Plugin do
       "browser.get_text",
       "browser.get_attribute",
       "browser.is_visible",
+      # Tabs
+      "browser.tab_list",
+      "browser.tab_new",
+      "browser.tab_switch",
+      "browser.tab_close",
       # Content extraction
       "browser.snapshot",
       "browser.screenshot",
       "browser.extract",
+      # Diagnostics
+      "browser.console",
+      "browser.errors",
       # Advanced
       "browser.evaluate",
       # Self-contained composite actions

@@ -18,7 +18,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
   setup do
     session =
       Session.new!(%{
-        adapter: Jido.Browser.Adapters.Web,
+        adapter: Jido.Browser.Adapters.AgentBrowser,
         connection: %{profile: "default", current_url: nil}
       })
 
@@ -27,8 +27,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
   describe "ReadPage.run/2" do
     test "returns content and closes session on success", %{session: session} do
-      expect(Jido.Browser, :start_session, fn opts ->
-        assert opts == [adapter: Jido.Browser.Adapters.Web]
+      expect(Jido.Browser, :start_session, fn ->
         {:ok, session}
       end)
 
@@ -56,7 +55,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
     end
 
     test "returns wrapped error and closes session when navigation fails", %{session: session} do
-      expect(Jido.Browser, :start_session, fn [adapter: Jido.Browser.Adapters.Web] -> {:ok, session} end)
+      expect(Jido.Browser, :start_session, fn -> {:ok, session} end)
 
       expect(Jido.Browser, :navigate, fn ^session, "https://example.com" ->
         {:error, :navigation_failed}
@@ -72,16 +71,17 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
   describe "SnapshotUrl.run/2" do
     test "returns rich snapshot when evaluate returns structured data", %{session: session} do
-      expect(Jido.Browser, :start_session, fn [adapter: Jido.Browser.Adapters.Web] -> {:ok, session} end)
+      expect(Jido.Browser, :start_session, fn -> {:ok, session} end)
 
       expect(Jido.Browser, :navigate, fn ^session, "https://example.com" ->
         {:ok, session, %{url: "https://example.com"}}
       end)
 
-      expect(Jido.Browser, :evaluate, fn ^session, script, [] ->
-        assert script =~ "function snapshot"
+      expect(Jido.Browser, :snapshot, fn ^session, opts ->
+        assert opts[:selector] == "body"
+        assert opts[:max_content_length] == 50_000
 
-        {:ok, session, %{result: %{"url" => "https://example.com", "title" => "Example Domain", "content" => "Hello"}}}
+        {:ok, session, %{"url" => "https://example.com", "title" => "Example Domain", "snapshot" => "Hello"}}
       end)
 
       expect(Jido.Browser, :end_session, fn ^session -> :ok end)
@@ -92,14 +92,14 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
     end
 
     test "falls back to extract_content when evaluate does not return JSON", %{session: session} do
-      expect(Jido.Browser, :start_session, fn [adapter: Jido.Browser.Adapters.Web] -> {:ok, session} end)
+      expect(Jido.Browser, :start_session, fn -> {:ok, session} end)
 
       expect(Jido.Browser, :navigate, fn ^session, "https://example.com" ->
         {:ok, session, %{url: "https://example.com"}}
       end)
 
-      expect(Jido.Browser, :evaluate, fn ^session, _script, [] ->
-        {:ok, session, %{result: "not-json"}}
+      expect(Jido.Browser, :snapshot, fn ^session, _opts ->
+        {:error, :snapshot_failed}
       end)
 
       expect(Jido.Browser, :extract_content, fn ^session, opts ->
@@ -204,6 +204,14 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
         assert Installer.configured_version(:vibium) == "9.9.9"
       end)
 
+      with_app_env(:jido_browser, :agent_browser_version, nil, fn ->
+        assert Installer.configured_version(:agent_browser) == "0.20.2"
+      end)
+
+      with_app_env(:jido_browser, :agent_browser_version, "0.30.0", fn ->
+        assert Installer.configured_version(:agent_browser) == "0.30.0"
+      end)
+
       with_app_env(:jido_browser, :web_version, nil, fn ->
         assert Installer.configured_version(:web) == "main"
       end)
@@ -239,6 +247,26 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
         with_app_env(:jido_browser, :vibium, [binary_path: path], fn ->
           assert Installer.bin_path(:vibium) == path
           assert Installer.installed?(:vibium)
+        end)
+      after
+        File.rm(path)
+      end
+    end
+
+    test "bin_path/installed? use configured agent-browser path when present" do
+      path =
+        Path.join(
+          System.tmp_dir!(),
+          "jido_browser_test_agent_browser_#{System.unique_integer([:positive])}"
+        )
+
+      File.write!(path, "agent-browser")
+      File.chmod!(path, 0o755)
+
+      try do
+        with_app_env(:jido_browser, :agent_browser, [binary_path: path], fn ->
+          assert Installer.bin_path(:agent_browser) == path
+          assert Installer.installed?(:agent_browser)
         end)
       after
         File.rm(path)

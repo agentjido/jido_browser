@@ -37,11 +37,9 @@ defmodule Jido.Browser.Actions.Scroll do
   @impl true
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
-      script = build_scroll_script(params)
-
-      case Jido.Browser.evaluate(session, script, []) do
-        {:ok, updated_session, %{result: result}} ->
-          {:ok, %{status: "success", result: result, session: updated_session}}
+      case Jido.Browser.scroll(session, Keyword.new(params)) do
+        {:ok, updated_session, data} ->
+          handle_scroll_result(params, updated_session, data)
 
         {:error, reason} ->
           {:error, Error.adapter_error("Scroll failed", %{reason: reason})}
@@ -49,39 +47,29 @@ defmodule Jido.Browser.Actions.Scroll do
     end
   end
 
-  defp build_scroll_script(%{selector: selector}) when is_binary(selector) do
-    """
-    (() => {
-      const el = document.querySelector(#{inspect(selector)});
-      if (el) {
-        el.scrollIntoView({behavior: 'smooth', block: 'center'});
-        return {scrolled: true, selector: #{inspect(selector)}};
-      }
-      return {scrolled: false, error: 'Element not found'};
-    })()
-    """
-  end
+  defp handle_scroll_result(params, updated_session, data) do
+    result = ActionHelpers.unwrap_result(data)
 
-  defp build_scroll_script(%{direction: direction}) when direction in [:up, :down, :top, :bottom] do
-    case direction do
-      :top ->
-        "(() => { window.scrollTo(0, 0); return {scrolled: true, direction: 'top'}; })()"
-
-      :bottom ->
-        "(() => { window.scrollTo(0, document.body.scrollHeight); return {scrolled: true, direction: 'bottom'}; })()"
-
-      :up ->
-        "(() => { window.scrollBy(0, -500); return {scrolled: true, direction: 'up', pixels: -500}; })()"
-
-      :down ->
-        "(() => { window.scrollBy(0, 500); return {scrolled: true, direction: 'down', pixels: 500}; })()"
+    if ActionHelpers.get_value(result, :scrolled) == false do
+      handle_scroll_error(params, result)
+    else
+      {:ok, %{status: "success", result: result, session: updated_session}}
     end
   end
 
-  defp build_scroll_script(params) do
-    x = Map.get(params, :x, 0)
-    y = Map.get(params, :y, 0)
+  defp handle_scroll_error(%{selector: selector}, result) do
+    {:error,
+     Error.element_error(
+       "scroll",
+       selector,
+       ActionHelpers.get_value(result, :error) || "Element not found"
+     )}
+  end
 
-    "(() => { window.scrollBy(#{x}, #{y}); return {scrolled: true, x: #{x}, y: #{y}}; })()"
+  defp handle_scroll_error(_params, result) do
+    {:error,
+     Error.adapter_error("Scroll failed", %{
+       reason: ActionHelpers.get_value(result, :error) || "Scroll command failed"
+     })}
   end
 end

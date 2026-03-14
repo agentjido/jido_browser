@@ -31,31 +31,30 @@ defmodule Jido.Browser.Actions.Hover do
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       selector = params.selector
-
-      script = """
-      (() => {
-        const el = document.querySelector(#{inspect(selector)});
-        if (el) {
-          el.dispatchEvent(new MouseEvent('mouseenter', {bubbles: true, cancelable: true}));
-          el.dispatchEvent(new MouseEvent('mouseover', {bubbles: true, cancelable: true}));
-          return {hovered: true, selector: #{inspect(selector)}};
-        }
-        return {hovered: false, error: 'Element not found'};
-      })()
-      """
-
       opts = Keyword.new(params) |> Keyword.take([:timeout])
 
-      case Jido.Browser.evaluate(session, script, opts) do
-        {:ok, updated_session, %{result: %{"hovered" => true} = result}} ->
-          {:ok, %{status: "success", selector: selector, result: result, session: updated_session}}
-
-        {:ok, _updated_session, %{result: %{"hovered" => false, "error" => error}}} ->
-          {:error, Error.element_error("hover", selector, error)}
+      case Jido.Browser.hover(session, selector, opts) do
+        {:ok, updated_session, data} ->
+          handle_hover_result(selector, updated_session, data)
 
         {:error, reason} ->
           {:error, Error.element_error("hover", selector, reason)}
       end
+    end
+  end
+
+  defp handle_hover_result(selector, updated_session, data) do
+    result = ActionHelpers.unwrap_result(data)
+
+    if ActionHelpers.get_value(result, :hovered) == false do
+      {:error,
+       Error.element_error(
+         "hover",
+         selector,
+         ActionHelpers.get_value(result, :error) || "Element not found"
+       )}
+    else
+      {:ok, %{status: "success", selector: selector, result: result, session: updated_session}}
     end
   end
 end

@@ -27,25 +27,17 @@ defmodule Jido.Browser.Actions.GetStatus do
   @impl true
   def run(_params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
-      case Jido.Browser.evaluate(
-             session,
-             "({url: window.location.href, title: document.title})",
-             []
-           ) do
-        {:ok, updated_session, %{result: result}} ->
-          {:ok,
-           %{
-             status: "success",
-             alive: true,
-             url: result["url"],
-             title: result["title"],
-             adapter: session.adapter |> to_string(),
-             session: updated_session
-           }}
+      {:ok, updated_session, result} = Jido.Browser.get_status(session)
 
-        {:error, _} ->
-          {:ok, %{status: "success", alive: false, url: nil, title: nil}}
-      end
+      {:ok,
+       %{
+         status: "success",
+         alive: ActionHelpers.get_value(result, :alive),
+         url: ActionHelpers.get_value(result, :url),
+         title: ActionHelpers.get_value(result, :title),
+         adapter: session.adapter |> to_string(),
+         session: updated_session
+       }}
     end
   end
 end

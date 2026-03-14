@@ -34,14 +34,16 @@ defmodule Jido.Browser.Actions.WaitForNavigation do
       url_pattern = params[:url]
       timeout = params[:timeout] || 30_000
 
-      js = build_wait_js(url_pattern, timeout)
+      opts =
+        []
+        |> Keyword.put(:timeout, timeout)
+        |> maybe_put_url(url_pattern)
 
-      case Jido.Browser.evaluate(session, js, []) do
-        {:ok, updated_session, %{result: %{"url" => url, "elapsed" => elapsed}}} ->
-          {:ok, %{status: "success", url: url, elapsed_ms: elapsed, session: updated_session}}
-
-        {:ok, updated_session, %{result: %{"url" => url} = result}} ->
-          elapsed = Map.get(result, "elapsed", 0)
+      case Jido.Browser.wait_for_navigation(session, opts) do
+        {:ok, updated_session, data} ->
+          result = ActionHelpers.unwrap_result(data)
+          url = ActionHelpers.get_value(result, :url) || url_pattern
+          elapsed = ActionHelpers.get_value(result, :elapsed) || 0
           {:ok, %{status: "success", url: url, elapsed_ms: elapsed, session: updated_session}}
 
         {:error, reason} ->
@@ -50,53 +52,6 @@ defmodule Jido.Browser.Actions.WaitForNavigation do
     end
   end
 
-  defp build_wait_js(nil, timeout) do
-    """
-    (function waitForNav(urlPattern, timeout) {
-      const start = Date.now();
-      const startUrl = window.location.href;
-      return new Promise((resolve, reject) => {
-        function check() {
-          const elapsed = Date.now() - start;
-          if (elapsed > timeout) {
-            reject(new Error('Navigation timeout'));
-            return;
-          }
-          const currentUrl = window.location.href;
-          const changed = currentUrl !== startUrl;
-          const matches = !urlPattern || currentUrl.includes(urlPattern);
-          if (changed && matches) resolve({url: currentUrl, elapsed: elapsed});
-          else setTimeout(check, 100);
-        }
-        check();
-      });
-    })(null, #{timeout})
-    """
-  end
-
-  defp build_wait_js(url_pattern, timeout) do
-    escaped_pattern = String.replace(url_pattern, "'", "\\'")
-
-    """
-    (function waitForNav(urlPattern, timeout) {
-      const start = Date.now();
-      const startUrl = window.location.href;
-      return new Promise((resolve, reject) => {
-        function check() {
-          const elapsed = Date.now() - start;
-          if (elapsed > timeout) {
-            reject(new Error('Navigation timeout'));
-            return;
-          }
-          const currentUrl = window.location.href;
-          const changed = currentUrl !== startUrl;
-          const matches = !urlPattern || currentUrl.includes(urlPattern);
-          if (changed && matches) resolve({url: currentUrl, elapsed: elapsed});
-          else setTimeout(check, 100);
-        }
-        check();
-      });
-    })('#{escaped_pattern}', #{timeout})
-    """
-  end
+  defp maybe_put_url(opts, nil), do: opts
+  defp maybe_put_url(opts, url_pattern), do: Keyword.put(opts, :url, url_pattern)
 end

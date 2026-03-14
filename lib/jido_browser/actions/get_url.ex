@@ -30,15 +30,9 @@ defmodule Jido.Browser.Actions.GetUrl do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = if params[:timeout], do: [timeout: params[:timeout]], else: []
 
-      case Jido.Browser.evaluate(session, "window.location.href", opts) do
-        {:ok, updated_session, %{result: url}} when is_binary(url) ->
-          {:ok, %{status: "success", url: url, session: updated_session}}
-
-        {:ok, updated_session, %{result: %{"value" => url}}} ->
-          {:ok, %{status: "success", url: url, session: updated_session}}
-
-        {:ok, updated_session, %{result: result}} ->
-          {:ok, %{status: "success", url: to_string(result), session: updated_session}}
+      case Jido.Browser.get_url(session, opts) do
+        {:ok, updated_session, result} ->
+          build_url_response(updated_session, result)
 
         {:error, %Error.AdapterError{} = error} ->
           {:error, error}
@@ -48,4 +42,16 @@ defmodule Jido.Browser.Actions.GetUrl do
       end
     end
   end
+
+  defp build_url_response(updated_session, result) do
+    url =
+      result
+      |> ActionHelpers.get_value(:url)
+      |> normalize_string()
+
+    {:ok, %{status: "success", url: url, session: updated_session}}
+  end
+
+  defp normalize_string(value) when is_binary(value), do: value
+  defp normalize_string(value), do: to_string(value)
 end

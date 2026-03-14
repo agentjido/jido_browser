@@ -33,26 +33,10 @@ defmodule Jido.Browser.Actions.Query do
       selector = params.selector
       limit = Map.get(params, :limit, 10)
 
-      script = """
-      (function() {
-        const selector = #{Jason.encode!(selector)};
-        const limit = #{limit};
-        return Array.from(document.querySelectorAll(selector)).slice(0, limit).map((el, i) => ({
-          index: i,
-          tag: el.tagName.toLowerCase(),
-          id: el.id || null,
-          classes: Array.from(el.classList),
-          text: el.innerText?.substring(0, 100) || ''
-        }));
-      })()
-      """
-
-      case Jido.Browser.evaluate(session, script, []) do
-        {:ok, updated_session, %{result: elements}} when is_list(elements) ->
-          {:ok, %{status: "success", count: length(elements), elements: elements, session: updated_session}}
-
-        {:ok, updated_session, %{result: _}} ->
-          {:ok, %{status: "success", count: 0, elements: [], session: updated_session}}
+      case Jido.Browser.query(session, selector, limit: limit) do
+        {:ok, updated_session, data} ->
+          result = ActionHelpers.unwrap_result(data)
+          {:ok, result |> Map.put(:status, "success") |> Map.put(:session, updated_session)}
 
         {:error, reason} ->
           {:error, Error.element_error("query", selector, reason)}

@@ -7,14 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Jido.Browser.Adapters.AgentBrowser` as the default 2.0 backend
+- supervised `agent-browser` session runtime with direct JSON socket/TCP transport
+- first-class browser state actions: `SaveState` and `LoadState`
+- first-class tab actions: `ListTabs`, `NewTab`, `SwitchTab`, and `CloseTab`
+- first-class diagnostics actions: `Console` and `Errors`
+- Elixir-side HTML-to-Markdown extraction via `html2markdown`
+
 ### Changed
 
 - Rename the public Elixir namespace from `JidoBrowser.*` to `Jido.Browser.*`
 - Keep source and test files in `lib/jido_browser/**` and `test/jido_browser/**` while exposing the `Jido.Browser.*` namespace
+- make `agent-browser` the default backend for `Jido.Browser`, the plugin, config, and installer
+- route action modules and composite actions through native `Jido.Browser` APIs instead of ad hoc JavaScript evaluation where supported
+- expand `Jido.Browser.Session` with runtime metadata and discovered capabilities
+- update the plugin surface from 29 to 37 actions
+- treat `Vibium` and `Web` as legacy, feature-frozen adapters in 2.0
 
 ### Fixed
 
 - Sync `mix.lock` with the stable `jido ~> 2.0` / `jido_action ~> 2.0` dependency declarations in `mix.exs`
+- preserve boolean `false` values when normalizing action result maps
 
 ## [1.0.0] - 2026-02-22
 

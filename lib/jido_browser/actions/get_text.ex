@@ -33,37 +33,33 @@ defmodule Jido.Browser.Actions.GetText do
       selector = params.selector
       all = Map.get(params, :all, false)
 
-      script =
-        if all do
-          """
-          (function() {
-            const selector = #{Jason.encode!(selector)};
-            return Array.from(document.querySelectorAll(selector)).map(el => el.innerText || '');
-          })()
-          """
-        else
-          """
-          (function() {
-            const selector = #{Jason.encode!(selector)};
-            const el = document.querySelector(selector);
-            return el ? el.innerText || '' : null;
-          })()
-          """
-        end
-
-      case Jido.Browser.evaluate(session, script, []) do
-        {:ok, _updated_session, %{result: nil}} ->
-          {:error, Error.element_error("get_text", selector, "Element not found")}
-
-        {:ok, updated_session, %{result: texts}} when is_list(texts) ->
-          {:ok, %{status: "success", selector: selector, texts: texts, session: updated_session}}
-
-        {:ok, updated_session, %{result: text}} ->
-          {:ok, %{status: "success", selector: selector, text: text, session: updated_session}}
+      case Jido.Browser.get_text(session, selector, all: all) do
+        {:ok, updated_session, result} ->
+          handle_text_result(selector, updated_session, result)
 
         {:error, reason} ->
           {:error, Error.element_error("get_text", selector, reason)}
       end
+    end
+  end
+
+  defp handle_text_result(selector, updated_session, result) do
+    case ActionHelpers.get_value(result, :texts) do
+      texts when is_list(texts) ->
+        {:ok, %{status: "success", selector: selector, texts: texts, session: updated_session}}
+
+      _ ->
+        single_text_result(selector, updated_session, result)
+    end
+  end
+
+  defp single_text_result(selector, updated_session, result) do
+    case ActionHelpers.get_value(result, :text) do
+      nil ->
+        {:error, Error.element_error("get_text", selector, "Element not found")}
+
+      text ->
+        {:ok, %{status: "success", selector: selector, text: text, session: updated_session}}
     end
   end
 end
