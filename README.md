@@ -76,7 +76,7 @@ mix jido_browser.install web
 
 **Vibium:**
 ```bash
-npm install -g vibium @vibium/darwin-arm64  # or your platform
+npm install -g vibium@26.3.11 @vibium/darwin-arm64@26.3.11  # or your platform
 ```
 
 **Web:**
@@ -145,7 +145,7 @@ config :jido_browser,
 
 # Vibium-specific options
 config :jido_browser, :vibium,
-  binary_path: "/usr/local/bin/clicker"
+  binary_path: "/path/to/vibium"
 
 # Web adapter options
 config :jido_browser, :web,
