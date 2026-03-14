@@ -203,8 +203,11 @@ jobs:
       - name: Compile project
         run: mix compile --warnings-as-errors
 
+      - name: Clear cached browser install
+        run: rm -rf _build/jido_browser-*
+
       - name: Install browser binaries
-        run: mix jido_browser.install vibium web --if-missing
+        run: mix jido_browser.install vibium web --force
 
       - name: Run integration tests
         run: mix test --include integration
