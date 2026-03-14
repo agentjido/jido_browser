@@ -60,8 +60,8 @@ defmodule Jido.Browser.Adapters.AgentBrowserIntegrationTest do
       assert is_map(refs)
       assert map_size(refs) > 0
 
-      input_ref = ref_from_snapshot!(snapshot_text, "Ref Input Marker")
-      button_ref = ref_from_snapshot!(snapshot_text, "Use Ref Button Marker")
+      input_ref = ref_from_refs!(refs, "Ref Input Marker")
+      button_ref = ref_from_refs!(refs, "Use Ref Button Marker")
 
       {:ok, session, _type_result} =
         Browser.type(session, input_ref, "from ref", clear: true, timeout: @command_timeout)
@@ -178,6 +178,33 @@ defmodule Jido.Browser.Adapters.AgentBrowserIntegrationTest do
     end
   end
 
+  describe "element queries" do
+    test "returns a stable query result shape with elements and count", %{session: session, base_url: base_url} do
+      {:ok, session, _nav_result} = Browser.navigate(session, "#{base_url}/", timeout: @command_timeout)
+
+      {:ok, _session, result} = Browser.query(session, "a", limit: 1, timeout: @command_timeout)
+
+      assert fetch_value(result, :count) == 1
+
+      assert [
+               %{
+                 "tag" => "a",
+                 "text" => "Next Page"
+               }
+             ] = fetch_value(result, :elements)
+    end
+
+    test "gets element attributes through the native adapter", %{session: session, base_url: base_url} do
+      {:ok, session, _nav_result} =
+        Browser.navigate(session, "#{base_url}/article", timeout: @command_timeout)
+
+      {:ok, _session, result} =
+        Browser.get_attribute(session, "article", "data-testid", timeout: @command_timeout)
+
+      assert fetch_value(result, :value) == "fixture-article"
+    end
+  end
+
   describe "content extraction" do
     test "extracts markdown, html, and text", %{session: session, base_url: base_url} do
       {:ok, session, _nav_result} =
@@ -186,6 +213,9 @@ defmodule Jido.Browser.Adapters.AgentBrowserIntegrationTest do
       {:ok, _session, markdown_result} =
         Browser.extract_content(session, format: :markdown, timeout: @command_timeout)
 
+      {:ok, _session, page_text_result} =
+        Browser.extract_content(session, format: :text, timeout: @command_timeout)
+
       {:ok, _session, html_result} =
         Browser.extract_content(session, selector: "article", format: :html, timeout: @command_timeout)
 
@@ -193,7 +223,8 @@ defmodule Jido.Browser.Adapters.AgentBrowserIntegrationTest do
         Browser.extract_content(session, selector: "article", format: :text, timeout: @command_timeout)
 
       assert fetch_value(markdown_result, :content) =~ "Deterministic Fixture Content"
-      assert fetch_value(html_result, :content) =~ "<article>"
+      assert fetch_value(page_text_result, :content) =~ "Deterministic Fixture Content"
+      assert fetch_value(html_result, :content) =~ ~s(<article data-testid="fixture-article">)
       assert fetch_value(text_result, :content) =~ "Deterministic Fixture Content"
     end
   end
@@ -203,28 +234,23 @@ defmodule Jido.Browser.Adapters.AgentBrowserIntegrationTest do
     fetch_value(result, :text)
   end
 
-  defp ref_from_snapshot!(snapshot_text, marker) do
-    snapshot_text
-    |> String.split("\n")
-    |> Enum.find_value(&ref_for_line(&1, marker))
+  defp ref_from_refs!(refs, marker) when is_map(refs) do
+    refs
+    |> Enum.find_value(fn {ref, entry} ->
+      name = fetch_value(entry, :name)
+
+      if is_binary(name) and String.contains?(String.downcase(name), String.downcase(marker)) do
+        normalize_ref(ref)
+      end
+    end)
     |> case do
-      nil -> flunk("Could not find ref for #{inspect(marker)} in snapshot:\n#{snapshot_text}")
+      nil -> flunk("Could not find ref for #{inspect(marker)} in refs:\n#{inspect(refs, pretty: true)}")
       ref -> ref
     end
   end
 
-  defp ref_for_line(line, marker) do
-    if String.contains?(String.downcase(line), String.downcase(marker)) do
-      extract_ref(line)
-    end
-  end
-
-  defp extract_ref(line) do
-    case Regex.run(~r/@e\d+/, line) do
-      [ref] -> ref
-      _ -> nil
-    end
-  end
+  defp normalize_ref("@" <> _ = ref), do: ref
+  defp normalize_ref(ref), do: "@#{ref}"
 
   defp tab_entries(result) when is_list(result), do: result
 

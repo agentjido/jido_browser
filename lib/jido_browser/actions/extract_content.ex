@@ -14,18 +14,19 @@ defmodule Jido.Browser.Actions.ExtractContent do
       # extract_content()
       # extract_content(selector: "article.main")
       # extract_content(format: :html)
+      # extract_content(format: :text)
 
   """
 
   use Jido.Action,
     name: "browser_extract_content",
-    description: "Extract content from the current page as markdown or HTML",
+    description: "Extract content from the current page as markdown, HTML, or text",
     category: "Browser",
     tags: ["browser", "content", "extract", "markdown", "web"],
     vsn: "2.0.0",
     schema: [
       selector: [type: :string, default: "body", doc: "CSS selector to scope extraction"],
-      format: [type: {:in, [:markdown, :html]}, default: :markdown, doc: "Output format"]
+      format: [type: {:in, [:markdown, :html, :text]}, default: :markdown, doc: "Output format"]
     ]
 
   alias Jido.Browser.ActionHelpers

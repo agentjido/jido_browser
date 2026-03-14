@@ -198,7 +198,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
     %{
       "action" => "getattribute",
       "selector" => Keyword.fetch!(opts, :selector),
-      "name" => Keyword.fetch!(opts, :attribute)
+      "attribute" => Keyword.fetch!(opts, :attribute)
     }
   end
 
@@ -271,15 +271,9 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
 
   defp convert_content(_session, html, _selector, :html, _opts), do: {:ok, html}
 
-  defp convert_content(session, _html, selector, :text, opts) when selector in [nil, "", "body"] do
-    case command(session, :snapshot, Keyword.merge(opts, compact: true)) do
-      {:ok, _session, %{"snapshot" => snapshot}} -> {:ok, snapshot}
-      {:ok, _session, data} -> {:error, "Unexpected snapshot response: #{inspect(data)}"}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
   defp convert_content(session, _html, selector, :text, opts) do
+    selector = normalize_selector(selector)
+
     case command(session, :get_text, Keyword.merge(opts, selector: selector)) do
       {:ok, _session, %{"text" => text}} when is_binary(text) -> {:ok, text}
       {:ok, _session, data} -> {:error, "Unexpected text response: #{inspect(data)}"}
@@ -303,6 +297,9 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   defp put_current_url(%Session{connection: connection} = session, current_url) do
     %{session | connection: Map.put(connection || %{}, :current_url, current_url)}
   end
+
+  defp normalize_selector(selector) when selector in [nil, ""], do: "body"
+  defp normalize_selector(selector), do: selector
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, _key, false), do: map

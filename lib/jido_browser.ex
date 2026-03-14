@@ -327,48 +327,18 @@ defmodule Jido.Browser do
     end)
   end
 
-  @doc "Queries a selector and returns either native snapshot data or a fallback element summary."
+  @doc "Queries a selector and returns a stable element summary."
   @spec query(Session.t(), String.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, term()}
   def query(%Session{} = session, selector, opts \\ []) do
-    if command_supported?(session) do
-      with {:ok, session, count_result} <- command(session, :count, selector: selector, timeout: opts[:timeout]),
-           {:ok, session, snapshot_result} <-
-             command(
-               session,
-               :snapshot,
-               selector: selector,
-               compact: true,
-               depth: opts[:depth],
-               timeout: opts[:timeout]
-             ) do
-        count = count_result[:count] || count_result["count"] || 0
+    limit = opts[:limit] || 10
 
-        {:ok, session,
-         %{
-           count: count,
-           snapshot: snapshot_result[:snapshot] || snapshot_result["snapshot"],
-           refs: snapshot_result[:refs] || snapshot_result["refs"] || %{}
-         }}
-      end
-    else
-      limit = opts[:limit] || 10
+    with {:ok, session, elements} <- query_elements(session, selector, limit, opts) do
+      case query_count(session, selector, opts) do
+        {:ok, session, count} ->
+          {:ok, session, %{count: count, elements: elements}}
 
-      script = """
-      (() => {
-        const selector = #{Jason.encode!(selector)};
-        const limit = #{limit};
-        return Array.from(document.querySelectorAll(selector)).slice(0, limit).map((el, i) => ({
-          index: i,
-          tag: el.tagName.toLowerCase(),
-          id: el.id || null,
-          classes: Array.from(el.classList),
-          text: el.innerText?.substring(0, 100) || ""
-        }));
-      })()
-      """
-
-      with {:ok, session, %{result: elements}} <- evaluate(session, script, opts) do
-        {:ok, session, %{count: length(elements), elements: elements}}
+        {:error, _reason} ->
+          {:ok, session, %{count: length(elements), elements: elements}}
       end
     end
   end
@@ -632,6 +602,46 @@ defmodule Jido.Browser do
 
     with {:ok, session, %{result: text}} <- evaluate(session, script, opts) do
       {:ok, session, %{text: text}}
+    end
+  end
+
+  defp query_elements(session, selector, limit, opts) do
+    script = """
+    (() => {
+      const selector = #{Jason.encode!(selector)};
+      const limit = #{limit};
+      return Array.from(document.querySelectorAll(selector)).slice(0, limit).map((el, i) => ({
+        index: i,
+        tag: el.tagName.toLowerCase(),
+        id: el.id || null,
+        classes: Array.from(el.classList),
+        text: el.innerText?.substring(0, 100) || ""
+      }));
+    })()
+    """
+
+    case evaluate(session, script, opts) do
+      {:ok, session, result} when is_map(result) ->
+        case result[:result] || result["result"] do
+          elements when is_list(elements) -> {:ok, session, elements}
+          _ -> {:error, Error.adapter_error("Query script did not return an element list", %{result: result})}
+        end
+
+      error ->
+        error
+    end
+  end
+
+  defp query_count(session, selector, opts) do
+    if command_supported?(session) do
+      with {:ok, session, result} <- command(session, :count, selector: selector, timeout: opts[:timeout]),
+           count when is_integer(count) <- result[:count] || result["count"] do
+        {:ok, session, count}
+      else
+        _ -> {:error, :count_unavailable}
+      end
+    else
+      {:error, :count_unsupported}
     end
   end
 

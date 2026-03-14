@@ -165,7 +165,7 @@ defmodule Jido.Browser.TestSupport.IntegrationTestServer do
      <html>
        <head><title>Integration Test Article</title></head>
        <body>
-         <article>
+        <article data-testid="fixture-article">
            <h1>Deterministic Fixture Content</h1>
            <p>Used for markdown extraction assertions in integration tests.</p>
          </article>

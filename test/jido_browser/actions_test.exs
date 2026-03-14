@@ -358,6 +358,16 @@ defmodule Jido.Browser.ActionsTest do
                Actions.ExtractContent.run(%{format: :html}, context)
     end
 
+    test "ExtractContent returns text when format: :text", %{context: context, session: session} do
+      stub(Jido.Browser, :extract_content, fn sess, opts ->
+        assert opts[:format] == :text
+        {:ok, sess, %{content: "Hello World", format: :text}}
+      end)
+
+      assert {:ok, %{status: "success", format: :text, content: "Hello World", session: ^session}} =
+               Actions.ExtractContent.run(%{format: :text}, context)
+    end
+
     test "Screenshot takes a screenshot", %{context: context, session: session} do
       png_bytes = <<137, 80, 78, 71, 13, 10, 26, 10>>
 
