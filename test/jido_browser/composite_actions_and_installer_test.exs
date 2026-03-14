@@ -197,7 +197,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
     test "configured_version returns defaults and overrides" do
       with_app_env(:jido_browser, :vibium_version, nil, fn ->
-        assert Installer.configured_version(:vibium) == "1.0.0"
+        assert Installer.configured_version(:vibium) == "26.3.11"
       end)
 
       with_app_env(:jido_browser, :vibium_version, "9.9.9", fn ->
@@ -230,9 +230,9 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
     test "bin_path/installed? use configured vibium path when present" do
       path =
-        Path.join(System.tmp_dir!(), "jido_browser_test_clicker_#{System.unique_integer([:positive])}")
+        Path.join(System.tmp_dir!(), "jido_browser_test_vibium_#{System.unique_integer([:positive])}")
 
-      File.write!(path, "clicker")
+      File.write!(path, "vibium")
       File.chmod!(path, 0o755)
 
       try do

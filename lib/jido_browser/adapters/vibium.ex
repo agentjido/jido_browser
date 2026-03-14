@@ -2,7 +2,7 @@ defmodule Jido.Browser.Adapters.Vibium do
   @moduledoc """
   Vibium adapter for browser automation.
 
-  Uses the Vibium clicker binary which provides:
+  Uses the Vibium CLI binary which provides:
   - WebDriver BiDi protocol (standard-based)
   - Automatic Chrome download and management
   - Built-in MCP server support
@@ -23,7 +23,7 @@ defmodule Jido.Browser.Adapters.Vibium do
       config :jido_browser,
         adapter: Jido.Browser.Adapters.Vibium,
         vibium: [
-          binary_path: "/path/to/clicker",
+          binary_path: "/path/to/vibium",
           headless: true
         ]
 
@@ -41,7 +41,7 @@ defmodule Jido.Browser.Adapters.Vibium do
   def start_session(opts \\ []) do
     headless = Keyword.get(opts, :headless, true)
 
-    case find_clicker_binary() do
+    case find_vibium_binary() do
       {:ok, binary} ->
         Session.new(%{
           adapter: __MODULE__,
@@ -55,7 +55,8 @@ defmodule Jido.Browser.Adapters.Vibium do
   end
 
   @impl true
-  def end_session(%Session{}) do
+  def end_session(%Session{connection: %{binary: binary, headless: headless}}) do
+    _ = reset_vibium_session(binary, headless)
     :ok
   end
 
@@ -63,7 +64,7 @@ defmodule Jido.Browser.Adapters.Vibium do
   def navigate(%Session{connection: connection} = session, url, opts) do
     timeout = opts[:timeout] || @default_timeout
 
-    case run_clicker(connection, ["navigate", url], timeout) do
+    case run_vibium(connection, ["go", url], timeout) do
       {:ok, output} ->
         updated_connection = Map.put(connection, :current_url, url)
         updated_session = %{session | connection: updated_connection}
@@ -84,7 +85,7 @@ defmodule Jido.Browser.Adapters.Vibium do
         timeout = opts[:timeout] || @default_timeout
         args = ["click", url, selector]
 
-        case run_clicker(connection, args, timeout) do
+        case run_vibium(connection, args, timeout) do
           {:ok, output} ->
             {:ok, session, %{selector: selector, output: output}}
 
@@ -104,7 +105,7 @@ defmodule Jido.Browser.Adapters.Vibium do
         timeout = opts[:timeout] || @default_timeout
         args = ["type", url, selector, text]
 
-        case run_clicker(connection, args, timeout) do
+        case run_vibium(connection, args, timeout) do
           {:ok, output} ->
             {:ok, session, %{selector: selector, output: output}}
 
@@ -155,8 +156,8 @@ defmodule Jido.Browser.Adapters.Vibium do
     with_tmp_file("jido_browser_screenshot", ".png", fn path ->
       args = build_screenshot_args(url, path, full_page)
 
-      with {:ok, _output} <- run_clicker(connection, args, timeout),
-           {:ok, bytes} <- File.read(path) do
+      with {:ok, output} <- run_vibium(connection, args, timeout),
+           {:ok, bytes} <- read_screenshot_bytes(output, path) do
         {:ok, session, %{bytes: bytes, mime: "image/png", format: :png}}
       else
         {:error, reason} when is_atom(reason) ->
@@ -173,6 +174,24 @@ defmodule Jido.Browser.Adapters.Vibium do
     if full_page, do: args ++ ["--full-page"], else: args
   end
 
+  defp read_screenshot_bytes(output, requested_path) do
+    actual_path = extract_screenshot_path(output) || requested_path
+    result = File.read(actual_path)
+
+    if actual_path != requested_path do
+      File.rm(actual_path)
+    end
+
+    result
+  end
+
+  defp extract_screenshot_path(output) do
+    case Regex.run(~r/Screenshot saved to (.+)$/, output, capture: :all_but_first) do
+      [path] -> String.trim(path)
+      _ -> nil
+    end
+  end
+
   @impl true
   def extract_content(%Session{connection: connection} = session, opts) do
     case connection.current_url do
@@ -185,7 +204,7 @@ defmodule Jido.Browser.Adapters.Vibium do
         format = opts[:format] || :markdown
         args = build_extract_args(url, selector, format)
 
-        case run_clicker(connection, args, timeout) do
+        case run_vibium(connection, args, timeout) do
           {:ok, content} ->
             {:ok, session, %{content: content, format: format}}
 
@@ -195,9 +214,17 @@ defmodule Jido.Browser.Adapters.Vibium do
     end
   end
 
-  defp build_extract_args(url, selector, :html), do: ["find", url, selector, "--html"]
-  defp build_extract_args(url, selector, :markdown), do: ["find", url, selector]
-  defp build_extract_args(url, selector, :text), do: ["find", url, selector]
+  defp build_extract_args(url, selector, :html), do: build_extract_command("html", url, selector)
+
+  # Vibium no longer exposes markdown output, so plain text is the closest stable fallback.
+  defp build_extract_args(url, selector, :markdown), do: build_extract_command("text", url, selector)
+  defp build_extract_args(url, selector, :text), do: build_extract_command("text", url, selector)
+
+  defp build_extract_command(command, url, selector) when selector in [nil, "", "body"] do
+    [command, url]
+  end
+
+  defp build_extract_command(command, url, selector), do: [command, url, selector]
 
   @impl true
   def evaluate(%Session{connection: connection} = session, script, opts) do
@@ -209,7 +236,7 @@ defmodule Jido.Browser.Adapters.Vibium do
         timeout = opts[:timeout] || @default_timeout
         args = ["eval", url, script]
 
-        case run_clicker(connection, args, timeout) do
+        case run_vibium(connection, args, timeout) do
           {:ok, result} ->
             parsed_result = parse_js_result(result)
             {:ok, session, %{result: parsed_result}}
@@ -228,9 +255,7 @@ defmodule Jido.Browser.Adapters.Vibium do
     end
   end
 
-  # Private helpers
-
-  defp run_clicker(%{binary: binary, headless: headless}, args, timeout) do
+  defp run_vibium(%{binary: binary, headless: headless}, args, timeout) do
     full_args = if headless, do: ["--headless" | args], else: args
 
     port =
@@ -255,7 +280,7 @@ defmodule Jido.Browser.Adapters.Vibium do
 
       {^port, {:exit_status, code}} ->
         output = IO.iodata_to_binary(acc)
-        {:error, "clicker exited with code #{code}: #{output}"}
+        {:error, "vibium exited with code #{code}: #{output}"}
     after
       timeout ->
         Port.close(port)
@@ -263,50 +288,44 @@ defmodule Jido.Browser.Adapters.Vibium do
     end
   end
 
-  defp find_clicker_binary do
+  defp find_vibium_binary do
     case config(:binary_path) do
       path when is_binary(path) and path != "" ->
         if File.exists?(path), do: {:ok, path}, else: {:error, "Binary not found at #{path}"}
 
       _ ->
-        case find_clicker_from_npm() do
+        case find_vibium_from_install_path() || find_vibium_from_npm() do
           path when is_binary(path) -> {:ok, path}
-          nil -> find_clicker_in_path()
+          nil -> find_vibium_in_path()
         end
     end
   end
 
-  defp find_clicker_in_path do
-    case System.find_executable("clicker") do
+  defp find_vibium_in_path do
+    case find_first_existing(vibium_binary_commands(), &System.find_executable/1) do
       path when is_binary(path) ->
         {:ok, path}
 
       nil ->
-        # Check jido_browser install path
-        jido_path = Path.join(Installer.default_install_path(), "clicker")
-
-        if File.exists?(jido_path) do
-          {:ok, jido_path}
-        else
-          {:error, "Vibium clicker binary not found. Install with: mix jido_browser.install vibium"}
-        end
+        {:error, "Vibium binary not found. Install with: mix jido_browser.install vibium"}
     end
   end
 
-  defp find_clicker_from_npm do
-    case System.cmd("npm", ["root", "-g"], stderr_to_stdout: true) do
-      {npm_root, 0} ->
-        npm_root = String.trim(npm_root)
-        platform_pkg = vibium_platform_package()
-        clicker_path = Path.join([npm_root, platform_pkg, "bin", "clicker"])
+  defp find_vibium_from_install_path do
+    find_first_existing(vibium_binary_filenames(), fn binary_name ->
+      path = Path.join(Installer.default_install_path(), binary_name)
+      if File.exists?(path), do: path, else: nil
+    end)
+  end
 
-        if File.exists?(clicker_path), do: clicker_path, else: nil
+  defp find_vibium_from_npm do
+    case npm_global_root() do
+      {:ok, npm_root} ->
+        find_vibium_binary_in_dir(Path.join([npm_root, vibium_platform_package(), "bin"]))
 
-      _ ->
+      :error ->
         nil
     end
-  rescue
-    _ -> nil
   end
 
   defp vibium_platform_package do
@@ -316,6 +335,42 @@ defmodule Jido.Browser.Adapters.Vibium do
       :linux_amd64 -> "@vibium/linux-x64"
       :linux_arm64 -> "@vibium/linux-arm64"
       :windows_amd64 -> "@vibium/win32-x64"
+    end
+  end
+
+  defp vibium_binary_commands, do: ["vibium", "clicker"]
+
+  defp vibium_binary_filenames do
+    case Installer.target() do
+      :windows_amd64 -> ["vibium.exe", "clicker.exe", "vibium", "clicker"]
+      _ -> vibium_binary_commands()
+    end
+  end
+
+  defp find_first_existing(candidates, finder) do
+    Enum.find_value(candidates, finder)
+  end
+
+  defp find_vibium_binary_in_dir(dir) do
+    find_first_existing(vibium_binary_filenames(), fn binary_name ->
+      path = Path.join(dir, binary_name)
+      if File.exists?(path), do: path, else: nil
+    end)
+  end
+
+  defp npm_global_root do
+    case System.cmd("npm", ["root", "-g"], stderr_to_stdout: true) do
+      {npm_root, 0} -> {:ok, String.trim(npm_root)}
+      _ -> :error
+    end
+  rescue
+    _ -> :error
+  end
+
+  defp reset_vibium_session(binary, headless) do
+    case run_vibium(%{binary: binary, headless: headless}, ["stop"], 5_000) do
+      {:ok, _} -> :ok
+      {:error, _} -> :ok
     end
   end
 

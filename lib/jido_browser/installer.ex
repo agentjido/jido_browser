@@ -30,7 +30,7 @@ defmodule Jido.Browser.Installer do
 
   require Logger
 
-  @vibium_version "1.0.0"
+  @vibium_version "26.3.11"
   @web_version "main"
 
   @type platform :: :darwin_arm64 | :darwin_amd64 | :linux_amd64 | :linux_arm64 | :windows_amd64
@@ -160,7 +160,9 @@ defmodule Jido.Browser.Installer do
         if File.exists?(path), do: path, else: nil
 
       _ ->
-        find_vibium_from_npm() || find_in_path("clicker") || find_in_jido_browser_bin("clicker")
+        find_first_existing(vibium_binary_filenames(), &find_in_jido_browser_bin/1) ||
+          find_vibium_from_npm() ||
+          find_first_existing(vibium_binary_commands(), &find_in_path/1)
     end
   end
 
@@ -196,19 +198,13 @@ defmodule Jido.Browser.Installer do
   end
 
   defp find_vibium_from_npm do
-    case System.cmd("npm", ["root", "-g"], stderr_to_stdout: true) do
-      {npm_root, 0} ->
-        npm_root = String.trim(npm_root)
-        platform_pkg = vibium_npm_package()
-        clicker_path = Path.join([npm_root, platform_pkg, "bin", "clicker"])
+    case npm_global_root() do
+      {:ok, npm_root} ->
+        find_vibium_binary_in_dir(Path.join([npm_root, vibium_npm_package(), "bin"]))
 
-        if File.exists?(clicker_path), do: clicker_path, else: nil
-
-      _ ->
+      :error ->
         nil
     end
-  rescue
-    _ -> nil
   end
 
   # Installation functions
@@ -217,14 +213,15 @@ defmodule Jido.Browser.Installer do
     case System.find_executable("npm") do
       nil ->
         {:error,
-         "npm not found. Install Node.js first or install vibium manually from https://github.com/nicholasgriffintn/vibium"}
+         "npm not found. Install Node.js first or install vibium manually from https://github.com/VibiumDev/vibium"}
 
       npm ->
-        platform_pkg = vibium_npm_package()
+        packages = vibium_npm_packages(configured_version(:vibium))
         Logger.info("Installing vibium via npm...")
 
-        case System.cmd(npm, ["install", "-g", "vibium", platform_pkg], stderr_to_stdout: true) do
+        case System.cmd(npm, ["install", "-g" | packages], stderr_to_stdout: true) do
           {_output, 0} ->
+            stage_vibium_binary()
             run_vibium_chrome_install()
             :ok
 
@@ -237,12 +234,12 @@ defmodule Jido.Browser.Installer do
   defp run_vibium_chrome_install do
     case find_vibium_path() do
       nil ->
-        Logger.warning("Could not find clicker binary to run Chrome install")
+        Logger.warning("Could not find vibium binary to run browser install")
 
-      clicker ->
+      vibium ->
         Logger.info("Installing Chrome for Testing...")
 
-        case System.cmd(clicker, ["install"], stderr_to_stdout: true) do
+        case System.cmd(vibium, ["install"], stderr_to_stdout: true) do
           {_output, 0} -> :ok
           {output, code} -> Logger.warning("Chrome install returned #{code}: #{output}")
         end
@@ -291,6 +288,63 @@ defmodule Jido.Browser.Installer do
       :linux_amd64 -> "@vibium/linux-x64"
       :linux_arm64 -> "@vibium/linux-arm64"
       :windows_amd64 -> "@vibium/win32-x64"
+    end
+  end
+
+  defp vibium_npm_packages(version) do
+    ["vibium", vibium_npm_package()]
+    |> Enum.map(&versioned_package(&1, version))
+  end
+
+  defp versioned_package(package, version) when is_binary(version) and version != "" do
+    "#{package}@#{version}"
+  end
+
+  defp versioned_package(package, _version), do: package
+
+  defp stage_vibium_binary do
+    case find_vibium_from_npm() do
+      nil ->
+        Logger.warning("Could not stage vibium binary after npm install")
+
+      source ->
+        target_dir = default_install_path()
+        target = Path.join(target_dir, Path.basename(source))
+        File.mkdir_p!(target_dir)
+        File.cp!(source, target)
+        File.chmod!(target, 0o755)
+    end
+  rescue
+    error ->
+      Logger.warning("Could not stage vibium binary: #{Exception.message(error)}")
+  end
+
+  defp find_first_existing(candidates, finder) do
+    Enum.find_value(candidates, finder)
+  end
+
+  defp find_vibium_binary_in_dir(dir) do
+    find_first_existing(vibium_binary_filenames(), fn binary_name ->
+      path = Path.join(dir, binary_name)
+      if File.exists?(path), do: path, else: nil
+    end)
+  end
+
+  defp npm_global_root do
+    case System.cmd("npm", ["root", "-g"], stderr_to_stdout: true) do
+      {npm_root, 0} -> {:ok, String.trim(npm_root)}
+      _ -> :error
+    end
+  rescue
+    _ -> :error
+  end
+
+  defp vibium_binary_commands, do: ["vibium", "clicker"]
+
+  defp vibium_binary_filenames do
+    case target() do
+      :windows_amd64 -> ["vibium.exe", "clicker.exe", "vibium", "clicker"]
+      _ -> vibium_binary_commands()
     end
   end
 
