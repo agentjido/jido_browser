@@ -32,13 +32,14 @@ defmodule Mix.Tasks.Compile.JidoBrowser do
 
   @impl Mix.Task.Compiler
   def run(_args) do
-    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.Vibium)
+    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.AgentBrowser)
 
     binary =
       case adapter do
+        Jido.Browser.Adapters.AgentBrowser -> :agent_browser
         Jido.Browser.Adapters.Vibium -> :vibium
         Jido.Browser.Adapters.Web -> :web
-        _ -> :vibium
+        _ -> :agent_browser
       end
 
     if Installer.installed?(binary) do

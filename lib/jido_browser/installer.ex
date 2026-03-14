@@ -143,7 +143,7 @@ defmodule Jido.Browser.Installer do
   # Private implementation
 
   defp configured_adapter_binary do
-    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.Vibium)
+    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.AgentBrowser)
 
     case adapter do
       Jido.Browser.Adapters.AgentBrowser -> :agent_browser

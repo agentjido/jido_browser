@@ -176,7 +176,7 @@ defmodule Jido.Browser.AgentBrowser.SessionServer do
       {:error, _reason} ->
         receive do
           {port, {:data, data}} when port == state.port ->
-            wait_for_ready(%{state | stderr: state.stderr <> data}, attempts)
+            wait_for_ready(%{state | stderr: state.stderr <> data}, attempts - 1)
 
           {port, {:exit_status, code}} when port == state.port ->
             {:error, "agent-browser daemon exited with #{code}: #{String.trim(state.stderr)}"}
@@ -214,21 +214,30 @@ defmodule Jido.Browser.AgentBrowser.SessionServer do
   end
 
   defp do_dispatch(payload, timeout, state) do
-    with {:ok, socket} <- Runtime.connect(state.session_id, Runtime.default_daemon_timeout()),
-         {:ok, response} <- send_payload(socket, payload, timeout) do
-      :gen_tcp.close(socket)
+    case Runtime.connect(state.session_id, Runtime.default_daemon_timeout()) do
+      {:ok, socket} ->
+        try do
+          case send_payload(socket, payload, timeout) do
+            {:ok, response} ->
+              normalize_response(response)
 
-      case response do
-        %{"success" => true, "data" => data} when is_map(data) -> {:ok, data}
-        %{"success" => true, "data" => nil} -> {:ok, %{}}
-        %{"success" => false, "error" => error} -> {:error, error}
-        %{"error" => error} -> {:error, error}
-        other -> {:error, "Invalid response: #{inspect(other)}"}
-      end
-    else
-      {:error, reason} -> {:error, normalize_error(reason)}
+            {:error, reason} ->
+              {:error, normalize_error(reason)}
+          end
+        after
+          :gen_tcp.close(socket)
+        end
+
+      {:error, reason} ->
+        {:error, normalize_error(reason)}
     end
   end
+
+  defp normalize_response(%{"success" => true, "data" => data}) when is_map(data), do: {:ok, data}
+  defp normalize_response(%{"success" => true, "data" => nil}), do: {:ok, %{}}
+  defp normalize_response(%{"success" => false, "error" => error}), do: {:error, error}
+  defp normalize_response(%{"error" => error}), do: {:error, error}
+  defp normalize_response(other), do: {:error, "Invalid response: #{inspect(other)}"}
 
   defp send_payload(socket, payload, timeout) do
     with :ok <- :gen_tcp.send(socket, Jason.encode!(payload) <> "\n"),
