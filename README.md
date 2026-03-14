@@ -37,17 +37,6 @@ mix jido_browser.install
 
 That installs the pinned `agent-browser` binary for the current platform and runs `agent-browser install` to provision the browser runtime.
 
-## Example Scripts
-
-The repo includes root-level example scripts you can run directly with `mix run`:
-
-- [example_snapshot_refs.exs](example_snapshot_refs.exs)
-- [example_state_persistence.exs](example_state_persistence.exs)
-- [example_tabs.exs](example_tabs.exs)
-- [example_plugin_agent_browser.exs](example_plugin_agent_browser.exs)
-
-These stay at the repo root on purpose so they can be copied into a separate examples repo without being treated as library code.
-
 ### Recommended Alias Setup
 
 ```elixir
@@ -88,6 +77,49 @@ Selectors remain supported, but ref-based interaction is the preferred 2.0 flow:
 1. `snapshot`
 2. act on `@eN` refs
 3. re-snapshot
+
+### State Persistence
+
+```elixir
+state_path = Path.expand("tmp/browser-state.json")
+File.mkdir_p!(Path.dirname(state_path))
+
+{:ok, session} = Jido.Browser.start_session()
+{:ok, session, _} = Jido.Browser.navigate(session, "https://example.com")
+{:ok, session, _} = Jido.Browser.save_state(session, state_path)
+:ok = Jido.Browser.end_session(session)
+
+{:ok, restored} = Jido.Browser.start_session()
+{:ok, restored, _} = Jido.Browser.load_state(restored, state_path)
+```
+
+### Tab Workflow
+
+```elixir
+{:ok, session} = Jido.Browser.start_session()
+{:ok, session, _} = Jido.Browser.navigate(session, "https://example.com")
+{:ok, session, _} = Jido.Browser.new_tab(session, "https://example.org")
+{:ok, session, tabs} = Jido.Browser.list_tabs(session)
+{:ok, session, _} = Jido.Browser.switch_tab(session, 1)
+{:ok, session, _} = Jido.Browser.close_tab(session, 1)
+```
+
+### Plugin Setup
+
+```elixir
+defmodule MyBrowsingAgent do
+  use Jido.Agent,
+    name: "browser_agent",
+    plugins: [
+      {Jido.Browser.Plugin,
+       [
+         adapter: Jido.Browser.Adapters.AgentBrowser,
+         headless: true,
+         timeout: 30_000
+       ]}
+    ]
+end
+```
 
 ## Configuration
 
