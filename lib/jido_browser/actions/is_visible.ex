@@ -31,25 +31,16 @@ defmodule Jido.Browser.Actions.IsVisible do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       selector = params.selector
 
-      script = """
-      (function() {
-        const selector = #{Jason.encode!(selector)};
-        const el = document.querySelector(selector);
-        if (!el) return {exists: false, visible: false};
-        const style = window.getComputedStyle(el);
-        const visible = el.offsetParent !== null && 
-                        style.visibility !== 'hidden' && 
-                        style.display !== 'none';
-        return {exists: true, visible: visible};
-      })()
-      """
+      case Jido.Browser.is_visible(session, selector) do
+        {:ok, updated_session, data} ->
+          result = ActionHelpers.unwrap_result(data)
 
-      case Jido.Browser.evaluate(session, script, []) do
-        {:ok, updated_session, %{result: %{"exists" => exists, "visible" => visible}}} ->
-          {:ok, %{exists: exists, visible: visible, session: updated_session}}
-
-        {:ok, updated_session, %{result: %{exists: exists, visible: visible}}} ->
-          {:ok, %{exists: exists, visible: visible, session: updated_session}}
+          {:ok,
+           %{
+             exists: ActionHelpers.get_value(result, :exists),
+             visible: ActionHelpers.get_value(result, :visible),
+             session: updated_session
+           }}
 
         {:error, reason} ->
           {:error, Error.element_error("is_visible", selector, reason)}

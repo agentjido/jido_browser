@@ -165,10 +165,143 @@ defmodule Jido.Browser.TestSupport.IntegrationTestServer do
      <html>
        <head><title>Integration Test Article</title></head>
        <body>
-         <article>
+        <article data-testid="fixture-article">
            <h1>Deterministic Fixture Content</h1>
            <p>Used for markdown extraction assertions in integration tests.</p>
          </article>
+       </body>
+     </html>
+     """}
+  end
+
+  defp response_for_path("/refs") do
+    {"200 OK",
+     """
+     <!DOCTYPE html>
+     <html>
+       <head><title>Ref Interaction Fixture</title></head>
+       <body>
+         <h1>Ref Interaction Fixture</h1>
+         <p>Used to validate snapshot refs and ref-based interaction.</p>
+         <label for="ref-input">Ref Input Marker</label>
+         <input
+           id="ref-input"
+           name="ref_input"
+           type="text"
+           aria-label="Ref Input Marker"
+           placeholder="Ref Input Marker"
+         />
+         <button id="ref-button" type="button">Use Ref Button Marker</button>
+         <div id="ref-output" role="status">Idle</div>
+         <script>
+           document.getElementById("ref-button").addEventListener("click", function () {
+             const value = document.getElementById("ref-input").value || "empty";
+             document.getElementById("ref-output").textContent = "Submitted: " + value;
+           });
+         </script>
+       </body>
+     </html>
+     """}
+  end
+
+  defp response_for_path("/dynamic") do
+    {"200 OK",
+     """
+     <!DOCTYPE html>
+     <html>
+       <head><title>Dynamic Wait Fixture</title></head>
+       <body>
+         <h1>Dynamic Wait Fixture</h1>
+         <div id="wait-status">Waiting for delayed content</div>
+         <script>
+           window.setTimeout(function () {
+             const div = document.createElement("div");
+             div.id = "ready-message";
+             div.textContent = "Dynamic content ready";
+             document.body.appendChild(div);
+             document.getElementById("wait-status").textContent = "Ready";
+           }, 300);
+         </script>
+       </body>
+     </html>
+     """}
+  end
+
+  defp response_for_path("/delayed-navigation") do
+    {"200 OK",
+     """
+     <!DOCTYPE html>
+     <html>
+       <head><title>Delayed Navigation Fixture</title></head>
+       <body>
+         <h1>Delayed Navigation Fixture</h1>
+         <button id="go-next" type="button">Delayed Next Marker</button>
+         <script>
+           document.getElementById("go-next").addEventListener("click", function () {
+             window.setTimeout(function () {
+               window.location.href = "/next";
+             }, 300);
+           });
+         </script>
+       </body>
+     </html>
+     """}
+  end
+
+  defp response_for_path("/state") do
+    {"200 OK",
+     """
+     <!DOCTYPE html>
+     <html>
+       <head><title>State Persistence Fixture</title></head>
+       <body>
+         <h1>State Persistence Fixture</h1>
+         <label for="state-name">State Name Marker</label>
+         <input id="state-name" name="state_name" type="text" />
+         <button id="save-state" type="button">Persist State Marker</button>
+         <p id="current-state" role="status"></p>
+         <script>
+           function renderSavedName() {
+             const current = localStorage.getItem("saved_name") || "anonymous";
+             document.getElementById("current-state").textContent = current;
+           }
+
+           document.getElementById("save-state").addEventListener("click", function () {
+             const value = document.getElementById("state-name").value || "anonymous";
+             localStorage.setItem("saved_name", value);
+             renderSavedName();
+           });
+
+           renderSavedName();
+         </script>
+       </body>
+     </html>
+     """}
+  end
+
+  defp response_for_path("/console-and-errors") do
+    {"200 OK",
+     """
+     <!DOCTYPE html>
+     <html>
+       <head><title>Console And Errors Fixture</title></head>
+       <body>
+         <h1>Console And Errors Fixture</h1>
+         <p>Used to validate browser diagnostics collection.</p>
+         <script>
+           window.addEventListener("load", function () {
+             console.log("fixture-console-ready");
+             console.info("fixture-console-info");
+
+             window.setTimeout(function () {
+               console.error("fixture-console-error");
+             }, 50);
+
+             window.setTimeout(function () {
+               throw new Error("fixture-page-error");
+             }, 100);
+           });
+         </script>
        </body>
      </html>
      """}

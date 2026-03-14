@@ -117,5 +117,11 @@ defmodule Jido.Browser.Adapter do
   @callback evaluate(session :: Session.t(), script :: String.t(), opts :: keyword()) ::
               {:ok, Session.t(), %{result: term()}} | {:error, term()}
 
-  @optional_callbacks [evaluate: 3]
+  @doc """
+  Executes adapter-native operations that are not part of the base behaviour.
+  """
+  @callback command(session :: Session.t(), action :: atom(), opts :: keyword()) ::
+              {:ok, Session.t(), map()} | {:error, term()}
+
+  @optional_callbacks [evaluate: 3, command: 3]
 end

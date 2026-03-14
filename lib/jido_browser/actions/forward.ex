@@ -30,9 +30,9 @@ defmodule Jido.Browser.Actions.Forward do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = if params[:timeout], do: [timeout: params[:timeout]], else: []
 
-      case Jido.Browser.evaluate(session, "window.history.forward()", opts) do
-        {:ok, updated_session, _} ->
-          {:ok, %{status: "success", action: "forward", session: updated_session}}
+      case Jido.Browser.forward(session, opts) do
+        {:ok, updated_session, result} ->
+          {:ok, %{status: "success", action: "forward", result: result, session: updated_session}}
 
         {:error, %Error.EvaluationError{} = error} ->
           {:error, error}

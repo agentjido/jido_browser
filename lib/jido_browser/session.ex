@@ -12,6 +12,8 @@ defmodule Jido.Browser.Session do
               id: Zoi.string(),
               adapter: Zoi.any(),
               connection: Zoi.any() |> Zoi.nullish(),
+              runtime: Zoi.any() |> Zoi.nullish(),
+              capabilities: Zoi.any() |> Zoi.default(%{}),
               started_at: Zoi.any(),
               opts: Zoi.any() |> Zoi.default(%{})
             },
@@ -22,12 +24,14 @@ defmodule Jido.Browser.Session do
           id: String.t(),
           adapter: module(),
           connection: term(),
+          runtime: map() | nil,
+          capabilities: map(),
           started_at: DateTime.t(),
           opts: map()
         }
 
   @enforce_keys [:id, :adapter, :started_at]
-  defstruct [:id, :adapter, :connection, :started_at, opts: %{}]
+  defstruct [:id, :adapter, :connection, :runtime, started_at: nil, capabilities: %{}, opts: %{}]
 
   @doc """
   Returns the Zoi schema for this struct.

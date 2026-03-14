@@ -207,7 +207,7 @@ jobs:
         run: rm -rf _build/jido_browser-*
 
       - name: Install browser binaries
-        run: mix jido_browser.install vibium web --force
+        run: mix jido_browser.install agent_browser vibium web --force
 
       - name: Run integration tests
         run: mix test --include integration

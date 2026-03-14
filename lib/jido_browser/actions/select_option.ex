@@ -34,14 +34,11 @@ defmodule Jido.Browser.Actions.SelectOption do
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       selector = params.selector
-      script = build_select_script(params)
+      opts = select_opts(params)
 
-      case Jido.Browser.evaluate(session, script, []) do
-        {:ok, updated_session, %{result: %{"selected" => true} = result}} ->
-          {:ok, %{status: "success", selector: selector, result: result, session: updated_session}}
-
-        {:ok, _updated_session, %{result: %{"selected" => false, "error" => error}}} ->
-          {:error, Error.element_error("select_option", selector, error)}
+      case Jido.Browser.select_option(session, selector, opts) do
+        {:ok, updated_session, data} ->
+          handle_select_result(selector, updated_session, data)
 
         {:error, reason} ->
           {:error, Error.element_error("select_option", selector, reason)}
@@ -49,61 +46,24 @@ defmodule Jido.Browser.Actions.SelectOption do
     end
   end
 
-  defp build_select_script(%{selector: selector, value: value}) when is_binary(value) do
-    """
-    (() => {
-      const select = document.querySelector(#{inspect(selector)});
-      if (!select) return {selected: false, error: 'Select element not found'};
-      if (select.tagName !== 'SELECT') return {selected: false, error: 'Element is not a select'};
+  defp handle_select_result(selector, updated_session, data) do
+    result = ActionHelpers.unwrap_result(data)
 
-      select.value = #{inspect(value)};
-      select.dispatchEvent(new Event('change', {bubbles: true}));
-      return {selected: true, selector: #{inspect(selector)}, value: #{inspect(value)}};
-    })()
-    """
+    if ActionHelpers.get_value(result, :selected) == false do
+      {:error,
+       Error.element_error(
+         "select_option",
+         selector,
+         ActionHelpers.get_value(result, :error) || "Selection failed"
+       )}
+    else
+      {:ok, %{status: "success", selector: selector, result: result, session: updated_session}}
+    end
   end
 
-  defp build_select_script(%{selector: selector, label: label}) when is_binary(label) do
-    """
-    (() => {
-      const select = document.querySelector(#{inspect(selector)});
-      if (!select) return {selected: false, error: 'Select element not found'};
-      if (select.tagName !== 'SELECT') return {selected: false, error: 'Element is not a select'};
-
-      const options = Array.from(select.options);
-      const option = options.find(o => o.text === #{inspect(label)} || o.label === #{inspect(label)});
-      if (!option) return {selected: false, error: 'Option with label not found'};
-
-      select.value = option.value;
-      select.dispatchEvent(new Event('change', {bubbles: true}));
-      return {selected: true, selector: #{inspect(selector)}, label: #{inspect(label)}, value: option.value};
-    })()
-    """
-  end
-
-  defp build_select_script(%{selector: selector, index: index}) when is_integer(index) do
-    """
-    (() => {
-      const select = document.querySelector(#{inspect(selector)});
-      if (!select) return {selected: false, error: 'Select element not found'};
-      if (select.tagName !== 'SELECT') return {selected: false, error: 'Element is not a select'};
-
-      if (#{index} < 0 || #{index} >= select.options.length) {
-        return {selected: false, error: 'Index out of range'};
-      }
-
-      select.selectedIndex = #{index};
-      select.dispatchEvent(new Event('change', {bubbles: true}));
-      return {selected: true, selector: #{inspect(selector)}, index: #{index}, value: select.value};
-    })()
-    """
-  end
-
-  defp build_select_script(%{selector: _selector}) do
-    """
-    (() => {
-      return {selected: false, error: 'Must provide value, label, or index'};
-    })()
-    """
+  defp select_opts(params) do
+    params
+    |> Keyword.new()
+    |> Keyword.take([:value, :label, :index, :timeout])
   end
 end

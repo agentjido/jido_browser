@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.JidoBrowser.Install do
-  @shortdoc "Install browser automation binaries (web, vibium)"
+  @shortdoc "Install browser automation binaries (agent_browser, web, vibium)"
   @moduledoc """
   Install browser automation binaries for Jido.Browser.
 
@@ -9,11 +9,12 @@ defmodule Mix.Tasks.JidoBrowser.Install do
       mix jido_browser.install
 
       # Install specific binary
+      mix jido_browser.install agent_browser
       mix jido_browser.install web
       mix jido_browser.install vibium
 
       # Install both
-      mix jido_browser.install web vibium
+      mix jido_browser.install agent_browser web vibium
 
   ## Options
 
@@ -27,7 +28,7 @@ defmodule Mix.Tasks.JidoBrowser.Install do
 
   - **macOS** (Apple Silicon and Intel)
   - **Linux** (x86_64 and ARM64)
-  - **Windows** (x86_64, vibium only)
+  - **Windows** (x86_64)
 
   ## Recommended Setup
 
@@ -59,7 +60,7 @@ defmodule Mix.Tasks.JidoBrowser.Install do
     binaries =
       case binaries do
         [] -> [default_binary()]
-        list -> Enum.map(list, &String.to_atom/1)
+        list -> Enum.map(list, &normalize_binary_name/1)
       end
 
     Mix.shell().info("Jido.Browser Installer")
@@ -72,16 +73,18 @@ defmodule Mix.Tasks.JidoBrowser.Install do
   end
 
   defp default_binary do
-    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.Vibium)
+    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.AgentBrowser)
 
     case adapter do
+      Jido.Browser.Adapters.AgentBrowser -> :agent_browser
       Jido.Browser.Adapters.Vibium -> :vibium
       Jido.Browser.Adapters.Web -> :web
-      _ -> :vibium
+      _ -> :agent_browser
     end
   end
 
-  defp install_binary(binary, install_path, force, if_missing) when binary in [:vibium, :web] do
+  defp install_binary(binary, install_path, force, if_missing)
+       when binary in [:agent_browser, :vibium, :web] do
     already_installed = Installer.installed?(binary)
 
     cond do
@@ -112,6 +115,9 @@ defmodule Mix.Tasks.JidoBrowser.Install do
   end
 
   defp install_binary(other, _install_path, _force, _if_missing) do
-    Mix.shell().error("Unknown binary: #{other}. Use 'web' or 'vibium'.")
+    Mix.shell().error("Unknown binary: #{other}. Use 'agent_browser', 'web', or 'vibium'.")
   end
+
+  defp normalize_binary_name("agent-browser"), do: :agent_browser
+  defp normalize_binary_name(name), do: String.to_atom(name)
 end

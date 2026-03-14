@@ -30,9 +30,9 @@ defmodule Jido.Browser.Actions.Back do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       opts = if params[:timeout], do: [timeout: params[:timeout]], else: []
 
-      case Jido.Browser.evaluate(session, "window.history.back()", opts) do
-        {:ok, updated_session, _} ->
-          {:ok, %{status: "success", action: "back", session: updated_session}}
+      case Jido.Browser.back(session, opts) do
+        {:ok, updated_session, result} ->
+          {:ok, %{status: "success", action: "back", result: result, session: updated_session}}
 
         {:error, %Error.EvaluationError{} = error} ->
           {:error, error}

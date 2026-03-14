@@ -49,6 +49,7 @@ defmodule Jido.Browser.MixProject do
 
   def application do
     [
+      mod: {Jido.Browser.Application, []},
       extra_applications: [:logger]
     ]
   end
@@ -68,6 +69,7 @@ defmodule Jido.Browser.MixProject do
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
       {:uniq, "~> 0.6"},
+      {:html2markdown, "~> 0.3"},
 
       # Dev/Test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
@@ -112,6 +114,7 @@ defmodule Jido.Browser.MixProject do
         ],
         Adapters: [
           Jido.Browser.Adapter,
+          Jido.Browser.Adapters.AgentBrowser,
           Jido.Browser.Adapters.Vibium,
           Jido.Browser.Adapters.Web
         ],

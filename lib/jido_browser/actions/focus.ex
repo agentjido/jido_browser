@@ -31,30 +31,30 @@ defmodule Jido.Browser.Actions.Focus do
   def run(params, context) do
     with {:ok, session} <- ActionHelpers.get_session(context) do
       selector = params.selector
-
-      script = """
-      (() => {
-        const el = document.querySelector(#{inspect(selector)});
-        if (el) {
-          el.focus();
-          return {focused: true, selector: #{inspect(selector)}, activeElement: document.activeElement === el};
-        }
-        return {focused: false, error: 'Element not found'};
-      })()
-      """
-
       opts = Keyword.new(params) |> Keyword.take([:timeout])
 
-      case Jido.Browser.evaluate(session, script, opts) do
-        {:ok, updated_session, %{result: %{"focused" => true} = result}} ->
-          {:ok, %{status: "success", selector: selector, result: result, session: updated_session}}
-
-        {:ok, _updated_session, %{result: %{"focused" => false, "error" => error}}} ->
-          {:error, Error.element_error("focus", selector, error)}
+      case Jido.Browser.focus(session, selector, opts) do
+        {:ok, updated_session, data} ->
+          handle_focus_result(selector, updated_session, data)
 
         {:error, reason} ->
           {:error, Error.element_error("focus", selector, reason)}
       end
+    end
+  end
+
+  defp handle_focus_result(selector, updated_session, data) do
+    result = ActionHelpers.unwrap_result(data)
+
+    if ActionHelpers.get_value(result, :focused) == false do
+      {:error,
+       Error.element_error(
+         "focus",
+         selector,
+         ActionHelpers.get_value(result, :error) || "Element not found"
+       )}
+    else
+      {:ok, %{status: "success", selector: selector, result: result, session: updated_session}}
     end
   end
 end

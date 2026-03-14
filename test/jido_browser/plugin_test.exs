@@ -23,9 +23,9 @@ defmodule Jido.Browser.PluginTest do
       assert "automation" in tags
     end
 
-    test "has 29 actions" do
+    test "has 37 actions" do
       actions = Plugin.actions()
-      assert length(actions) == 29
+      assert length(actions) == 37
     end
 
     test "includes all expected action modules" do
@@ -35,6 +35,8 @@ defmodule Jido.Browser.PluginTest do
       assert Jido.Browser.Actions.StartSession in actions
       assert Jido.Browser.Actions.EndSession in actions
       assert Jido.Browser.Actions.GetStatus in actions
+      assert Jido.Browser.Actions.SaveState in actions
+      assert Jido.Browser.Actions.LoadState in actions
 
       # Navigation
       assert Jido.Browser.Actions.Navigate in actions
@@ -57,11 +59,17 @@ defmodule Jido.Browser.PluginTest do
       assert Jido.Browser.Actions.Query in actions
       assert Jido.Browser.Actions.GetText in actions
       assert Jido.Browser.Actions.IsVisible in actions
+      assert Jido.Browser.Actions.ListTabs in actions
+      assert Jido.Browser.Actions.NewTab in actions
+      assert Jido.Browser.Actions.SwitchTab in actions
+      assert Jido.Browser.Actions.CloseTab in actions
 
       # Extraction
       assert Jido.Browser.Actions.Snapshot in actions
       assert Jido.Browser.Actions.Screenshot in actions
       assert Jido.Browser.Actions.ExtractContent in actions
+      assert Jido.Browser.Actions.Console in actions
+      assert Jido.Browser.Actions.Errors in actions
 
       # Advanced
       assert Jido.Browser.Actions.Evaluate in actions
@@ -69,9 +77,9 @@ defmodule Jido.Browser.PluginTest do
   end
 
   describe "signal_routes/1" do
-    test "returns 26 routes" do
+    test "returns 37 routes" do
       routes = Plugin.signal_routes(%{})
-      assert length(routes) == 29
+      assert length(routes) == 37
     end
 
     test "maps browser.navigate to Navigate action" do
@@ -111,6 +119,7 @@ defmodule Jido.Browser.PluginTest do
       assert state.headless == true
       assert state.timeout == 30_000
       assert state.viewport == %{width: 1280, height: 720}
+      assert state.adapter == Jido.Browser.Adapters.AgentBrowser
       assert state.last_url == nil
       assert state.last_title == nil
     end
@@ -145,7 +154,7 @@ defmodule Jido.Browser.PluginTest do
     test "returns list of signal patterns" do
       patterns = Plugin.signal_patterns()
       assert is_list(patterns)
-      assert length(patterns) == 29
+      assert length(patterns) == 37
     end
 
     test "all patterns have browser. prefix" do
@@ -161,6 +170,9 @@ defmodule Jido.Browser.PluginTest do
       assert "browser.click" in patterns
       assert "browser.snapshot" in patterns
       assert "browser.wait_for_selector" in patterns
+      assert "browser.save_state" in patterns
+      assert "browser.tab_list" in patterns
+      assert "browser.console" in patterns
     end
   end
 

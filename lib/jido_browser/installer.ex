@@ -30,6 +30,7 @@ defmodule Jido.Browser.Installer do
 
   require Logger
 
+  @agent_browser_version "0.20.2"
   @vibium_version "26.3.11"
   @web_version "main"
 
@@ -49,8 +50,9 @@ defmodule Jido.Browser.Installer do
   Returns whether a given binary is installed and available.
   """
   @spec installed?(atom()) :: boolean()
-  def installed?(binary) when binary in [:vibium, :web] do
+  def installed?(binary) when binary in [:agent_browser, :vibium, :web] do
     case binary do
+      :agent_browser -> agent_browser_installed?()
       :vibium -> vibium_installed?()
       :web -> web_installed?()
     end
@@ -60,8 +62,9 @@ defmodule Jido.Browser.Installer do
   Returns the path to the binary if installed, or nil.
   """
   @spec bin_path(atom()) :: String.t() | nil
-  def bin_path(binary) when binary in [:vibium, :web] do
+  def bin_path(binary) when binary in [:agent_browser, :vibium, :web] do
     case binary do
+      :agent_browser -> find_agent_browser_path()
       :vibium -> find_vibium_path()
       :web -> find_web_path()
     end
@@ -95,6 +98,12 @@ defmodule Jido.Browser.Installer do
   @spec install(atom(), keyword()) :: :ok | {:error, term()}
   def install(binary, opts \\ [])
 
+  def install(:agent_browser, opts) do
+    install_path = opts[:path] || default_install_path()
+    force = opts[:force] || false
+    install_agent_browser(install_path, force)
+  end
+
   def install(:vibium, opts) do
     install_vibium(opts)
   end
@@ -125,18 +134,29 @@ defmodule Jido.Browser.Installer do
   Returns the configured version for a binary.
   """
   @spec configured_version(atom()) :: String.t()
+  def configured_version(:agent_browser),
+    do: Application.get_env(:jido_browser, :agent_browser_version, @agent_browser_version)
+
   def configured_version(:vibium), do: Application.get_env(:jido_browser, :vibium_version, @vibium_version)
   def configured_version(:web), do: Application.get_env(:jido_browser, :web_version, @web_version)
 
   # Private implementation
 
   defp configured_adapter_binary do
-    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.Vibium)
+    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.AgentBrowser)
 
     case adapter do
+      Jido.Browser.Adapters.AgentBrowser -> :agent_browser
       Jido.Browser.Adapters.Vibium -> :vibium
       Jido.Browser.Adapters.Web -> :web
-      _ -> :vibium
+      _ -> :agent_browser
+    end
+  end
+
+  defp agent_browser_installed? do
+    case find_agent_browser_path() do
+      nil -> false
+      path -> File.exists?(path)
     end
   end
 
@@ -151,6 +171,16 @@ defmodule Jido.Browser.Installer do
     case find_web_path() do
       nil -> false
       path -> File.exists?(path)
+    end
+  end
+
+  defp find_agent_browser_path do
+    case configured_path(:agent_browser) do
+      path when is_binary(path) and path != "" ->
+        if File.exists?(path), do: path, else: nil
+
+      _ ->
+        find_in_path(agent_browser_binary_name()) || find_in_jido_browser_bin(agent_browser_binary_name())
     end
   end
 
@@ -174,6 +204,12 @@ defmodule Jido.Browser.Installer do
       _ ->
         find_in_path("web") || find_in_jido_browser_bin("web")
     end
+  end
+
+  defp configured_path(:agent_browser) do
+    :jido_browser
+    |> Application.get_env(:agent_browser, [])
+    |> Keyword.get(:binary_path)
   end
 
   defp configured_path(:vibium) do
@@ -246,6 +282,24 @@ defmodule Jido.Browser.Installer do
     end
   end
 
+  defp install_agent_browser(install_path, force) do
+    target = Path.join(install_path, agent_browser_binary_name())
+
+    if File.exists?(target) and not force do
+      Logger.info("agent-browser already installed at #{target}. Use --force to overwrite.")
+      :ok
+    else
+      File.mkdir_p!(install_path)
+      url = agent_browser_download_url()
+      Logger.info("Downloading agent-browser from #{url}...")
+
+      with :ok <- download_binary(url, target),
+           :ok <- File.chmod(target, 0o755) do
+        run_agent_browser_install(target)
+      end
+    end
+  end
+
   defp install_web(install_path, force) do
     target = Path.join(install_path, web_binary_name())
 
@@ -265,6 +319,21 @@ defmodule Jido.Browser.Installer do
       :windows_amd64 -> "web.exe"
       _ -> "web"
     end
+  end
+
+  defp agent_browser_binary_name do
+    case target() do
+      :darwin_arm64 -> "agent-browser-darwin-arm64"
+      :darwin_amd64 -> "agent-browser-darwin-x64"
+      :linux_amd64 -> "agent-browser-linux-x64"
+      :linux_arm64 -> "agent-browser-linux-arm64"
+      :windows_amd64 -> "agent-browser-win32-x64.exe"
+    end
+  end
+
+  defp agent_browser_download_url do
+    version = configured_version(:agent_browser)
+    "https://github.com/vercel-labs/agent-browser/releases/download/v#{version}/#{agent_browser_binary_name()}"
   end
 
   defp web_download_url do
@@ -288,6 +357,18 @@ defmodule Jido.Browser.Installer do
       :linux_amd64 -> "@vibium/linux-x64"
       :linux_arm64 -> "@vibium/linux-arm64"
       :windows_amd64 -> "@vibium/win32-x64"
+    end
+  end
+
+  defp run_agent_browser_install(binary) do
+    Logger.info("Installing browser runtime via agent-browser install...")
+
+    case System.cmd(binary, ["install"], stderr_to_stdout: true) do
+      {_output, 0} ->
+        :ok
+
+      {output, code} ->
+        {:error, "agent-browser install failed (exit #{code}): #{output}"}
     end
   end
 
