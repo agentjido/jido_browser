@@ -86,3 +86,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.8.1]: https://github.com/agentjido/jido_browser/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/agentjido/jido_browser/compare/v0.1.0...v0.8.0
 [0.1.0]: https://github.com/agentjido/jido_browser/releases/tag/v0.1.0
+
+<!-- changelog -->
+
+## [2.0.0](https://github.com/agentjido/jido_browser/compare/v2.0.0...2.0.0) (2026-03-14)
+### Breaking Changes:
+
+* rename browser API to Jido.Browser by mikehostetler
+
+
+
+### Features:
+
+* redesign jido browser around agent-browser (#21) by mikehostetler
+
+* redesign jido browser around agent-browser by mikehostetler
+
+### Bug Fixes:
+
+* harden agent-browser integration paths by mikehostetler
+
+* restore vibium compatibility and stabilize ci by mikehostetler
+
+### Refactoring:
+
+* streamline agent-browser runtime defaults by mikehostetler

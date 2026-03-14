@@ -60,8 +60,8 @@ defmodule Jido.Browser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.0"},
-      {:jido_action, "~> 2.0"},
+      {:jido, "~> 2.1"},
+      {:jido_action, "~> 2.1"},
 
       # Runtime
       {:zoi, "~> 0.16"},
