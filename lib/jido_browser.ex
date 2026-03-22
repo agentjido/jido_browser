@@ -109,7 +109,13 @@ defmodule Jido.Browser do
     end
   end
 
-  @doc "Fetches a URL over HTTP(S) without starting a browser session."
+  @doc """
+  Fetches a URL over HTTP(S) without starting a browser session.
+
+  HTML responses keep native selector extraction and format conversion, while
+  fetched binary documents such as PDFs and office files are extracted through
+  `ExtractousEx`.
+  """
   @spec web_fetch(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def web_fetch(url, opts \\ [])
 

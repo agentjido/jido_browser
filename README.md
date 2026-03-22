@@ -92,7 +92,7 @@ Selectors remain supported, but ref-based interaction is the preferred 2.0 flow:
 
 result.content
 result.passages
-result.metadata
+result.metadata # present when extraction returns document metadata
 ```
 
 `web_fetch/2` keeps HTML handling native for selector extraction and markdown conversion, and uses `extractous_ex` for fetched binary documents such as PDFs, Word, Excel, PowerPoint, OpenDocument, EPUB, and common email formats. Binary document responses may also include `result.metadata` when extraction returns document metadata.
