@@ -1,7 +1,8 @@
 defmodule Jido.Browser.WebFetch do
   @moduledoc """
   Stateless HTTP-first web retrieval with optional domain policy, caching,
-  focused filtering, and citation-ready passage metadata.
+  focused filtering, citation-ready passage metadata, and Extractous-backed
+  document extraction.
 
   This module is intended for document retrieval workloads where starting a full
   browser session would be unnecessary or too expensive.
@@ -16,8 +17,64 @@ defmodule Jido.Browser.WebFetch do
   @default_max_url_length 2_048
   @supported_formats [:markdown, :text, :html]
   @html_content_types ["text/html", "application/xhtml+xml"]
-  @text_content_types ["text/plain", "text/markdown", "text/csv", "text/xml", "application/xml"]
-  @pdf_content_types ["application/pdf"]
+  @text_content_types [
+    "text/plain",
+    "text/markdown",
+    "text/csv",
+    "text/xml",
+    "application/xml",
+    "application/json",
+    "application/ld+json"
+  ]
+  @document_content_types %{
+    "application/pdf" => :pdf,
+    "application/msword" => :word_processing,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => :word_processing,
+    "application/vnd.ms-word.document.macroenabled.12" => :word_processing,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.template" => :word_processing,
+    "application/vnd.ms-word.template.macroenabled.12" => :word_processing,
+    "application/vnd.ms-excel" => :spreadsheet,
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => :spreadsheet,
+    "application/vnd.ms-excel.sheet.macroenabled.12" => :spreadsheet,
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.template" => :spreadsheet,
+    "application/vnd.ms-excel.template.macroenabled.12" => :spreadsheet,
+    "application/vnd.ms-powerpoint" => :presentation,
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation" => :presentation,
+    "application/vnd.ms-powerpoint.presentation.macroenabled.12" => :presentation,
+    "application/vnd.openxmlformats-officedocument.presentationml.slideshow" => :presentation,
+    "application/vnd.openxmlformats-officedocument.presentationml.template" => :presentation,
+    "application/vnd.oasis.opendocument.text" => :word_processing,
+    "application/vnd.oasis.opendocument.spreadsheet" => :spreadsheet,
+    "application/vnd.oasis.opendocument.presentation" => :presentation,
+    "application/rtf" => :word_processing,
+    "text/rtf" => :word_processing,
+    "application/epub+zip" => :ebook,
+    "message/rfc822" => :email,
+    "application/vnd.ms-outlook" => :email
+  }
+  @document_extensions %{
+    "pdf" => :pdf,
+    "doc" => :word_processing,
+    "docx" => :word_processing,
+    "docm" => :word_processing,
+    "dotx" => :word_processing,
+    "dotm" => :word_processing,
+    "odt" => :word_processing,
+    "rtf" => :word_processing,
+    "xls" => :spreadsheet,
+    "xlsx" => :spreadsheet,
+    "xlsm" => :spreadsheet,
+    "xlsb" => :spreadsheet,
+    "ods" => :spreadsheet,
+    "ppt" => :presentation,
+    "pptx" => :presentation,
+    "pptm" => :presentation,
+    "ppsx" => :presentation,
+    "odp" => :presentation,
+    "epub" => :ebook,
+    "eml" => :email,
+    "msg" => :email
+  }
 
   @type result :: %{
           required(:url) => String.t(),
@@ -35,7 +92,8 @@ defmodule Jido.Browser.WebFetch do
           required(:cached) => boolean(),
           required(:citations) => %{enabled: boolean()},
           required(:passages) => list(map()),
-          optional(:title) => String.t() | nil
+          optional(:title) => String.t() | nil,
+          optional(:metadata) => map()
         }
 
   @doc """
@@ -53,6 +111,7 @@ defmodule Jido.Browser.WebFetch do
   - `:cache` - enable ETS cache, defaults to `true`
   - `:cache_ttl_ms` - cache TTL in milliseconds
   - `:require_known_url` / `:known_urls` - optional URL provenance guard
+  - `:extractous` - optional `ExtractousEx` keyword options merged with config
   """
   @spec fetch(String.t(), keyword()) :: {:ok, result()} | {:error, Exception.t()}
   def fetch(url, opts \\ [])
@@ -125,13 +184,14 @@ defmodule Jido.Browser.WebFetch do
 
   defp build_result(url, final_url, response, opts) do
     content_type = response_content_type(response)
+    document_type = extractable_document_type(content_type, final_url, response.body)
 
     cond do
       content_type in @html_content_types ->
         build_html_result(url, final_url, response.body, content_type, opts)
 
-      content_type in @pdf_content_types ->
-        build_pdf_result(url, final_url, response.body, content_type, opts)
+      not is_nil(document_type) ->
+        build_document_result(url, final_url, response.body, content_type, document_type, opts)
 
       text_content_type?(content_type) ->
         build_text_result(url, final_url, response.body, content_type, opts)
@@ -221,11 +281,11 @@ defmodule Jido.Browser.WebFetch do
      })}
   end
 
-  defp build_pdf_result(url, final_url, body, content_type, opts) when is_binary(body) do
+  defp build_document_result(url, final_url, body, content_type, document_type, opts) when is_binary(body) do
     cond do
       opts[:selector] ->
         {:error,
-         Error.invalid_error("Selector filtering is not supported for PDF content", %{
+         Error.invalid_error("Selector filtering is only supported for HTML content", %{
            error_code: :invalid_input,
            selector: opts[:selector],
            content_type: content_type
@@ -233,14 +293,14 @@ defmodule Jido.Browser.WebFetch do
 
       opts[:format] == :html ->
         {:error,
-         Error.invalid_error("HTML output is not supported for PDF content", %{
+         Error.invalid_error("HTML output is only supported for HTML content", %{
            error_code: :invalid_input,
            format: :html,
            content_type: content_type
          })}
 
       true ->
-        with {:ok, text} <- extract_pdf_text(body),
+        with {:ok, text, metadata} <- extract_document_content(body, final_url, content_type, document_type, opts),
              {:ok, filtered_content, filtered, focus_matches} <- maybe_filter_content(text, opts),
              {final_content, truncated, original_estimated_tokens} <-
                maybe_truncate(filtered_content, opts[:max_content_tokens]) do
@@ -249,22 +309,23 @@ defmodule Jido.Browser.WebFetch do
              url,
              final_url,
              final_content,
-             title_from_url(final_url),
+             document_title(metadata, final_url),
              content_type,
-             :pdf,
+             document_type,
              opts,
              truncated,
              filtered,
              focus_matches,
-             original_estimated_tokens
+             original_estimated_tokens,
+             metadata
            )}
         end
     end
   end
 
-  defp build_pdf_result(_url, _final_url, body, content_type, _opts) do
+  defp build_document_result(_url, _final_url, body, content_type, _document_type, _opts) do
     {:error,
-     Error.adapter_error("Unexpected response body for PDF fetch", %{
+     Error.adapter_error("Unexpected response body for document fetch", %{
        error_code: :unavailable,
        content_type: content_type,
        body: body
@@ -282,7 +343,8 @@ defmodule Jido.Browser.WebFetch do
          truncated,
          filtered,
          focus_matches,
-         original_estimated_tokens
+         original_estimated_tokens,
+         metadata \\ nil
        ) do
     passages = maybe_build_passages(content, title, final_url, opts[:citations])
 
@@ -304,6 +366,7 @@ defmodule Jido.Browser.WebFetch do
       citations: %{enabled: opts[:citations]},
       passages: passages
     }
+    |> maybe_put_metadata(metadata)
   end
 
   defp normalize_opts(opts) do
@@ -311,42 +374,46 @@ defmodule Jido.Browser.WebFetch do
     citations = normalize_citations(opts[:citations])
     focus_terms = normalize_focus_terms(opts[:focus_terms])
 
-    cond do
-      format not in @supported_formats ->
-        {:error,
-         Error.invalid_error("Unsupported web fetch format", %{
-           error_code: :invalid_input,
-           format: format,
-           supported_formats: @supported_formats
-         })}
+    with {:ok, configured_extractous_opts} <- normalize_extractous_opts(config(:extractous, [])),
+         {:ok, request_extractous_opts} <- normalize_extractous_opts(Keyword.get(opts, :extractous, [])) do
+      cond do
+        format not in @supported_formats ->
+          {:error,
+           Error.invalid_error("Unsupported web fetch format", %{
+             error_code: :invalid_input,
+             format: format,
+             supported_formats: @supported_formats
+           })}
 
-      present_domain_rules?(opts[:allowed_domains]) and present_domain_rules?(opts[:blocked_domains]) ->
-        {:error,
-         Error.invalid_error("Use either allowed_domains or blocked_domains, not both", %{
-           error_code: :invalid_input
-         })}
+        present_domain_rules?(opts[:allowed_domains]) and present_domain_rules?(opts[:blocked_domains]) ->
+          {:error,
+           Error.invalid_error("Use either allowed_domains or blocked_domains, not both", %{
+             error_code: :invalid_input
+           })}
 
-      format == :html and focus_terms != [] ->
-        {:error,
-         Error.invalid_error("Focused filtering is only supported for markdown and text output", %{
-           error_code: :invalid_input,
-           format: format
-         })}
+        format == :html and focus_terms != [] ->
+          {:error,
+           Error.invalid_error("Focused filtering is only supported for markdown and text output", %{
+             error_code: :invalid_input,
+             format: format
+           })}
 
-      true ->
-        normalized =
-          opts
-          |> Keyword.put(:format, format)
-          |> Keyword.put(:citations, citations)
-          |> Keyword.put(:focus_terms, focus_terms)
-          |> Keyword.put_new(:focus_window, 0)
-          |> Keyword.put_new(:timeout, config(:timeout, @default_timeout))
-          |> Keyword.put_new(:max_redirects, @default_max_redirects)
-          |> Keyword.put_new(:cache, true)
-          |> Keyword.put_new(:cache_ttl_ms, config(:cache_ttl_ms, @default_cache_ttl_ms))
-          |> Keyword.put_new(:known_urls, [])
+        true ->
+          normalized =
+            opts
+            |> Keyword.put(:format, format)
+            |> Keyword.put(:citations, citations)
+            |> Keyword.put(:focus_terms, focus_terms)
+            |> Keyword.put(:extractous, merge_extractous_opts(configured_extractous_opts, request_extractous_opts))
+            |> Keyword.put_new(:focus_window, 0)
+            |> Keyword.put_new(:timeout, config(:timeout, @default_timeout))
+            |> Keyword.put_new(:max_redirects, @default_max_redirects)
+            |> Keyword.put_new(:cache, true)
+            |> Keyword.put_new(:cache_ttl_ms, config(:cache_ttl_ms, @default_cache_ttl_ms))
+            |> Keyword.put_new(:known_urls, [])
 
-        {:ok, normalized}
+          {:ok, normalized}
+      end
     end
   end
 
@@ -694,44 +761,44 @@ defmodule Jido.Browser.WebFetch do
     end
   end
 
-  defp extract_pdf_text(bytes) do
-    case pdftotext_path() do
-      nil ->
+  defp extract_document_content(bytes, final_url, content_type, document_type, opts) do
+    case ExtractousEx.extract_from_bytes(bytes, opts[:extractous]) do
+      {:ok, %{content: content, metadata: metadata}} when is_binary(content) ->
+        {:ok, String.trim(content), normalize_metadata(metadata)}
+
+      {:ok, %{content: content}} when is_binary(content) ->
+        {:ok, String.trim(content), %{}}
+
+      {:ok, result} ->
         {:error,
-         Error.adapter_error("PDF extraction requires pdftotext to be installed", %{
-           error_code: :unsupported_content_type,
-           content_type: "application/pdf"
+         Error.adapter_error("ExtractousEx returned an unexpected document payload", %{
+           error_code: :unavailable,
+           url: final_url,
+           content_type: content_type,
+           document_type: document_type,
+           result: result
          })}
 
-      binary ->
-        with_tmp_files("jido_browser_web_fetch", ".pdf", ".txt", fn pdf_path, txt_path ->
-          File.write!(pdf_path, bytes)
-
-          case System.cmd(binary, ["-layout", "-nopgbrk", pdf_path, txt_path], stderr_to_stdout: true) do
-            {_output, 0} ->
-              case File.read(txt_path) do
-                {:ok, text} ->
-                  {:ok, String.trim(text)}
-
-                {:error, reason} ->
-                  {:error,
-                   Error.adapter_error("Failed to read extracted PDF text", %{error_code: :unavailable, reason: reason})}
-              end
-
-            {output, status} ->
-              {:error,
-               Error.adapter_error("pdftotext failed while extracting PDF", %{
-                 error_code: :unavailable,
-                 status: status,
-                 output: output
-               })}
-          end
-        end)
+      {:error, reason} ->
+        {:error,
+         Error.adapter_error("ExtractousEx failed while extracting document content", %{
+           error_code: :unavailable,
+           url: final_url,
+           content_type: content_type,
+           document_type: document_type,
+           reason: reason
+         })}
     end
-  end
-
-  defp pdftotext_path do
-    config(:pdftotext_path) || System.find_executable("pdftotext")
+  rescue
+    error ->
+      {:error,
+       Error.adapter_error("ExtractousEx failed while extracting document content", %{
+         error_code: :unavailable,
+         url: final_url,
+         content_type: content_type,
+         document_type: document_type,
+         reason: error
+       })}
   end
 
   defp fetch_cached(url, opts) do
@@ -783,12 +850,16 @@ defmodule Jido.Browser.WebFetch do
 
   defp cache_key(url, opts) do
     {:jido_browser_web_fetch, url, opts[:format], opts[:selector], opts[:allowed_domains], opts[:blocked_domains],
-     opts[:focus_terms], opts[:focus_window], opts[:max_content_tokens], opts[:citations]}
+     opts[:focus_terms], opts[:focus_window], opts[:max_content_tokens], opts[:citations], opts[:extractous]}
   end
 
   defp request_headers do
     [
-      {"accept", "text/html,application/xhtml+xml,text/plain,application/pdf;q=0.9,*/*;q=0.1"},
+      {"accept",
+       "text/html,application/xhtml+xml,text/plain,application/json,application/pdf," <>
+         "application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document," <>
+         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet," <>
+         "application/vnd.openxmlformats-officedocument.presentationml.presentation,*/*;q=0.1"},
       {"user-agent", user_agent()}
     ]
   end
@@ -814,10 +885,15 @@ defmodule Jido.Browser.WebFetch do
   end
 
   defp infer_content_type(body) when is_binary(body) do
-    if String.starts_with?(body, "%PDF-") do
-      "application/pdf"
-    else
-      "text/plain"
+    cond do
+      String.starts_with?(body, "%PDF-") ->
+        "application/pdf"
+
+      likely_text?(body) ->
+        "text/plain"
+
+      true ->
+        "application/octet-stream"
     end
   end
 
@@ -857,6 +933,38 @@ defmodule Jido.Browser.WebFetch do
     |> Enum.uniq()
   end
 
+  defp normalize_extractous_opts(nil), do: {:ok, []}
+
+  defp normalize_extractous_opts(opts) when is_list(opts) do
+    if Keyword.keyword?(opts) do
+      {:ok, opts}
+    else
+      {:error,
+       Error.invalid_error("Extractous options must be a keyword list", %{
+         error_code: :invalid_input,
+         extractous: opts
+       })}
+    end
+  end
+
+  defp normalize_extractous_opts(opts) do
+    {:error,
+     Error.invalid_error("Extractous options must be a keyword list", %{
+       error_code: :invalid_input,
+       extractous: opts
+     })}
+  end
+
+  defp merge_extractous_opts(left, right) do
+    Keyword.merge(left, right, fn _key, left_value, right_value ->
+      if Keyword.keyword?(left_value) and Keyword.keyword?(right_value) do
+        merge_extractous_opts(left_value, right_value)
+      else
+        right_value
+      end
+    end)
+  end
+
   defp normalize_known_url(url) when is_binary(url) do
     url
     |> String.trim()
@@ -876,6 +984,68 @@ defmodule Jido.Browser.WebFetch do
   defp normalize_rule_path(""), do: "/"
   defp normalize_rule_path(path), do: if(String.starts_with?(path, "/"), do: path, else: "/" <> path)
 
+  defp extractable_document_type(content_type, final_url, body) do
+    Map.get(@document_content_types, content_type) ||
+      infer_document_type_from_body(body) ||
+      if(ambiguous_binary_content_type?(content_type), do: infer_document_type_from_url(final_url), else: nil)
+  end
+
+  defp infer_document_type_from_url(url) do
+    url
+    |> URI.parse()
+    |> Map.get(:path, "")
+    |> Path.extname()
+    |> String.trim_leading(".")
+    |> String.downcase()
+    |> case do
+      "" -> nil
+      extension -> Map.get(@document_extensions, extension)
+    end
+  end
+
+  defp infer_document_type_from_body(body) when is_binary(body) do
+    if String.starts_with?(body, "%PDF-"), do: :pdf, else: nil
+  end
+
+  defp infer_document_type_from_body(_body), do: nil
+
+  defp document_title(metadata, url) do
+    metadata
+    |> metadata_title()
+    |> blank_to_nil()
+    |> case do
+      nil -> title_from_url(url)
+      title -> title
+    end
+  end
+
+  defp metadata_title(metadata) when is_map(metadata) do
+    Enum.find_value([:title, "title", "dc:title", :"dc:title"], fn key ->
+      metadata
+      |> Map.get(key)
+      |> metadata_value_to_string()
+      |> blank_to_nil()
+    end)
+  end
+
+  defp metadata_title(_metadata), do: nil
+
+  defp metadata_value_to_string(nil), do: nil
+  defp metadata_value_to_string(value) when is_binary(value), do: String.trim(value)
+
+  defp metadata_value_to_string(value) when is_list(value),
+    do: value |> Enum.map_join(" ", &to_string/1) |> String.trim()
+
+  defp metadata_value_to_string(value) when is_atom(value), do: value |> Atom.to_string() |> String.trim()
+  defp metadata_value_to_string(value) when is_number(value), do: value |> to_string() |> String.trim()
+  defp metadata_value_to_string(_value), do: nil
+
+  defp normalize_metadata(metadata) when is_map(metadata), do: metadata
+  defp normalize_metadata(_metadata), do: %{}
+
+  defp maybe_put_metadata(response, metadata) when metadata in [%{}, nil], do: response
+  defp maybe_put_metadata(response, metadata), do: Map.put(response, :metadata, metadata)
+
   defp title_from_url(url) do
     path = URI.parse(url).path || ""
 
@@ -894,22 +1064,24 @@ defmodule Jido.Browser.WebFetch do
     String.printable?(value) and String.match?(value, ~r/^[\x00-\x7F]+$/)
   end
 
-  defp config(key, default \\ nil) do
+  defp ambiguous_binary_content_type?(content_type) do
+    content_type in [
+      "application/octet-stream",
+      "binary/octet-stream",
+      "application/download",
+      "application/x-download",
+      "application/zip",
+      "application/x-zip-compressed"
+    ]
+  end
+
+  defp likely_text?(body) when is_binary(body) do
+    String.valid?(body) and not String.contains?(body, <<0>>)
+  end
+
+  defp config(key, default) do
     :jido_browser
     |> Application.get_env(:web_fetch, [])
     |> Keyword.get(key, default)
-  end
-
-  defp with_tmp_files(prefix, first_suffix, second_suffix, fun) do
-    base = Path.join(System.tmp_dir!(), "#{prefix}_#{System.unique_integer([:positive])}")
-    first = base <> first_suffix
-    second = base <> second_suffix
-
-    try do
-      fun.(first, second)
-    after
-      File.rm(first)
-      File.rm(second)
-    end
   end
 end

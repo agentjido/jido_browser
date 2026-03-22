@@ -9,6 +9,7 @@ defmodule Jido.Browser.WebFetchTest do
 
   setup_all do
     Mimic.copy(Req)
+    Mimic.copy(ExtractousEx)
     :ok
   end
 
@@ -96,6 +97,102 @@ defmodule Jido.Browser.WebFetchTest do
       assert result.focus_matches == 1
       assert result.content =~ "relevant paragraph"
       refute result.content =~ "Intro section"
+    end
+
+    test "extracts PDF content through ExtractousEx and preserves metadata" do
+      pdf_bytes = "%PDF-1.7 fake"
+
+      expect(Req, :run, fn opts ->
+        request = Req.Request.new(url: opts[:url])
+
+        response =
+          %Req.Response{
+            status: 200,
+            headers: %{"content-type" => ["application/pdf"]},
+            body: pdf_bytes
+          }
+
+        {request, response}
+      end)
+
+      expect(ExtractousEx, :extract_from_bytes, fn ^pdf_bytes, opts ->
+        assert opts == []
+
+        {:ok,
+         %{
+           content: "Extracted PDF body",
+           metadata: %{"title" => "Quarterly Report", "author" => "Ops"}
+         }}
+      end)
+
+      assert {:ok, result} =
+               Jido.Browser.web_fetch(
+                 "https://example.com/reports/q1.pdf",
+                 format: :text,
+                 citations: true
+               )
+
+      assert result.title == "Quarterly Report"
+      assert result.document_type == :pdf
+      assert result.content_type == "application/pdf"
+      assert result.content == "Extracted PDF body"
+      assert result.metadata == %{"title" => "Quarterly Report", "author" => "Ops"}
+      assert result.citations.enabled == true
+      assert [%{text: "Extracted PDF body"}] = result.passages
+    end
+
+    test "extracts office documents served as octet-stream based on file extension" do
+      docx_bytes = <<80, 75, 3, 4, 20, 0, 0, 0>>
+
+      expect(Req, :run, fn opts ->
+        request = Req.Request.new(url: opts[:url])
+
+        response =
+          %Req.Response{
+            status: 200,
+            headers: %{"content-type" => ["application/octet-stream"]},
+            body: docx_bytes
+          }
+
+        {request, response}
+      end)
+
+      expect(ExtractousEx, :extract_from_bytes, fn ^docx_bytes, opts ->
+        assert opts == []
+        {:ok, %{content: "DOCX body", metadata: %{}}}
+      end)
+
+      assert {:ok, result} =
+               Jido.Browser.web_fetch("https://example.com/specs/design.docx", format: :markdown)
+
+      assert result.title == "design.docx"
+      assert result.document_type == :word_processing
+      assert result.content_type == "application/octet-stream"
+      assert result.content == "DOCX body"
+    end
+
+    test "returns an adapter error when ExtractousEx extraction fails" do
+      pdf_bytes = "%PDF-1.7 broken"
+
+      expect(Req, :run, fn opts ->
+        request = Req.Request.new(url: opts[:url])
+
+        response =
+          %Req.Response{
+            status: 200,
+            headers: %{"content-type" => ["application/pdf"]},
+            body: pdf_bytes
+          }
+
+        {request, response}
+      end)
+
+      expect(ExtractousEx, :extract_from_bytes, fn ^pdf_bytes, [] ->
+        {:error, "parse failed"}
+      end)
+
+      assert {:error, %Error.AdapterError{details: %{error_code: :unavailable, document_type: :pdf}}} =
+               Jido.Browser.web_fetch("https://example.com/broken.pdf", format: :text)
     end
 
     test "rejects URLs outside allowed_domains" do

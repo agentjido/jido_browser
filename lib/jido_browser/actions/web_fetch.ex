@@ -1,17 +1,17 @@
 defmodule Jido.Browser.Actions.WebFetch do
   @moduledoc """
-  Stateless HTTP-first page retrieval for agent workflows.
+  Stateless HTTP-first document retrieval for agent workflows.
 
   `WebFetch` is a lighter-weight alternative to browser navigation when the
   target content can be retrieved over plain HTTP(S) without JavaScript
-  execution.
+  execution, including fetched PDFs and office-style documents.
   """
 
   use Jido.Action,
     name: "web_fetch",
     description:
-      "Fetch a URL over HTTP(S) with domain policy controls, optional focused filtering, " <>
-        "approximate token caps, and citation-ready passages.",
+      "Fetch a URL over HTTP(S) with domain policy controls, Extractous-backed document extraction, " <>
+        "optional focused filtering, approximate token caps, and citation-ready passages.",
     category: "Browser",
     tags: ["browser", "web", "fetch", "http", "retrieval"],
     vsn: "2.0.0",

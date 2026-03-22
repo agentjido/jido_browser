@@ -94,6 +94,8 @@ result.content
 result.passages
 ```
 
+`web_fetch/2` keeps HTML handling native for selector extraction and markdown conversion, and uses `extractous_ex` for fetched binary documents such as PDFs, Word, Excel, PowerPoint, OpenDocument, EPUB, and common email formats.
+
 ### State Persistence
 
 ```elixir
@@ -164,7 +166,10 @@ Optional web fetch settings:
 ```elixir
 config :jido_browser, :web_fetch,
   cache_ttl_ms: 300_000,
-  pdftotext_path: "/usr/local/bin/pdftotext"
+  extractous: [
+    pdf: [extract_annotation_text: true],
+    office: [include_headers_and_footers: true]
+  ]
 ```
 
 ## Backends

@@ -71,6 +71,7 @@ defmodule Jido.Browser.MixProject do
       {:uniq, "~> 0.6"},
       {:floki, "~> 0.38"},
       {:html2markdown, "~> 0.3"},
+      {:extractous_ex, "~> 0.2"},
 
       # Dev/Test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
