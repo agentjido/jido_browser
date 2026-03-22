@@ -6,6 +6,7 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
   alias Jido.Browser.AgentBrowser.PoolLease
   alias Jido.Browser.AgentBrowser.PoolRuntime
   alias Jido.Browser.AgentBrowser.PoolWorker
+  alias Jido.Browser.Application, as: BrowserApplication
 
   defstruct [
     :name,
@@ -36,8 +37,9 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
   @doc false
   @spec start_pool(keyword()) :: DynamicSupervisor.on_start_child()
   def start_pool(opts) do
-    child_spec = {__MODULE__, opts}
-    DynamicSupervisor.start_child(Jido.Browser.AgentBrowser.PoolSupervisor, child_spec)
+    with :ok <- BrowserApplication.ensure_started() do
+      do_start_pool(opts, 1)
+    end
   end
 
   @doc false
@@ -60,9 +62,10 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
   @doc false
   @spec checkout_session(term(), keyword()) :: {:ok, pid(), map()} | {:error, term()}
   def checkout_session(pool, opts) do
-    with {:ok, pid} <- resolve(pool),
+    with :ok <- BrowserApplication.ensure_started(),
+         {:ok, pid} <- resolve(pool),
          {:ok, pool_pid, runtime_module} <- GenServer.call(pid, :lease_config),
-         {:ok, lease_pid} <- start_lease(pool_pid, runtime_module, opts),
+         {:ok, lease_pid} <- start_lease(pool_pid, runtime_module, opts, 1),
          {:ok, worker_state} <- await_lease(lease_pid, opts) do
       GenServer.cast(pid, {:track_lease, lease_pid})
       {:ok, lease_pid, worker_state}
@@ -185,7 +188,7 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
   def resolve(pid) when is_pid(pid), do: {:ok, pid}
 
   def resolve(name) do
-    case Registry.lookup(Jido.Browser.AgentBrowser.PoolRegistry, name) do
+    case safe_registry_lookup(Jido.Browser.AgentBrowser.PoolRegistry, name) do
       [{pid, _value}] -> {:ok, pid}
       [] -> resolve_process_name(name)
     end
@@ -216,14 +219,38 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
 
   defp resolve_process_name(_name), do: {:error, :pool_not_found}
 
-  defp start_lease(pool_pid, runtime_module, opts) do
+  defp do_start_pool(opts, retries_left) do
+    child_spec = {__MODULE__, opts}
+
+    try do
+      DynamicSupervisor.start_child(Jido.Browser.AgentBrowser.PoolSupervisor, child_spec)
+    catch
+      :exit, reason ->
+        retry_start_pool(reason, opts, retries_left)
+    end
+  end
+
+  defp retry_start_pool(reason, _opts, 0), do: {:error, reason}
+
+  defp retry_start_pool(_reason, opts, retries_left) do
+    with :ok <- BrowserApplication.ensure_started() do
+      do_start_pool(opts, retries_left - 1)
+    end
+  end
+
+  defp start_lease(pool_pid, runtime_module, opts, retries_left) do
     checkout_timeout = Keyword.get(opts, :checkout_timeout, 5_000)
     owner = Keyword.fetch!(opts, :owner)
 
-    DynamicSupervisor.start_child(
-      Jido.Browser.AgentBrowser.LeaseSupervisor,
-      {PoolLease, owner: owner, pool: pool_pid, runtime_module: runtime_module, checkout_timeout: checkout_timeout}
-    )
+    try do
+      DynamicSupervisor.start_child(
+        Jido.Browser.AgentBrowser.LeaseSupervisor,
+        {PoolLease, owner: owner, pool: pool_pid, runtime_module: runtime_module, checkout_timeout: checkout_timeout}
+      )
+    catch
+      :exit, reason ->
+        retry_start_lease(reason, pool_pid, runtime_module, opts, retries_left)
+    end
   end
 
   defp await_lease(lease_pid, opts) do
@@ -237,5 +264,20 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
         _ = PoolLease.force_shutdown(lease_pid)
         {:error, reason}
     end
+  end
+
+  defp retry_start_lease(reason, _pool_pid, _runtime_module, _opts, 0), do: {:error, reason}
+
+  defp retry_start_lease(_reason, pool_pid, runtime_module, opts, retries_left) do
+    with :ok <- BrowserApplication.ensure_started() do
+      start_lease(pool_pid, runtime_module, opts, retries_left - 1)
+    end
+  end
+
+  defp safe_registry_lookup(registry, key) do
+    Registry.lookup(registry, key)
+  catch
+    :exit, _reason ->
+      []
   end
 end

@@ -3,6 +3,7 @@ defmodule Jido.Browser.AgentBrowser.Runtime do
 
   import Bitwise
 
+  alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.Error
   alias Jido.Browser.Installer
 
@@ -99,30 +100,15 @@ defmodule Jido.Browser.AgentBrowser.Runtime do
   @doc false
   @spec ensure_session_server(String.t(), session_opts()) :: {:ok, pid(), map()} | {:error, term()}
   def ensure_session_server(session_id, opts) do
-    case lookup_session_server(session_id) do
-      {:ok, pid} ->
-        {:ok, pid, session_runtime_metadata(session_id, pid)}
-
-      :error ->
-        child_spec = {Jido.Browser.AgentBrowser.SessionServer, Keyword.put(opts, :session_id, session_id)}
-
-        case DynamicSupervisor.start_child(Jido.Browser.AgentBrowser.SessionSupervisor, child_spec) do
-          {:ok, pid} ->
-            {:ok, pid, session_runtime_metadata(session_id, pid)}
-
-          {:error, {:already_started, pid}} ->
-            {:ok, pid, session_runtime_metadata(session_id, pid)}
-
-          {:error, reason} ->
-            {:error, reason}
-        end
+    with :ok <- BrowserApplication.ensure_started() do
+      do_ensure_session_server(session_id, opts, 1)
     end
   end
 
   @doc false
   @spec lookup_session_server(String.t()) :: {:ok, pid()} | :error
   def lookup_session_server(session_id) do
-    case Registry.lookup(Jido.Browser.AgentBrowser.Registry, session_id) do
+    case safe_registry_lookup(Jido.Browser.AgentBrowser.Registry, session_id) do
       [{pid, _value}] -> {:ok, pid}
       [] -> :error
     end
@@ -262,4 +248,45 @@ defmodule Jido.Browser.AgentBrowser.Runtime do
   defp maybe_put_list(acc, _key, nil), do: acc
   defp maybe_put_list(acc, _key, []), do: acc
   defp maybe_put_list(acc, key, value), do: [{key, Enum.join(value, ",")} | acc]
+
+  defp do_ensure_session_server(session_id, opts, retries_left) do
+    case lookup_session_server(session_id) do
+      {:ok, pid} ->
+        {:ok, pid, session_runtime_metadata(session_id, pid)}
+
+      :error ->
+        child_spec = {Jido.Browser.AgentBrowser.SessionServer, Keyword.put(opts, :session_id, session_id)}
+
+        try do
+          case DynamicSupervisor.start_child(Jido.Browser.AgentBrowser.SessionSupervisor, child_spec) do
+            {:ok, pid} ->
+              {:ok, pid, session_runtime_metadata(session_id, pid)}
+
+            {:error, {:already_started, pid}} ->
+              {:ok, pid, session_runtime_metadata(session_id, pid)}
+
+            {:error, reason} ->
+              {:error, reason}
+          end
+        catch
+          :exit, reason ->
+            retry_ensure_session_server(reason, session_id, opts, retries_left)
+        end
+    end
+  end
+
+  defp retry_ensure_session_server(reason, _session_id, _opts, 0), do: {:error, reason}
+
+  defp retry_ensure_session_server(_reason, session_id, opts, retries_left) do
+    with :ok <- BrowserApplication.ensure_started() do
+      do_ensure_session_server(session_id, opts, retries_left - 1)
+    end
+  end
+
+  defp safe_registry_lookup(registry, key) do
+    Registry.lookup(registry, key)
+  catch
+    :exit, _reason ->
+      []
+  end
 end
