@@ -229,14 +229,15 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
     end
 
     test "supervised pool child starts under a consumer supervisor and is usable by name" do
+      pool_name = {:global, {:browser_pool, System.unique_integer([:positive])}}
       started_at = System.monotonic_time(:millisecond)
 
-      start_supervised!({Pool, name: :default, size: 1, worker_init_delay: 50, pool_runtime_module: TestPoolRuntime})
+      start_supervised!({Pool, name: pool_name, size: 1, worker_init_delay: 50, pool_runtime_module: TestPoolRuntime})
 
       elapsed = System.monotonic_time(:millisecond) - started_at
       assert elapsed >= 40
 
-      assert {:ok, session} = Browser.start_session(pool: :default)
+      assert {:ok, session} = Browser.start_session(pool: pool_name)
       assert :ok = Browser.end_session(session)
     end
 
