@@ -8,11 +8,13 @@ defmodule Jido.Browser do
 
   alias Jido.Browser.Error
   alias Jido.Browser.Session
+  alias Jido.Browser.WebFetch
 
   @default_adapter Jido.Browser.Adapters.AgentBrowser
   @default_timeout 30_000
   @supported_screenshot_formats [:png]
   @supported_extract_formats [:markdown, :html, :text]
+  @supported_web_fetch_formats [:markdown, :html, :text]
 
   @doc "Starts a browser session using the configured adapter or an explicit adapter override."
   @spec start_session(keyword()) :: {:ok, Session.t()} | {:error, term()}
@@ -103,6 +105,34 @@ defmodule Jido.Browser do
        Error.invalid_error("Unsupported extract format: #{inspect(format)}", %{
          format: format,
          supported: @supported_extract_formats
+       })}
+    end
+  end
+
+  @doc """
+  Fetches a URL over HTTP(S) without starting a browser session.
+
+  HTML responses keep native selector extraction and format conversion, while
+  fetched binary documents such as PDFs and office files are extracted through
+  `ExtractousEx`.
+  """
+  @spec web_fetch(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  def web_fetch(url, opts \\ [])
+
+  def web_fetch(url, _opts) when url in [nil, ""] do
+    {:error, Error.invalid_error("URL cannot be nil or empty", %{url: url})}
+  end
+
+  def web_fetch(url, opts) when is_binary(url) do
+    format = opts[:format] || :markdown
+
+    if format in @supported_web_fetch_formats do
+      WebFetch.fetch(url, normalize_timeout(opts))
+    else
+      {:error,
+       Error.invalid_error("Unsupported web fetch format: #{inspect(format)}", %{
+         format: format,
+         supported: @supported_web_fetch_formats
        })}
     end
   end

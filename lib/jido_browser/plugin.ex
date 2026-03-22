@@ -36,6 +36,7 @@ require Jido.Browser.Actions.WaitForSelector
 require Jido.Browser.Actions.ReadPage
 require Jido.Browser.Actions.SnapshotUrl
 require Jido.Browser.Actions.SearchWeb
+require Jido.Browser.Actions.WebFetch
 
 defmodule Jido.Browser.Plugin do
   @moduledoc """
@@ -119,7 +120,8 @@ defmodule Jido.Browser.Plugin do
       # Self-contained composite actions (manage own session)
       Jido.Browser.Actions.ReadPage,
       Jido.Browser.Actions.SnapshotUrl,
-      Jido.Browser.Actions.SearchWeb
+      Jido.Browser.Actions.SearchWeb,
+      Jido.Browser.Actions.WebFetch
     ],
     description: "Browser automation for web navigation, interaction, and content extraction",
     category: "browser",
@@ -136,7 +138,9 @@ defmodule Jido.Browser.Plugin do
       viewport: Map.get(config, :viewport, %{width: 1280, height: 720}),
       base_url: Map.get(config, :base_url),
       last_url: nil,
-      last_title: nil
+      last_title: nil,
+      seen_urls: [],
+      web_fetch_uses: 0
     }
 
     {:ok, initial_state}
@@ -151,7 +155,9 @@ defmodule Jido.Browser.Plugin do
       viewport: Zoi.any(description: "Browser viewport dimensions") |> Zoi.optional(),
       base_url: Zoi.string(description: "Base URL for relative navigation") |> Zoi.optional(),
       last_url: Zoi.string(description: "Last navigated URL") |> Zoi.optional(),
-      last_title: Zoi.string(description: "Last page title") |> Zoi.optional()
+      last_title: Zoi.string(description: "Last page title") |> Zoi.optional(),
+      seen_urls: Zoi.array(Zoi.string(description: "Known URLs discovered during tool use")) |> Zoi.default([]),
+      web_fetch_uses: Zoi.integer(description: "Successful web fetch calls in current skill state") |> Zoi.default(0)
     })
   end
 
@@ -204,7 +210,8 @@ defmodule Jido.Browser.Plugin do
       # Self-contained composite actions
       {"browser.read_page", Jido.Browser.Actions.ReadPage},
       {"browser.snapshot_url", Jido.Browser.Actions.SnapshotUrl},
-      {"browser.search_web", Jido.Browser.Actions.SearchWeb}
+      {"browser.search_web", Jido.Browser.Actions.SearchWeb},
+      {"browser.web_fetch", Jido.Browser.Actions.WebFetch}
     ]
   end
 
@@ -214,22 +221,17 @@ defmodule Jido.Browser.Plugin do
   end
 
   @impl Jido.Plugin
-  def transform_result(_action, {:ok, result}, _context) when is_map(result) do
-    case Map.get(result, :session) do
-      %Jido.Browser.Session{} = session ->
-        current_url = Map.get(result, :url) || Map.get(result, "url") || get_in(session, [:connection, :current_url])
-        current_title = Map.get(result, :title) || Map.get(result, "title") || get_in(session, [:connection, :title])
+  def transform_result(action, {:ok, result}, context) when is_map(result) do
+    state_updates =
+      %{}
+      |> maybe_put_session_state(result)
+      |> maybe_put_seen_urls(result, context)
+      |> maybe_increment_web_fetch_uses(action, context)
 
-        state_updates = %{
-          session: session,
-          last_url: current_url,
-          last_title: current_title
-        }
-
-        {:ok, result, state_updates}
-
-      _ ->
-        {:ok, result}
+    if map_size(state_updates) == 0 do
+      {:ok, result}
+    else
+      {:ok, result, state_updates}
     end
   end
 
@@ -259,6 +261,67 @@ defmodule Jido.Browser.Plugin do
          }}
     end
   end
+
+  defp maybe_put_session_state(acc, result) do
+    case Map.get(result, :session) do
+      %Jido.Browser.Session{} = session ->
+        current_url = Map.get(result, :url) || Map.get(result, "url") || get_in(session, [:connection, :current_url])
+        current_title = Map.get(result, :title) || Map.get(result, "title") || get_in(session, [:connection, :title])
+
+        Map.merge(acc, %{
+          session: session,
+          last_url: current_url,
+          last_title: current_title
+        })
+
+      _ ->
+        acc
+    end
+  end
+
+  defp maybe_put_seen_urls(acc, result, context) do
+    current_seen_urls = get_in(context, [:skill_state, :seen_urls]) || []
+
+    seen_urls =
+      current_seen_urls
+      |> Kernel.++(extract_urls(result))
+      |> Enum.reject(&nil_or_empty?/1)
+      |> Enum.uniq()
+
+    if seen_urls == [] or seen_urls == current_seen_urls do
+      acc
+    else
+      Map.put(acc, :seen_urls, seen_urls)
+    end
+  end
+
+  defp maybe_increment_web_fetch_uses(acc, Jido.Browser.Actions.WebFetch, context) do
+    current_uses = get_in(context, [:skill_state, :web_fetch_uses]) || 0
+    Map.put(acc, :web_fetch_uses, current_uses + 1)
+  end
+
+  defp maybe_increment_web_fetch_uses(acc, _action, _context), do: acc
+
+  defp extract_urls(result) do
+    direct_urls =
+      [Map.get(result, :url), Map.get(result, "url"), Map.get(result, :final_url), Map.get(result, "final_url")]
+      |> Enum.reject(&nil_or_empty?/1)
+
+    search_urls =
+      result
+      |> Map.get(:results, Map.get(result, "results", []))
+      |> List.wrap()
+      |> Enum.map(fn item ->
+        if is_map(item), do: Map.get(item, :url) || Map.get(item, "url")
+      end)
+      |> Enum.reject(&nil_or_empty?/1)
+
+    direct_urls ++ search_urls
+  end
+
+  defp nil_or_empty?(nil), do: true
+  defp nil_or_empty?(""), do: true
+  defp nil_or_empty?(_value), do: false
 
   def signal_patterns do
     [
@@ -308,7 +371,8 @@ defmodule Jido.Browser.Plugin do
       # Self-contained composite actions
       "browser.read_page",
       "browser.snapshot_url",
-      "browser.search_web"
+      "browser.search_web",
+      "browser.web_fetch"
     ]
   end
 end

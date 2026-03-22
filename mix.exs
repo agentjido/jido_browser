@@ -69,7 +69,9 @@ defmodule Jido.Browser.MixProject do
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
       {:uniq, "~> 0.6"},
+      {:floki, "~> 0.38"},
       {:html2markdown, "~> 0.3"},
+      {:extractous_ex, "~> 0.2"},
 
       # Dev/Test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
@@ -111,7 +113,8 @@ defmodule Jido.Browser.MixProject do
         Core: [
           Jido.Browser,
           Jido.Browser.Session,
-          Jido.Browser.Plugin
+          Jido.Browser.Plugin,
+          Jido.Browser.WebFetch
         ],
         Adapters: [
           Jido.Browser.Adapter,
@@ -154,7 +157,8 @@ defmodule Jido.Browser.MixProject do
         "Content Extraction": [
           Jido.Browser.Actions.Snapshot,
           Jido.Browser.Actions.Screenshot,
-          Jido.Browser.Actions.ExtractContent
+          Jido.Browser.Actions.ExtractContent,
+          Jido.Browser.Actions.WebFetch
         ],
         Advanced: [
           Jido.Browser.Actions.Evaluate
