@@ -285,7 +285,7 @@ defmodule Jido.Browser.Plugin do
     seen_urls =
       current_seen_urls
       |> Kernel.++(extract_urls(result))
-      |> Enum.reject(&is_nil_or_empty/1)
+      |> Enum.reject(&nil_or_empty?/1)
       |> Enum.uniq()
 
     if seen_urls == [] or seen_urls == current_seen_urls do
@@ -305,26 +305,23 @@ defmodule Jido.Browser.Plugin do
   defp extract_urls(result) do
     direct_urls =
       [Map.get(result, :url), Map.get(result, "url"), Map.get(result, :final_url), Map.get(result, "final_url")]
-      |> Enum.reject(&is_nil_or_empty/1)
+      |> Enum.reject(&nil_or_empty?/1)
 
     search_urls =
       result
       |> Map.get(:results, Map.get(result, "results", []))
       |> List.wrap()
       |> Enum.map(fn item ->
-        cond do
-          is_map(item) -> Map.get(item, :url) || Map.get(item, "url")
-          true -> nil
-        end
+        if is_map(item), do: Map.get(item, :url) || Map.get(item, "url")
       end)
-      |> Enum.reject(&is_nil_or_empty/1)
+      |> Enum.reject(&nil_or_empty?/1)
 
     direct_urls ++ search_urls
   end
 
-  defp is_nil_or_empty(nil), do: true
-  defp is_nil_or_empty(""), do: true
-  defp is_nil_or_empty(_value), do: false
+  defp nil_or_empty?(nil), do: true
+  defp nil_or_empty?(""), do: true
+  defp nil_or_empty?(_value), do: false
 
   def signal_patterns do
     [

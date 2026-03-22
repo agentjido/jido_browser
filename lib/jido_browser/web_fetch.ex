@@ -177,9 +177,6 @@ defmodule Jido.Browser.WebFetch do
 
       {_request, %_{} = exception} ->
         {:error, Error.adapter_error("Web fetch failed", %{error_code: :unavailable, reason: exception})}
-
-      {_request, reason} ->
-        {:error, Error.adapter_error("Web fetch failed", %{error_code: :unavailable, reason: reason})}
     end
   end
 
@@ -267,62 +264,49 @@ defmodule Jido.Browser.WebFetch do
      })}
   end
 
-  defp build_response(
-         url,
-         final_url,
-         content,
-         title,
-         content_type,
-         document_type,
-         opts,
-         truncated,
-         filtered,
-         focus_matches,
-         original_estimated_tokens,
-         metadata
-       ) do
-    passages = maybe_build_passages(content, title, final_url, opts[:citations])
+  defp build_response(opts, attrs) do
+    passages = maybe_build_passages(attrs.content, attrs.title, attrs.final_url, opts[:citations])
 
     %{
-      url: url,
-      final_url: final_url,
-      title: title,
-      content: content,
+      url: attrs.url,
+      final_url: attrs.final_url,
+      title: attrs.title,
+      content: attrs.content,
       format: opts[:format],
-      content_type: content_type,
-      document_type: document_type,
+      content_type: attrs.content_type,
+      document_type: attrs.document_type,
       retrieved_at: retrieved_at(),
-      estimated_tokens: estimate_tokens(content),
-      original_estimated_tokens: original_estimated_tokens,
-      truncated: truncated,
-      filtered: filtered,
-      focus_matches: focus_matches,
+      estimated_tokens: estimate_tokens(attrs.content),
+      original_estimated_tokens: attrs.original_estimated_tokens,
+      truncated: attrs.truncated,
+      filtered: attrs.filtered,
+      focus_matches: attrs.focus_matches,
       cached: false,
       citations: %{enabled: opts[:citations]},
       passages: passages
     }
-    |> maybe_put_metadata(metadata)
+    |> maybe_put_metadata(attrs.metadata)
   end
 
   defp finalize_result(url, final_url, content, title, content_type, document_type, opts, metadata \\ nil) do
     with {:ok, filtered_content, filtered, focus_matches} <- maybe_filter_content(content, opts),
          {final_content, truncated, original_estimated_tokens} <-
            maybe_truncate(filtered_content, opts[:max_content_tokens]) do
-      {:ok,
-       build_response(
-         url,
-         final_url,
-         final_content,
-         title,
-         content_type,
-         document_type,
-         opts,
-         truncated,
-         filtered,
-         focus_matches,
-         original_estimated_tokens,
-         metadata
-       )}
+      attrs = %{
+        url: url,
+        final_url: final_url,
+        content: final_content,
+        title: title,
+        content_type: content_type,
+        document_type: document_type,
+        truncated: truncated,
+        filtered: filtered,
+        focus_matches: focus_matches,
+        original_estimated_tokens: original_estimated_tokens,
+        metadata: metadata
+      }
+
+      {:ok, build_response(opts, attrs)}
     end
   end
 
@@ -423,41 +407,10 @@ defmodule Jido.Browser.WebFetch do
     normalized_url = String.trim(url)
     max_url_length = opts[:max_url_length] || @default_max_url_length
 
-    cond do
-      normalized_url == "" ->
-        {:error, Error.invalid_error("URL cannot be empty", %{error_code: :invalid_input})}
-
-      String.length(normalized_url) > max_url_length ->
-        {:error,
-         Error.invalid_error("URL exceeds maximum length", %{
-           error_code: :url_too_long,
-           max_url_length: max_url_length
-         })}
-
-      true ->
-        uri = URI.parse(normalized_url)
-
-        cond do
-          uri.scheme not in ["http", "https"] ->
-            {:error,
-             Error.invalid_error("Web fetch only supports http and https URLs", %{
-               error_code: :invalid_input,
-               scheme: uri.scheme
-             })}
-
-          is_nil(uri.host) or uri.host == "" ->
-            {:error, Error.invalid_error("URL must include a host", %{error_code: :invalid_input})}
-
-          not ascii_only?(uri.host) ->
-            {:error,
-             Error.invalid_error("Web fetch only accepts ASCII hostnames", %{
-               error_code: :url_not_allowed,
-               host: uri.host
-             })}
-
-          true ->
-            {:ok, URI.to_string(uri), normalize_uri(uri)}
-        end
+    with :ok <- validate_url_length(normalized_url, max_url_length),
+         {:ok, uri} <- parse_fetch_uri(normalized_url),
+         :ok <- validate_uri_host(uri) do
+      {:ok, URI.to_string(uri), normalize_uri(uri)}
     end
   end
 
@@ -468,9 +421,7 @@ defmodule Jido.Browser.WebFetch do
       |> Enum.map(&normalize_known_url/1)
       |> Enum.reject(&is_nil/1)
 
-    if not Keyword.get(opts, :require_known_url, false) do
-      :ok
-    else
+    if Keyword.get(opts, :require_known_url, false) do
       if url in known_urls do
         :ok
       else
@@ -480,6 +431,8 @@ defmodule Jido.Browser.WebFetch do
            url: url
          })}
       end
+    else
+      :ok
     end
   end
 
@@ -566,7 +519,7 @@ defmodule Jido.Browser.WebFetch do
   end
 
   defp rule_matches?(%{host: host, path: path}, %URI{host: uri_host} = uri) do
-    uri_host = String.downcase(uri_host || "")
+    uri_host = String.downcase(uri_host)
     request_path = normalize_rule_path(uri.path || "/")
 
     host_matches? = uri_host == host or String.ends_with?(uri_host, "." <> host)
@@ -677,36 +630,10 @@ defmodule Jido.Browser.WebFetch do
 
       terms ->
         sections = split_sections(content)
-        downcased_terms = Enum.map(terms, &String.downcase/1)
-
-        matching_indexes =
-          sections
-          |> Enum.with_index()
-          |> Enum.flat_map(fn {section, index} ->
-            lowered = String.downcase(section)
-
-            if Enum.any?(downcased_terms, &String.contains?(lowered, &1)) do
-              [index]
-            else
-              []
-            end
-          end)
-
+        matching_indexes = matching_section_indexes(sections, terms)
         window = max(opts[:focus_window] || 0, 0)
-
-        kept_indexes =
-          matching_indexes
-          |> Enum.flat_map(fn index -> (index - window)..(index + window) end)
-          |> Enum.filter(&(&1 >= 0 and &1 < length(sections)))
-          |> Enum.uniq()
-          |> Enum.sort()
-
-        filtered_content =
-          kept_indexes
-          |> Enum.map(&Enum.at(sections, &1))
-          |> Enum.reject(&(&1 == ""))
-          |> Enum.join("\n\n")
-          |> String.trim()
+        kept_indexes = expand_focus_window(matching_indexes, window, length(sections))
+        filtered_content = render_section_slice(sections, kept_indexes)
 
         {:ok, filtered_content, true, length(matching_indexes)}
     end
@@ -768,19 +695,6 @@ defmodule Jido.Browser.WebFetch do
       {:ok, %{content: content, metadata: metadata}} when is_binary(content) ->
         {:ok, String.trim(content), normalize_metadata(metadata)}
 
-      {:ok, %{content: content}} when is_binary(content) ->
-        {:ok, String.trim(content), %{}}
-
-      {:ok, result} ->
-        {:error,
-         Error.adapter_error("ExtractousEx returned an unexpected document payload", %{
-           error_code: :unavailable,
-           url: final_url,
-           content_type: content_type,
-           document_type: document_type,
-           result: result
-         })}
-
       {:error, reason} ->
         {:error,
          Error.adapter_error("ExtractousEx failed while extracting document content", %{
@@ -806,23 +720,26 @@ defmodule Jido.Browser.WebFetch do
   defp fetch_cached(url, opts) do
     if opts[:cache] do
       ensure_cache_table!()
-      now = System.system_time(:millisecond)
-
-      case :ets.lookup(@cache_table, cache_key(url, opts)) do
-        [{_key, expires_at, result}] ->
-          if expires_at > now do
-            {:ok, Map.put(result, :cached, true)}
-          else
-            :ets.delete(@cache_table, cache_key(url, opts))
-            :miss
-          end
-
-        [] ->
-          :miss
-      end
+      lookup_cached_result(cache_key(url, opts), System.system_time(:millisecond))
     else
       :miss
     end
+  end
+
+  defp lookup_cached_result(key, now) do
+    case :ets.lookup(@cache_table, key) do
+      [{_key, expires_at, result}] -> handle_cached_result(key, expires_at, result, now)
+      [] -> :miss
+    end
+  end
+
+  defp handle_cached_result(_key, expires_at, result, now) when expires_at > now do
+    {:ok, Map.put(result, :cached, true)}
+  end
+
+  defp handle_cached_result(key, _expires_at, _result, _now) do
+    :ets.delete(@cache_table, key)
+    :miss
   end
 
   defp maybe_store_cache(url, opts, result) do
@@ -976,6 +893,52 @@ defmodule Jido.Browser.WebFetch do
      })}
   end
 
+  defp validate_url_length("", _max_url_length) do
+    {:error, Error.invalid_error("URL cannot be empty", %{error_code: :invalid_input})}
+  end
+
+  defp validate_url_length(normalized_url, max_url_length) do
+    if String.length(normalized_url) > max_url_length do
+      {:error,
+       Error.invalid_error("URL exceeds maximum length", %{
+         error_code: :url_too_long,
+         max_url_length: max_url_length
+       })}
+    else
+      :ok
+    end
+  end
+
+  defp parse_fetch_uri(normalized_url) do
+    uri = URI.parse(normalized_url)
+
+    if uri.scheme in ["http", "https"] do
+      {:ok, uri}
+    else
+      {:error,
+       Error.invalid_error("Web fetch only supports http and https URLs", %{
+         error_code: :invalid_input,
+         scheme: uri.scheme
+       })}
+    end
+  end
+
+  defp validate_uri_host(%URI{host: host}) when host in [nil, ""] do
+    {:error, Error.invalid_error("URL must include a host", %{error_code: :invalid_input})}
+  end
+
+  defp validate_uri_host(%URI{host: host}) do
+    if ascii_only?(host) do
+      :ok
+    else
+      {:error,
+       Error.invalid_error("Web fetch only accepts ASCII hostnames", %{
+         error_code: :url_not_allowed,
+         host: host
+       })}
+    end
+  end
+
   defp normalize_integer_opt(_name, value, min: min) when is_integer(value) and value >= min, do: {:ok, value}
 
   defp normalize_integer_opt(name, value, min: min) do
@@ -1086,8 +1049,6 @@ defmodule Jido.Browser.WebFetch do
     end)
   end
 
-  defp metadata_title(_metadata), do: nil
-
   defp metadata_value_to_string(nil), do: nil
   defp metadata_value_to_string(value) when is_binary(value), do: String.trim(value)
 
@@ -1099,12 +1060,42 @@ defmodule Jido.Browser.WebFetch do
   defp metadata_value_to_string(_value), do: nil
 
   defp normalize_metadata(metadata) when is_map(metadata), do: metadata
-  defp normalize_metadata(_metadata), do: %{}
 
   defp maybe_put_metadata(response, metadata) when metadata in [%{}, nil], do: response
   defp maybe_put_metadata(response, metadata), do: Map.put(response, :metadata, metadata)
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp matching_section_indexes(sections, terms) do
+    downcased_terms = Enum.map(terms, &String.downcase/1)
+
+    sections
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {section, index} ->
+      if section_matches_term?(section, downcased_terms), do: [index], else: []
+    end)
+  end
+
+  defp section_matches_term?(section, downcased_terms) do
+    lowered = String.downcase(section)
+    Enum.any?(downcased_terms, &String.contains?(lowered, &1))
+  end
+
+  defp expand_focus_window(matching_indexes, window, section_count) do
+    matching_indexes
+    |> Enum.flat_map(fn index -> (index - window)..(index + window) end)
+    |> Enum.filter(&(&1 >= 0 and &1 < section_count))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp render_section_slice(sections, indexes) do
+    indexes
+    |> Enum.map(&Enum.at(sections, &1))
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.join("\n\n")
+    |> String.trim()
+  end
 
   defp title_from_url(url) do
     path = URI.parse(url).path || ""

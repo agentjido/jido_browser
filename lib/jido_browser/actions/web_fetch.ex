@@ -40,11 +40,8 @@ defmodule Jido.Browser.Actions.WebFetch do
          {:ok, result} <- Jido.Browser.web_fetch(params.url, build_opts(params, context)) do
       {:ok, Map.put(result, :status, "success")}
     else
-      {:error, %_{} = error} ->
+      {:error, error} ->
         {:error, error}
-
-      {:error, reason} ->
-        {:error, Error.adapter_error("Web fetch failed", %{reason: reason})}
     end
   end
 
