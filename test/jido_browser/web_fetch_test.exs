@@ -22,6 +22,7 @@ defmodule Jido.Browser.WebFetchTest do
     test "fetches HTML content with selector extraction and citation passages" do
       expect(Req, :run, fn opts ->
         assert opts[:url] == "https://example.com/article"
+        assert opts[:decode_body] == false
 
         request = Req.Request.new(url: "https://example.com/article")
 
@@ -64,6 +65,27 @@ defmodule Jido.Browser.WebFetchTest do
       assert result.citations.enabled == true
       assert [%{start_char: 0, text: passage_text} | _] = result.passages
       assert passage_text =~ "Hello"
+    end
+
+    test "preserves JSON responses as text content" do
+      expect(Req, :run, fn opts ->
+        assert opts[:decode_body] == false
+        request = Req.Request.new(url: opts[:url])
+
+        response =
+          %Req.Response{
+            status: 200,
+            headers: %{"content-type" => ["application/json"]},
+            body: ~s({"name":"jido","kind":"agent"})
+          }
+
+        {request, response}
+      end)
+
+      assert {:ok, result} = Jido.Browser.web_fetch("https://example.com/data.json", format: :text)
+
+      assert result.document_type == :text
+      assert result.content =~ ~s("name":"jido")
     end
 
     test "applies focused filtering to plain text responses" do
@@ -201,6 +223,14 @@ defmodule Jido.Browser.WebFetchTest do
                  "https://example.com/private",
                  allowed_domains: ["docs.example.com"]
                )
+    end
+
+    test "rejects invalid direct API options early" do
+      assert {:error, %Error.InvalidError{details: %{option: :timeout, error_code: :invalid_input}}} =
+               Jido.Browser.web_fetch("https://example.com/notes.txt", timeout: 0)
+
+      assert {:error, %Error.InvalidError{details: %{extractous: [:bad, :shape], error_code: :invalid_input}}} =
+               Jido.Browser.web_fetch("https://example.com/notes.txt", extractous: [:bad, :shape])
     end
 
     test "enforces known URL provenance when requested" do

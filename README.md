@@ -92,9 +92,10 @@ Selectors remain supported, but ref-based interaction is the preferred 2.0 flow:
 
 result.content
 result.passages
+result.metadata
 ```
 
-`web_fetch/2` keeps HTML handling native for selector extraction and markdown conversion, and uses `extractous_ex` for fetched binary documents such as PDFs, Word, Excel, PowerPoint, OpenDocument, EPUB, and common email formats.
+`web_fetch/2` keeps HTML handling native for selector extraction and markdown conversion, and uses `extractous_ex` for fetched binary documents such as PDFs, Word, Excel, PowerPoint, OpenDocument, EPUB, and common email formats. Binary document responses may also include `result.metadata` when extraction returns document metadata.
 
 ### State Persistence
 
@@ -171,6 +172,8 @@ config :jido_browser, :web_fetch,
     office: [include_headers_and_footers: true]
   ]
 ```
+
+Configured `extractous` options are merged with any per-call `extractous:` keyword options passed to `Jido.Browser.web_fetch/2`.
 
 ## Backends
 

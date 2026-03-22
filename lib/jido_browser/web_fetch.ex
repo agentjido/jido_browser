@@ -153,6 +153,7 @@ defmodule Jido.Browser.WebFetch do
       url: url,
       headers: request_headers(),
       receive_timeout: opts[:timeout],
+      decode_body: false,
       redirect: true,
       max_redirects: opts[:max_redirects]
     ]
@@ -211,24 +212,8 @@ defmodule Jido.Browser.WebFetch do
     with {:ok, document} <- parse_document(body),
          {:ok, html} <- select_html(document, body, selector),
          {:ok, title} <- extract_title(document),
-         {:ok, content} <- format_html(html, opts[:format], opts),
-         {:ok, filtered_content, filtered, focus_matches} <- maybe_filter_content(content, opts),
-         {final_content, truncated, original_estimated_tokens} <-
-           maybe_truncate(filtered_content, opts[:max_content_tokens]) do
-      {:ok,
-       build_response(
-         url,
-         final_url,
-         final_content,
-         title,
-         content_type,
-         :html,
-         opts,
-         truncated,
-         filtered,
-         focus_matches,
-         original_estimated_tokens
-       )}
+         {:ok, content} <- format_html(html, opts[:format], opts) do
+      finalize_result(url, final_url, content, title, content_type, :html, opts)
     end
   end
 
@@ -242,33 +227,9 @@ defmodule Jido.Browser.WebFetch do
   end
 
   defp build_text_result(url, final_url, body, content_type, opts) when is_binary(body) do
-    if opts[:selector] do
-      {:error,
-       Error.invalid_error("Selector filtering is only supported for HTML content", %{
-         error_code: :invalid_input,
-         selector: opts[:selector],
-         content_type: content_type
-       })}
-    else
-      with {:ok, content} <- format_text(body, opts[:format]),
-           {:ok, filtered_content, filtered, focus_matches} <- maybe_filter_content(content, opts),
-           {final_content, truncated, original_estimated_tokens} <-
-             maybe_truncate(filtered_content, opts[:max_content_tokens]) do
-        {:ok,
-         build_response(
-           url,
-           final_url,
-           final_content,
-           nil,
-           content_type,
-           :text,
-           opts,
-           truncated,
-           filtered,
-           focus_matches,
-           original_estimated_tokens
-         )}
-      end
+    with :ok <- validate_non_html_options(content_type, opts),
+         {:ok, content} <- format_text(body, opts[:format]) do
+      finalize_result(url, final_url, content, nil, content_type, :text, opts)
     end
   end
 
@@ -282,44 +243,18 @@ defmodule Jido.Browser.WebFetch do
   end
 
   defp build_document_result(url, final_url, body, content_type, document_type, opts) when is_binary(body) do
-    cond do
-      opts[:selector] ->
-        {:error,
-         Error.invalid_error("Selector filtering is only supported for HTML content", %{
-           error_code: :invalid_input,
-           selector: opts[:selector],
-           content_type: content_type
-         })}
-
-      opts[:format] == :html ->
-        {:error,
-         Error.invalid_error("HTML output is only supported for HTML content", %{
-           error_code: :invalid_input,
-           format: :html,
-           content_type: content_type
-         })}
-
-      true ->
-        with {:ok, text, metadata} <- extract_document_content(body, final_url, content_type, document_type, opts),
-             {:ok, filtered_content, filtered, focus_matches} <- maybe_filter_content(text, opts),
-             {final_content, truncated, original_estimated_tokens} <-
-               maybe_truncate(filtered_content, opts[:max_content_tokens]) do
-          {:ok,
-           build_response(
-             url,
-             final_url,
-             final_content,
-             document_title(metadata, final_url),
-             content_type,
-             document_type,
-             opts,
-             truncated,
-             filtered,
-             focus_matches,
-             original_estimated_tokens,
-             metadata
-           )}
-        end
+    with :ok <- validate_non_html_options(content_type, opts),
+         {:ok, text, metadata} <- extract_document_content(body, final_url, content_type, document_type, opts) do
+      finalize_result(
+        url,
+        final_url,
+        text,
+        document_title(metadata, final_url),
+        content_type,
+        document_type,
+        opts,
+        metadata
+      )
     end
   end
 
@@ -344,7 +279,7 @@ defmodule Jido.Browser.WebFetch do
          filtered,
          focus_matches,
          original_estimated_tokens,
-         metadata \\ nil
+         metadata
        ) do
     passages = maybe_build_passages(content, title, final_url, opts[:citations])
 
@@ -369,13 +304,76 @@ defmodule Jido.Browser.WebFetch do
     |> maybe_put_metadata(metadata)
   end
 
+  defp finalize_result(url, final_url, content, title, content_type, document_type, opts, metadata \\ nil) do
+    with {:ok, filtered_content, filtered, focus_matches} <- maybe_filter_content(content, opts),
+         {final_content, truncated, original_estimated_tokens} <-
+           maybe_truncate(filtered_content, opts[:max_content_tokens]) do
+      {:ok,
+       build_response(
+         url,
+         final_url,
+         final_content,
+         title,
+         content_type,
+         document_type,
+         opts,
+         truncated,
+         filtered,
+         focus_matches,
+         original_estimated_tokens,
+         metadata
+       )}
+    end
+  end
+
+  defp validate_non_html_options(content_type, opts) do
+    cond do
+      opts[:selector] ->
+        {:error,
+         Error.invalid_error("Selector filtering is only supported for HTML content", %{
+           error_code: :invalid_input,
+           selector: opts[:selector],
+           content_type: content_type
+         })}
+
+      opts[:format] == :html ->
+        {:error,
+         Error.invalid_error("HTML output is only supported for HTML content", %{
+           error_code: :invalid_input,
+           format: :html,
+           content_type: content_type
+         })}
+
+      true ->
+        :ok
+    end
+  end
+
   defp normalize_opts(opts) do
     format = opts[:format] || :markdown
     citations = normalize_citations(opts[:citations])
     focus_terms = normalize_focus_terms(opts[:focus_terms])
 
     with {:ok, configured_extractous_opts} <- normalize_extractous_opts(config(:extractous, [])),
-         {:ok, request_extractous_opts} <- normalize_extractous_opts(Keyword.get(opts, :extractous, [])) do
+         {:ok, request_extractous_opts} <- normalize_extractous_opts(Keyword.get(opts, :extractous, [])),
+         {:ok, selector} <- normalize_selector(opts[:selector]),
+         {:ok, focus_window} <- normalize_integer_opt(:focus_window, Keyword.get(opts, :focus_window, 0), min: 0),
+         {:ok, timeout} <-
+           normalize_integer_opt(:timeout, Keyword.get(opts, :timeout, config(:timeout, @default_timeout)), min: 1),
+         {:ok, max_redirects} <-
+           normalize_integer_opt(:max_redirects, Keyword.get(opts, :max_redirects, @default_max_redirects), min: 0),
+         {:ok, cache_ttl_ms} <-
+           normalize_integer_opt(
+             :cache_ttl_ms,
+             Keyword.get(opts, :cache_ttl_ms, config(:cache_ttl_ms, @default_cache_ttl_ms)),
+             min: 0
+           ),
+         {:ok, max_content_tokens} <-
+           normalize_optional_integer_opt(:max_content_tokens, opts[:max_content_tokens], min: 1),
+         {:ok, max_url_length} <- normalize_optional_integer_opt(:max_url_length, opts[:max_url_length], min: 1),
+         {:ok, cache} <- normalize_boolean_opt(:cache, Keyword.get(opts, :cache, true)),
+         {:ok, require_known_url} <-
+           normalize_boolean_opt(:require_known_url, Keyword.get(opts, :require_known_url, false)) do
       cond do
         format not in @supported_formats ->
           {:error,
@@ -402,14 +400,18 @@ defmodule Jido.Browser.WebFetch do
           normalized =
             opts
             |> Keyword.put(:format, format)
+            |> Keyword.put(:selector, selector)
             |> Keyword.put(:citations, citations)
             |> Keyword.put(:focus_terms, focus_terms)
+            |> Keyword.put(:focus_window, focus_window)
+            |> Keyword.put(:timeout, timeout)
+            |> Keyword.put(:max_redirects, max_redirects)
+            |> Keyword.put(:cache, cache)
+            |> Keyword.put(:cache_ttl_ms, cache_ttl_ms)
+            |> Keyword.put(:require_known_url, require_known_url)
             |> Keyword.put(:extractous, merge_extractous_opts(configured_extractous_opts, request_extractous_opts))
-            |> Keyword.put_new(:focus_window, 0)
-            |> Keyword.put_new(:timeout, config(:timeout, @default_timeout))
-            |> Keyword.put_new(:max_redirects, @default_max_redirects)
-            |> Keyword.put_new(:cache, true)
-            |> Keyword.put_new(:cache_ttl_ms, config(:cache_ttl_ms, @default_cache_ttl_ms))
+            |> maybe_put(:max_content_tokens, max_content_tokens)
+            |> maybe_put(:max_url_length, max_url_length)
             |> Keyword.put_new(:known_urls, [])
 
           {:ok, normalized}
@@ -937,7 +939,7 @@ defmodule Jido.Browser.WebFetch do
 
   defp normalize_extractous_opts(opts) when is_list(opts) do
     if Keyword.keyword?(opts) do
-      {:ok, opts}
+      {:ok, canonicalize_keyword_list(opts)}
     else
       {:error,
        Error.invalid_error("Extractous options must be a keyword list", %{
@@ -953,6 +955,62 @@ defmodule Jido.Browser.WebFetch do
        error_code: :invalid_input,
        extractous: opts
      })}
+  end
+
+  defp normalize_selector(nil), do: {:ok, nil}
+
+  defp normalize_selector(selector) when is_binary(selector) do
+    selector
+    |> String.trim()
+    |> case do
+      "" -> {:ok, nil}
+      value -> {:ok, value}
+    end
+  end
+
+  defp normalize_selector(selector) do
+    {:error,
+     Error.invalid_error("Selector must be a string", %{
+       error_code: :invalid_input,
+       selector: selector
+     })}
+  end
+
+  defp normalize_integer_opt(_name, value, min: min) when is_integer(value) and value >= min, do: {:ok, value}
+
+  defp normalize_integer_opt(name, value, min: min) do
+    {:error,
+     Error.invalid_error("#{name} must be an integer greater than or equal to #{min}", %{
+       error_code: :invalid_input,
+       option: name,
+       value: value
+     })}
+  end
+
+  defp normalize_optional_integer_opt(_name, nil, _opts), do: {:ok, nil}
+  defp normalize_optional_integer_opt(name, value, opts), do: normalize_integer_opt(name, value, opts)
+
+  defp normalize_boolean_opt(_name, value) when is_boolean(value), do: {:ok, value}
+
+  defp normalize_boolean_opt(name, value) do
+    {:error,
+     Error.invalid_error("#{name} must be a boolean", %{
+       error_code: :invalid_input,
+       option: name,
+       value: value
+     })}
+  end
+
+  defp canonicalize_keyword_list(keyword_list) do
+    keyword_list
+    |> Enum.map(fn {key, value} = pair ->
+      if is_list(value) and Keyword.keyword?(value) do
+        {key, canonicalize_keyword_list(value)}
+      else
+        pair
+      end
+    end)
+    |> Enum.sort_by(fn {key, _value} -> to_string(key) end)
   end
 
   defp merge_extractous_opts(left, right) do
@@ -1045,6 +1103,8 @@ defmodule Jido.Browser.WebFetch do
 
   defp maybe_put_metadata(response, metadata) when metadata in [%{}, nil], do: response
   defp maybe_put_metadata(response, metadata), do: Map.put(response, :metadata, metadata)
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
 
   defp title_from_url(url) do
     path = URI.parse(url).path || ""
