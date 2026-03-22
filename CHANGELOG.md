@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Add HTTP-first `Jido.Browser.web_fetch/2` and `Jido.Browser.Actions.WebFetch` for stateless page retrieval with domain policy, focused filtering, caching, and citation-ready passages
-
 ### Changed
 
 - Rename the public Elixir namespace from `JidoBrowser.*` to `Jido.Browser.*`
