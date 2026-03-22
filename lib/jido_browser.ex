@@ -17,7 +17,12 @@ defmodule Jido.Browser do
   @supported_extract_formats [:markdown, :html, :text]
   @supported_web_fetch_formats [:markdown, :html, :text]
 
-  @doc "Starts a warm browser pool for adapters that support pooled sessions."
+  @doc """
+  Starts a warm browser pool for adapters that support pooled sessions.
+
+  This is intended for scripts, tests, and ad hoc startup. OTP applications
+  should prefer adding `Jido.Browser.Pool` to their supervision tree.
+  """
   @spec start_pool(keyword()) :: {:ok, pid()} | {:error, term()}
   def start_pool(opts) do
     adapter = opts[:adapter] || configured_adapter()

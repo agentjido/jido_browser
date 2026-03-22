@@ -4,6 +4,7 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
 
   alias Jido.Browser
   alias Jido.Browser.Adapters.AgentBrowser
+  alias Jido.Browser.Pool
   alias Jido.Browser.TestPoolRuntime
 
   setup :set_mimic_global
@@ -225,6 +226,32 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
                Browser.start_session(pool: name, session_name: "persisted")
 
       assert Exception.message(error) =~ "do not support session_name"
+    end
+
+    test "supervised pool child starts under a consumer supervisor and is usable by name" do
+      started_at = System.monotonic_time(:millisecond)
+
+      start_supervised!({Pool, name: :default, size: 1, worker_init_delay: 50, pool_runtime_module: TestPoolRuntime})
+
+      elapsed = System.monotonic_time(:millisecond) - started_at
+      assert elapsed >= 40
+
+      assert {:ok, session} = Browser.start_session(pool: :default)
+      assert :ok = Browser.end_session(session)
+    end
+
+    test "supervised pool child rejects invalid process names" do
+      assert {:error, error} =
+               Pool.start_link(name: "default", size: 1, pool_runtime_module: TestPoolRuntime)
+
+      assert Exception.message(error) =~ "Supervised pool name must be an atom"
+    end
+
+    test "supervised pool child rejects unsupported adapters" do
+      assert {:error, error} =
+               Pool.start_link(name: :default, size: 1, adapter: Jido.Browser.Adapters.Web)
+
+      assert Exception.message(error) =~ "does not support supervised warm pools"
     end
   end
 

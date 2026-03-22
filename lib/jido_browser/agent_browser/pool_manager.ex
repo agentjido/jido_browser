@@ -76,7 +76,9 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     name = Keyword.fetch!(opts, :name)
-    GenServer.start_link(__MODULE__, opts, name: via(name))
+    process_name = Keyword.get(opts, :process_name, via(name))
+
+    GenServer.start_link(__MODULE__, opts, name: process_name)
   end
 
   @doc false
@@ -185,11 +187,34 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
   def resolve(name) do
     case Registry.lookup(Jido.Browser.AgentBrowser.PoolRegistry, name) do
       [{pid, _value}] -> {:ok, pid}
-      [] -> {:error, :pool_not_found}
+      [] -> resolve_process_name(name)
     end
   end
 
   defp via(name), do: {:via, Registry, {Jido.Browser.AgentBrowser.PoolRegistry, name}}
+
+  defp resolve_process_name(name) when is_atom(name) do
+    case Process.whereis(name) do
+      pid when is_pid(pid) -> {:ok, pid}
+      nil -> {:error, :pool_not_found}
+    end
+  end
+
+  defp resolve_process_name({:global, _term} = name) do
+    case GenServer.whereis(name) do
+      pid when is_pid(pid) -> {:ok, pid}
+      nil -> {:error, :pool_not_found}
+    end
+  end
+
+  defp resolve_process_name({:via, _module, _term} = name) do
+    case GenServer.whereis(name) do
+      pid when is_pid(pid) -> {:ok, pid}
+      nil -> {:error, :pool_not_found}
+    end
+  end
+
+  defp resolve_process_name(_name), do: {:error, :pool_not_found}
 
   defp start_lease(pool_pid, runtime_module, opts) do
     checkout_timeout = Keyword.get(opts, :checkout_timeout, 5_000)

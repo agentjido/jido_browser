@@ -113,6 +113,7 @@ defmodule Jido.Browser.MixProject do
       groups_for_modules: [
         Core: [
           Jido.Browser,
+          Jido.Browser.Pool,
           Jido.Browser.Session,
           Jido.Browser.Plugin,
           Jido.Browser.WebFetch

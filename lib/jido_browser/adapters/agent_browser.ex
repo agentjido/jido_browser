@@ -20,38 +20,34 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
 
   @spec start_pool(keyword()) :: {:ok, pid()} | {:error, term()}
   def start_pool(opts) do
-    with :ok <- reject_pooled_session_name(opts),
-         {:ok, name} <- fetch_pool_name(opts),
-         {:ok, size} <- fetch_pool_size(opts),
-         {:ok, session_opts} <- build_session_opts(opts) do
-      startup_timeout =
-        Keyword.get(
-          opts,
-          :startup_timeout,
-          max(Keyword.get(session_opts, :timeout, @default_timeout), @default_timeout) * size
-        )
-
-      case PoolManager.start_pool(
-             name: name,
-             size: size,
-             session_opts: session_opts,
-             pool_runtime_module: Keyword.get(opts, :pool_runtime_module)
-           ) do
+    with {:ok, manager_opts, startup_timeout} <- build_pool_start_opts(opts) do
+      case PoolManager.start_pool(manager_opts) do
         {:ok, pid} ->
-          try do
-            :ok = PoolManager.await_ready(pid, startup_timeout)
-            {:ok, pid}
-          catch
-            :exit, reason ->
-              _ = PoolManager.stop_pool(pid)
-              {:error, Error.adapter_error("Failed to warm agent-browser pool", %{reason: reason})}
-          end
+          await_pool_ready(pid, startup_timeout, "Failed to warm agent-browser pool")
 
         {:error, {:already_started, pid}} ->
           {:error, {:already_started, pid}}
 
         {:error, reason} ->
           {:error, Error.adapter_error("Failed to start agent-browser pool", %{reason: reason})}
+      end
+    end
+  end
+
+  @doc false
+  @spec start_supervised_pool(keyword()) :: GenServer.on_start()
+  def start_supervised_pool(opts) do
+    with {:ok, manager_opts, startup_timeout} <-
+           build_pool_start_opts(opts, process_name: Keyword.fetch!(opts, :name)) do
+      case PoolManager.start_link(manager_opts) do
+        {:ok, pid} ->
+          await_pool_ready(pid, startup_timeout, "Failed to warm supervised agent-browser pool")
+
+        {:error, {:already_started, pid}} ->
+          {:error, {:already_started, pid}}
+
+        {:error, reason} ->
+          {:error, Error.adapter_error("Failed to start supervised agent-browser pool", %{reason: reason})}
       end
     end
   end
@@ -421,6 +417,40 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
       {:error, reason} ->
         {:error, Error.adapter_error("Failed to check out pooled agent-browser session", %{pool: pool, reason: reason})}
     end
+  end
+
+  defp build_pool_start_opts(opts, extra_manager_opts \\ []) do
+    with :ok <- reject_pooled_session_name(opts),
+         {:ok, name} <- fetch_pool_name(opts),
+         {:ok, size} <- fetch_pool_size(opts),
+         {:ok, session_opts} <- build_session_opts(opts) do
+      manager_opts =
+        [
+          name: name,
+          size: size,
+          session_opts: session_opts,
+          pool_runtime_module: Keyword.get(opts, :pool_runtime_module)
+        ] ++ extra_manager_opts
+
+      startup_timeout =
+        Keyword.get(
+          opts,
+          :startup_timeout,
+          max(Keyword.get(session_opts, :timeout, @default_timeout), @default_timeout) * size
+        )
+
+      {:ok, manager_opts, startup_timeout}
+    end
+  end
+
+  defp await_pool_ready(pid, startup_timeout, message) do
+    :ok = PoolManager.await_ready(pid, startup_timeout)
+    {:ok, pid}
+  catch
+    :exit, reason ->
+      Process.unlink(pid)
+      _ = GenServer.stop(pid, :shutdown, 10_000)
+      {:error, Error.adapter_error(message, %{reason: reason})}
   end
 
   defp build_session_opts(opts) do

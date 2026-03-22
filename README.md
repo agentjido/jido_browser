@@ -125,6 +125,41 @@ File.mkdir_p!(Path.dirname(state_path))
 
 ### Warm Session Pools
 
+For OTP applications, prefer adding a named pool to your supervision tree:
+
+```elixir
+defmodule MyApp.Application do
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      {Jido.Browser.Pool,
+       name: :default,
+       size: 2,
+       headless: true,
+       startup_timeout: 60_000}
+    ]
+
+    Supervisor.start_link(children, strategy: :one_for_one, name: MyApp.Supervisor)
+  end
+end
+```
+
+Then check out pooled sessions by name:
+
+```elixir
+{:ok, session} =
+  Jido.Browser.start_session(
+    pool: :default,
+    checkout_timeout: 5_000
+  )
+
+{:ok, session, _} = Jido.Browser.navigate(session, "https://example.com")
+:ok = Jido.Browser.end_session(session)
+```
+
+Use `start_pool/1` for scripts, tests, or ad hoc startup:
+
 ```elixir
 {:ok, _pool} =
   Jido.Browser.start_pool(
