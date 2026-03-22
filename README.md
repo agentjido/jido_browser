@@ -78,6 +78,22 @@ Selectors remain supported, but ref-based interaction is the preferred 2.0 flow:
 2. act on `@eN` refs
 3. re-snapshot
 
+### Stateless Web Fetch
+
+```elixir
+{:ok, result} =
+  Jido.Browser.web_fetch(
+    "https://example.com/docs",
+    format: :markdown,
+    allowed_domains: ["example.com"],
+    focus_terms: ["API", "authentication"],
+    citations: true
+  )
+
+result.content
+result.passages
+```
+
 ### State Persistence
 
 ```elixir
@@ -143,6 +159,14 @@ config :jido_browser, :web,
   profile: "default"
 ```
 
+Optional web fetch settings:
+
+```elixir
+config :jido_browser, :web_fetch,
+  cache_ttl_ms: 300_000,
+  pdftotext_path: "/usr/local/bin/pdftotext"
+```
+
 ## Backends
 
 ### AgentBrowser (Default)
@@ -173,6 +197,7 @@ Core operations:
 - `type/4`
 - `screenshot/2`
 - `extract_content/2`
+- `web_fetch/2`
 - `evaluate/3`
 
 Agent-browser-native operations:
@@ -252,6 +277,7 @@ Agent-browser-native operations:
 - `ReadPage`
 - `SnapshotUrl`
 - `SearchWeb`
+- `WebFetch`
 
 ## Using With Jido Agents
 

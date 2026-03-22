@@ -5,6 +5,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
   alias Jido.Browser.Actions.ReadPage
   alias Jido.Browser.Actions.SearchWeb
   alias Jido.Browser.Actions.SnapshotUrl
+  alias Jido.Browser.Actions.WebFetch
   alias Jido.Browser.Installer
   alias Jido.Browser.Session
 
@@ -173,6 +174,64 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
           assert message =~ "Brave Search API key not configured"
         end)
       end)
+    end
+  end
+
+  describe "WebFetch.run/2" do
+    test "passes provenance options through to the fetch API" do
+      expect(Jido.Browser, :web_fetch, fn "https://example.com/guide", opts ->
+        assert opts[:require_known_url] == true
+        assert "https://example.com/guide" in opts[:known_urls]
+        assert opts[:allowed_domains] == ["example.com"]
+
+        {:ok,
+         %{
+           url: "https://example.com/guide",
+           final_url: "https://example.com/guide",
+           title: "Guide",
+           content: "Fetched guide content",
+           format: :markdown,
+           content_type: "text/html",
+           document_type: :html,
+           retrieved_at: "2026-03-21T00:00:00Z",
+           estimated_tokens: 5,
+           original_estimated_tokens: 5,
+           truncated: false,
+           filtered: false,
+           focus_matches: 0,
+           cached: false,
+           citations: %{enabled: false},
+           passages: []
+         }}
+      end)
+
+      context = %{skill_state: %{seen_urls: ["https://example.com/guide"], web_fetch_uses: 0}}
+
+      assert {:ok, result} =
+               WebFetch.run(
+                 %{
+                   url: "https://example.com/guide",
+                   require_known_url: true,
+                   allowed_domains: ["example.com"]
+                 },
+                 context
+               )
+
+      assert result.status == "success"
+      assert result.url == "https://example.com/guide"
+    end
+
+    test "returns max_uses_exceeded before calling the fetch API" do
+      context = %{skill_state: %{web_fetch_uses: 2}}
+
+      assert {:error, error} =
+               WebFetch.run(
+                 %{url: "https://example.com/guide", max_uses: 2},
+                 context
+               )
+
+      assert %Jido.Browser.Error.InvalidError{} = error
+      assert error.details.error_code == :max_uses_exceeded
     end
   end
 

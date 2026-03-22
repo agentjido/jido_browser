@@ -23,9 +23,9 @@ defmodule Jido.Browser.PluginTest do
       assert "automation" in tags
     end
 
-    test "has 37 actions" do
+    test "has 38 actions" do
       actions = Plugin.actions()
-      assert length(actions) == 37
+      assert length(actions) == 38
     end
 
     test "includes all expected action modules" do
@@ -73,13 +73,14 @@ defmodule Jido.Browser.PluginTest do
 
       # Advanced
       assert Jido.Browser.Actions.Evaluate in actions
+      assert Jido.Browser.Actions.WebFetch in actions
     end
   end
 
   describe "signal_routes/1" do
-    test "returns 37 routes" do
+    test "returns 38 routes" do
       routes = Plugin.signal_routes(%{})
-      assert length(routes) == 37
+      assert length(routes) == 38
     end
 
     test "maps browser.navigate to Navigate action" do
@@ -122,6 +123,8 @@ defmodule Jido.Browser.PluginTest do
       assert state.adapter == Jido.Browser.Adapters.AgentBrowser
       assert state.last_url == nil
       assert state.last_title == nil
+      assert state.seen_urls == []
+      assert state.web_fetch_uses == 0
     end
 
     test "accepts headless config override" do
@@ -154,7 +157,7 @@ defmodule Jido.Browser.PluginTest do
     test "returns list of signal patterns" do
       patterns = Plugin.signal_patterns()
       assert is_list(patterns)
-      assert length(patterns) == 37
+      assert length(patterns) == 38
     end
 
     test "all patterns have browser. prefix" do
@@ -173,6 +176,7 @@ defmodule Jido.Browser.PluginTest do
       assert "browser.save_state" in patterns
       assert "browser.tab_list" in patterns
       assert "browser.console" in patterns
+      assert "browser.web_fetch" in patterns
     end
   end
 
@@ -186,6 +190,36 @@ defmodule Jido.Browser.PluginTest do
     test "passes through successful results" do
       result = {:ok, %{status: "success"}}
       assert Plugin.transform_result(:some_action, result, %{}) == result
+    end
+
+    test "tracks discovered URLs and fetch usage for web fetch results" do
+      context = %{skill_state: %{seen_urls: ["https://seed.example"], web_fetch_uses: 1}}
+
+      result =
+        Plugin.transform_result(
+          Jido.Browser.Actions.WebFetch,
+          {:ok, %{url: "https://example.com", final_url: "https://example.com/final", status: "success"}},
+          context
+        )
+
+      assert {:ok, _result, state_updates} = result
+
+      assert Enum.sort(state_updates.seen_urls) ==
+               Enum.sort(["https://seed.example", "https://example.com", "https://example.com/final"])
+
+      assert state_updates.web_fetch_uses == 2
+    end
+
+    test "tracks URLs returned by search results" do
+      result =
+        Plugin.transform_result(
+          Jido.Browser.Actions.SearchWeb,
+          {:ok, %{results: [%{url: "https://elixir-lang.org"}]}},
+          %{skill_state: %{}}
+        )
+
+      assert {:ok, _result, state_updates} = result
+      assert state_updates.seen_urls == ["https://elixir-lang.org"]
     end
 
     test "enhances error results when session available" do
