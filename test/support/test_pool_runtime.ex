@@ -49,6 +49,8 @@ defmodule Jido.Browser.TestPoolRuntime do
 
   alias Jido.Browser.TestPoolRuntime.Worker
 
+  def start_worker(%{session_opts: opts}), do: start_worker(opts)
+
   def start_worker(opts) do
     Process.sleep(Keyword.get(opts, :worker_init_delay, 0))
 

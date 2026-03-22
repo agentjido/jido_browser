@@ -6,10 +6,10 @@ defmodule Jido.Browser.AgentBrowser.PoolWorker do
   def init_pool(init_arg), do: {:ok, init_arg}
 
   @impl NimblePool
-  def init_worker(%{manager: manager, runtime_module: runtime_module, session_opts: session_opts} = pool_state) do
+  def init_worker(%{manager: manager, runtime_module: runtime_module} = pool_state) do
     {:async,
      fn ->
-       case runtime_module.start_worker(session_opts) do
+       case runtime_module.start_worker(pool_state) do
          {:ok, worker_state} ->
            send(manager, {:pool_worker_ready, worker_state.session_id})
            worker_state
@@ -36,11 +36,19 @@ defmodule Jido.Browser.AgentBrowser.PoolWorker do
         worker_state,
         %{cleanup_supervisor: cleanup_supervisor, runtime_module: runtime_module} = pool_state
       ) do
-    _ =
-      Task.Supervisor.start_child(cleanup_supervisor, fn ->
-        runtime_module.shutdown_worker(worker_state)
-      end)
+    _ = start_cleanup_task(cleanup_supervisor, runtime_module, worker_state)
 
     {:ok, pool_state}
+  end
+
+  defp start_cleanup_task(cleanup_supervisor, runtime_module, worker_state) do
+    Task.Supervisor.start_child(cleanup_supervisor, fn ->
+      runtime_module.shutdown_worker(worker_state)
+    end)
+  catch
+    :exit, _reason ->
+      Task.start(fn ->
+        runtime_module.shutdown_worker(worker_state)
+      end)
   end
 end

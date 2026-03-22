@@ -61,6 +61,15 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
       assert :ok = Browser.end_session(session)
     end
 
+    test "start_session accepts the pid returned by start_pool" do
+      name = unique_pool_name()
+      assert {:ok, pool} = start_pool!(name, size: 1)
+      on_exit(fn -> Browser.stop_pool(pool) end)
+
+      assert {:ok, session} = Browser.start_session(pool: pool)
+      assert :ok = Browser.end_session(session)
+    end
+
     test "end_session recycles the worker and returns a replacement" do
       name = unique_pool_name()
       assert {:ok, pool} = start_pool!(name, size: 1)

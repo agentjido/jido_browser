@@ -10,8 +10,10 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
 
   alias Jido.Browser.AgentBrowser.PoolLease
   alias Jido.Browser.AgentBrowser.PoolManager
+  alias Jido.Browser.AgentBrowser.PoolTreeSupervisor
   alias Jido.Browser.AgentBrowser.Runtime
   alias Jido.Browser.AgentBrowser.SessionServer
+  alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.Error
   alias Jido.Browser.Session
 
@@ -21,7 +23,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   @spec start_pool(keyword()) :: {:ok, pid()} | {:error, term()}
   def start_pool(opts) do
     with {:ok, manager_opts, startup_timeout} <- build_pool_start_opts(opts) do
-      case PoolManager.start_pool(manager_opts) do
+      case PoolTreeSupervisor.start_pool(manager_opts) do
         {:ok, pid} ->
           await_pool_ready(pid, startup_timeout, "Failed to warm agent-browser pool")
 
@@ -37,9 +39,9 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   @doc false
   @spec start_supervised_pool(keyword()) :: GenServer.on_start()
   def start_supervised_pool(opts) do
-    with {:ok, manager_opts, startup_timeout} <-
-           build_pool_start_opts(opts, process_name: Keyword.fetch!(opts, :name)) do
-      case PoolManager.start_link(manager_opts) do
+    with :ok <- BrowserApplication.ensure_started(),
+         {:ok, manager_opts, startup_timeout} <- build_pool_start_opts(opts) do
+      case PoolTreeSupervisor.start_link(manager_opts) do
         {:ok, pid} ->
           await_pool_ready(pid, startup_timeout, "Failed to warm supervised agent-browser pool")
 
@@ -53,7 +55,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   end
 
   @spec stop_pool(term()) :: :ok | {:error, term()}
-  def stop_pool(pool), do: PoolManager.stop_pool(pool)
+  def stop_pool(pool), do: PoolTreeSupervisor.stop_pool(pool)
 
   @impl true
   def start_session(opts \\ []) do
@@ -444,7 +446,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   end
 
   defp await_pool_ready(pid, startup_timeout, message) do
-    :ok = PoolManager.await_ready(pid, startup_timeout)
+    :ok = PoolTreeSupervisor.await_ready(pid, startup_timeout)
     {:ok, pid}
   catch
     :exit, reason ->

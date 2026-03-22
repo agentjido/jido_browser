@@ -4,12 +4,12 @@ defmodule Jido.Browser.Application do
   use Application
 
   @required_processes [
+    Jido.Browser.AgentBrowser.SessionTreeSupervisor,
     Jido.Browser.AgentBrowser.Registry,
     Jido.Browser.AgentBrowser.SessionSupervisor,
+    Jido.Browser.AgentBrowser.PoolRootSupervisor,
     Jido.Browser.AgentBrowser.PoolRegistry,
-    Jido.Browser.AgentBrowser.PoolSupervisor,
-    Jido.Browser.AgentBrowser.LeaseSupervisor,
-    Jido.Browser.AgentBrowser.CleanupSupervisor
+    Jido.Browser.AgentBrowser.PoolSupervisor
   ]
 
   @boot_poll_interval 10
@@ -18,16 +18,12 @@ defmodule Jido.Browser.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      {Registry, keys: :unique, name: Jido.Browser.AgentBrowser.Registry},
-      {DynamicSupervisor, strategy: :one_for_one, name: Jido.Browser.AgentBrowser.SessionSupervisor},
-      {Registry, keys: :unique, name: Jido.Browser.AgentBrowser.PoolRegistry},
-      {DynamicSupervisor, strategy: :one_for_one, name: Jido.Browser.AgentBrowser.PoolSupervisor},
-      {DynamicSupervisor, strategy: :one_for_one, name: Jido.Browser.AgentBrowser.LeaseSupervisor},
-      {Task.Supervisor, name: Jido.Browser.AgentBrowser.CleanupSupervisor}
+      Jido.Browser.AgentBrowser.SessionTreeSupervisor,
+      Jido.Browser.AgentBrowser.PoolRootSupervisor
     ]
 
     Supervisor.start_link(children,
-      strategy: :one_for_one,
+      strategy: :rest_for_one,
       name: Jido.Browser.Supervisor
     )
   end

@@ -12,18 +12,33 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
         }
 
   @doc false
-  @spec start_worker(keyword()) :: {:ok, worker_state()} | {:error, term()}
-  def start_worker(session_opts) do
+  @spec start_worker(map()) :: {:ok, worker_state()} | {:error, term()}
+  def start_worker(%{session_opts: session_opts, session_supervisor: session_supervisor}) do
     session_id = Uniq.UUID.uuid4()
 
-    case Runtime.ensure_session_server(session_id, session_opts) do
-      {:ok, pid, runtime} ->
+    child_spec =
+      {SessionServer,
+       session_opts
+       |> Keyword.put(:session_id, session_id)
+       |> Keyword.put(:registration, :none)}
+
+    case DynamicSupervisor.start_child(session_supervisor, child_spec) do
+      {:ok, pid} ->
         {:ok,
          %{
            session_id: session_id,
            binary: Keyword.fetch!(session_opts, :binary),
            manager: pid,
-           runtime: runtime
+           runtime: Runtime.session_runtime_metadata(session_id, pid)
+         }}
+
+      {:error, {:already_started, pid}} ->
+        {:ok,
+         %{
+           session_id: session_id,
+           binary: Keyword.fetch!(session_opts, :binary),
+           manager: pid,
+           runtime: Runtime.session_runtime_metadata(session_id, pid)
          }}
 
       {:error, reason} ->
