@@ -35,21 +35,24 @@ defmodule Jido.Browser.Actions.SnapshotUrl do
       include_links: [type: :boolean, default: true, doc: "Include extracted links"],
       include_forms: [type: :boolean, default: true, doc: "Include form field info"],
       include_headings: [type: :boolean, default: true, doc: "Include heading structure"],
-      max_content_length: [type: :integer, default: 50_000, doc: "Truncate content at this length"]
+      max_content_length: [type: :integer, default: 50_000, doc: "Truncate content at this length"],
+      pool: [type: :any, doc: "Optional warm session pool name"],
+      checkout_timeout: [type: :integer, default: 5_000, doc: "Warm pool checkout timeout in ms"]
     ]
 
   alias Jido.Browser.ActionHelpers
 
   @impl true
-  def run(params, _context) do
+  def run(params, context) do
     url = params.url
     selector = Map.get(params, :selector, "body")
     include_links = Map.get(params, :include_links, true)
     include_forms = Map.get(params, :include_forms, true)
     include_headings = Map.get(params, :include_headings, true)
     max_content_length = Map.get(params, :max_content_length, 50_000)
+    start_opts = session_start_opts(params, context)
 
-    case Jido.Browser.start_session() do
+    case Jido.Browser.start_session(start_opts) do
       {:ok, session} ->
         try do
           perform_snapshot(session, url, selector, include_links, include_forms, include_headings, max_content_length)
@@ -107,4 +110,13 @@ defmodule Jido.Browser.Actions.SnapshotUrl do
         {:error, "Snapshot failed and fallback extraction also failed: #{inspect(reason)}"}
     end
   end
+
+  defp session_start_opts(params, context) do
+    []
+    |> maybe_put(:pool, params[:pool] || get_in(context, [:skill_state, :pool]))
+    |> maybe_put(:checkout_timeout, params[:checkout_timeout] || get_in(context, [:skill_state, :checkout_timeout]))
+  end
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
 end

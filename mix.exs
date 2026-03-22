@@ -72,6 +72,7 @@ defmodule Jido.Browser.MixProject do
       {:floki, "~> 0.38"},
       {:html2markdown, "~> 0.3"},
       {:extractous_ex, "~> 0.2"},
+      {:nimble_pool, "~> 1.1"},
 
       # Dev/Test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

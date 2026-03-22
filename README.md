@@ -123,6 +123,28 @@ File.mkdir_p!(Path.dirname(state_path))
 {:ok, session, _} = Jido.Browser.close_tab(session, 1)
 ```
 
+### Warm Session Pools
+
+```elixir
+{:ok, _pool} =
+  Jido.Browser.start_pool(
+    name: :default,
+    size: 2,
+    headless: true
+  )
+
+{:ok, session} =
+  Jido.Browser.start_session(
+    pool: :default,
+    checkout_timeout: 5_000
+  )
+
+{:ok, session, _} = Jido.Browser.navigate(session, "https://example.com")
+:ok = Jido.Browser.end_session(session)
+```
+
+Warm pools are explicit and currently supported only by `Jido.Browser.Adapters.AgentBrowser`. Each pooled checkout gets one warm full AgentBrowser session. `end_session/1` recycles that worker and the pool warms a replacement in the background.
+
 ### Plugin Setup
 
 ```elixir
@@ -133,6 +155,8 @@ defmodule MyBrowsingAgent do
       {Jido.Browser.Plugin,
        [
          adapter: Jido.Browser.Adapters.AgentBrowser,
+         pool: :default,
+         checkout_timeout: 5_000,
          headless: true,
          timeout: 30_000
        ]}
@@ -181,6 +205,7 @@ Configured `extractous` options are merged with any per-call `extractous:` keywo
 
 - native snapshot support with refs
 - supervised daemon per session
+- optional warm session pools with explicit checkout
 - direct JSON IPC from Elixir
 - built-in state save/load and tab management support
 
@@ -198,6 +223,8 @@ Configured `extractous` options are merged with any per-call `extractous:` keywo
 
 Core operations:
 
+- `start_pool/1`
+- `stop_pool/1`
 - `start_session/1`
 - `end_session/1`
 - `navigate/3`

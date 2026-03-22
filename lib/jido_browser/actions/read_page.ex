@@ -30,16 +30,19 @@ defmodule Jido.Browser.Actions.ReadPage do
         type: {:in, [:markdown, :text, :html]},
         default: :markdown,
         doc: "Output format"
-      ]
+      ],
+      pool: [type: :any, doc: "Optional warm session pool name"],
+      checkout_timeout: [type: :integer, default: 5_000, doc: "Warm pool checkout timeout in ms"]
     ]
 
   @impl true
-  def run(params, _context) do
+  def run(params, context) do
     url = params.url
     selector = Map.get(params, :selector, "body")
     format = Map.get(params, :format, :markdown)
+    start_opts = session_start_opts(params, context)
 
-    case Jido.Browser.start_session() do
+    case Jido.Browser.start_session(start_opts) do
       {:ok, session} ->
         try do
           with {:ok, session, _nav_result} <- Jido.Browser.navigate(session, url),
@@ -58,4 +61,13 @@ defmodule Jido.Browser.Actions.ReadPage do
         {:error, "Failed to start browser session: #{inspect(reason)}"}
     end
   end
+
+  defp session_start_opts(params, context) do
+    []
+    |> maybe_put(:pool, params[:pool] || get_in(context, [:skill_state, :pool]))
+    |> maybe_put(:checkout_timeout, params[:checkout_timeout] || get_in(context, [:skill_state, :checkout_timeout]))
+  end
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
 end

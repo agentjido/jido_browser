@@ -121,6 +121,8 @@ defmodule Jido.Browser.PluginTest do
       assert state.timeout == 30_000
       assert state.viewport == %{width: 1280, height: 720}
       assert state.adapter == Jido.Browser.Adapters.AgentBrowser
+      assert state.pool == nil
+      assert state.checkout_timeout == 5_000
       assert state.last_url == nil
       assert state.last_title == nil
       assert state.seen_urls == []
@@ -150,6 +152,12 @@ defmodule Jido.Browser.PluginTest do
     test "accepts adapter config" do
       {:ok, state} = Plugin.mount(%{}, %{adapter: Jido.Browser.Adapters.Web})
       assert state.adapter == Jido.Browser.Adapters.Web
+    end
+
+    test "accepts pool config overrides" do
+      {:ok, state} = Plugin.mount(%{}, %{pool: "warm", checkout_timeout: 9_000})
+      assert state.pool == "warm"
+      assert state.checkout_timeout == 9_000
     end
   end
 

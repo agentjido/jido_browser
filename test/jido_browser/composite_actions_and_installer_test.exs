@@ -28,7 +28,9 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
   describe "ReadPage.run/2" do
     test "returns content and closes session on success", %{session: session} do
-      expect(Jido.Browser, :start_session, fn ->
+      expect(Jido.Browser, :start_session, fn opts ->
+        assert opts[:pool] == "warm"
+        assert opts[:checkout_timeout] == 7_500
         {:ok, session}
       end)
 
@@ -47,7 +49,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
       assert {:ok, result} =
                ReadPage.run(
                  %{url: "https://example.com", selector: "article", format: :text},
-                 %{}
+                 %{skill_state: %{pool: "warm", checkout_timeout: 7_500}}
                )
 
       assert result.url == "https://example.com"
@@ -56,7 +58,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
     end
 
     test "returns wrapped error and closes session when navigation fails", %{session: session} do
-      expect(Jido.Browser, :start_session, fn -> {:ok, session} end)
+      expect(Jido.Browser, :start_session, fn _opts -> {:ok, session} end)
 
       expect(Jido.Browser, :navigate, fn ^session, "https://example.com" ->
         {:error, :navigation_failed}
@@ -72,7 +74,11 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
   describe "SnapshotUrl.run/2" do
     test "returns rich snapshot when evaluate returns structured data", %{session: session} do
-      expect(Jido.Browser, :start_session, fn -> {:ok, session} end)
+      expect(Jido.Browser, :start_session, fn opts ->
+        assert opts[:pool] == "warm"
+        assert opts[:checkout_timeout] == 4_000
+        {:ok, session}
+      end)
 
       expect(Jido.Browser, :navigate, fn ^session, "https://example.com" ->
         {:ok, session, %{url: "https://example.com"}}
@@ -87,13 +93,15 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
       expect(Jido.Browser, :end_session, fn ^session -> :ok end)
 
-      assert {:ok, result} = SnapshotUrl.run(%{url: "https://example.com"}, %{})
+      assert {:ok, result} =
+               SnapshotUrl.run(%{url: "https://example.com"}, %{skill_state: %{pool: "warm", checkout_timeout: 4_000}})
+
       assert result[:status] == "success"
       assert result["title"] == "Example Domain"
     end
 
     test "falls back to extract_content when evaluate does not return JSON", %{session: session} do
-      expect(Jido.Browser, :start_session, fn -> {:ok, session} end)
+      expect(Jido.Browser, :start_session, fn _opts -> {:ok, session} end)
 
       expect(Jido.Browser, :navigate, fn ^session, "https://example.com" ->
         {:ok, session, %{url: "https://example.com"}}

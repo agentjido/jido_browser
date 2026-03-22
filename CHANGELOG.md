@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add explicit warm AgentBrowser session pools via `start_pool/1`, `stop_pool/1`, and `start_session(pool: ..., checkout_timeout: ...)`
+- Add strict-recycle pooled session support to `StartSession`, `ReadPage`, `SnapshotUrl`, and `Jido.Browser.Plugin`
+
 ### Changed
 
 - Rename the public Elixir namespace from `JidoBrowser.*` to `Jido.Browser.*`

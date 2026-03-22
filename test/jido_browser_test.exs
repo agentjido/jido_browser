@@ -34,6 +34,32 @@ defmodule Jido.BrowserTest do
     end
   end
 
+  describe "pool management" do
+    test "delegates start_pool to AgentBrowser" do
+      expect(Jido.Browser.Adapters.AgentBrowser, :start_pool, fn opts ->
+        assert opts[:name] == "default"
+        assert opts[:size] == 2
+        {:ok, self()}
+      end)
+
+      assert {:ok, pid} = Jido.Browser.start_pool(name: "default", size: 2)
+      assert pid == self()
+    end
+
+    test "delegates stop_pool to AgentBrowser" do
+      expect(Jido.Browser.Adapters.AgentBrowser, :stop_pool, fn "default" ->
+        :ok
+      end)
+
+      assert :ok = Jido.Browser.stop_pool("default")
+    end
+
+    test "returns a clear error when pooled sessions are requested for an unsupported adapter" do
+      assert {:error, error} = Jido.Browser.start_session(adapter: Jido.Browser.Adapters.Web, pool: "default")
+      assert Exception.message(error) =~ "does not support pooled sessions"
+    end
+  end
+
   describe "navigate/3" do
     test "delegates to adapter" do
       session = build_session()

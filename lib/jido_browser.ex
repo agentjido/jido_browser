@@ -6,6 +6,7 @@ defmodule Jido.Browser do
   In 2.0, the default adapter is `Jido.Browser.Adapters.AgentBrowser`.
   """
 
+  alias Jido.Browser.Adapters.AgentBrowser
   alias Jido.Browser.Error
   alias Jido.Browser.Session
   alias Jido.Browser.WebFetch
@@ -16,14 +17,42 @@ defmodule Jido.Browser do
   @supported_extract_formats [:markdown, :html, :text]
   @supported_web_fetch_formats [:markdown, :html, :text]
 
+  @doc "Starts a warm browser pool for adapters that support pooled sessions."
+  @spec start_pool(keyword()) :: {:ok, pid()} | {:error, term()}
+  def start_pool(opts) do
+    adapter = opts[:adapter] || configured_adapter()
+
+    if adapter == Jido.Browser.Adapters.AgentBrowser and function_exported?(adapter, :start_pool, 1) do
+      adapter.start_pool(opts)
+    else
+      {:error,
+       Error.invalid_error(
+         "Adapter #{inspect(adapter)} does not support pooled sessions",
+         %{adapter: adapter}
+       )}
+    end
+  end
+
+  @doc "Stops a previously started warm browser pool."
+  @spec stop_pool(term()) :: :ok | {:error, term()}
+  def stop_pool(pool), do: AgentBrowser.stop_pool(pool)
+
   @doc "Starts a browser session using the configured adapter or an explicit adapter override."
   @spec start_session(keyword()) :: {:ok, Session.t()} | {:error, term()}
   def start_session(opts \\ []) do
     adapter = opts[:adapter] || configured_adapter()
 
-    case adapter.start_session(opts) do
-      %Session{} = session -> {:ok, session}
-      error -> error
+    if opts[:pool] && adapter != AgentBrowser do
+      {:error,
+       Error.invalid_error(
+         "Adapter #{inspect(adapter)} does not support pooled sessions",
+         %{adapter: adapter}
+       )}
+    else
+      case adapter.start_session(opts) do
+        %Session{} = session -> {:ok, session}
+        error -> error
+      end
     end
   end
 
