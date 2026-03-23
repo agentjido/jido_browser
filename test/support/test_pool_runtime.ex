@@ -46,10 +46,11 @@ end
 
 defmodule Jido.Browser.TestPoolRuntime do
   @moduledoc false
+  @behaviour Jido.Browser.WarmPool.Runtime
 
   alias Jido.Browser.TestPoolRuntime.Worker
 
-  def start_worker(%{session_opts: opts}), do: start_worker(opts)
+  def start_worker(%{worker_opts: opts}), do: start_worker(opts)
 
   def start_worker(opts) do
     Process.sleep(Keyword.get(opts, :worker_init_delay, 0))
@@ -86,5 +87,9 @@ defmodule Jido.Browser.TestPoolRuntime do
   catch
     :exit, _reason ->
       :ok
+  end
+
+  def health_check(%{manager: pid}) when is_pid(pid) do
+    if Process.alive?(pid), do: :ok, else: {:error, :worker_down}
   end
 end

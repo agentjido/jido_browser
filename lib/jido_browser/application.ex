@@ -7,9 +7,9 @@ defmodule Jido.Browser.Application do
     Jido.Browser.AgentBrowser.SessionTreeSupervisor,
     Jido.Browser.AgentBrowser.Registry,
     Jido.Browser.AgentBrowser.SessionSupervisor,
-    Jido.Browser.AgentBrowser.PoolRootSupervisor,
-    Jido.Browser.AgentBrowser.PoolRegistry,
-    Jido.Browser.AgentBrowser.PoolSupervisor
+    Jido.Browser.WarmPool.RootSupervisor,
+    Jido.Browser.WarmPool.Registry,
+    Jido.Browser.WarmPool.Supervisor
   ]
 
   @boot_poll_interval 10
@@ -19,7 +19,7 @@ defmodule Jido.Browser.Application do
   def start(_type, _args) do
     children = [
       Jido.Browser.AgentBrowser.SessionTreeSupervisor,
-      Jido.Browser.AgentBrowser.PoolRootSupervisor
+      Jido.Browser.WarmPool.RootSupervisor
     ]
 
     Supervisor.start_link(children,

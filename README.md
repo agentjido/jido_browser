@@ -8,12 +8,15 @@ Browser automation for Jido AI agents.
 
 ## Overview
 
-`Jido.Browser` is an agent-browser-first browser automation library for Jido.
+`Jido.Browser` is organized around three simple lanes:
 
-- `agent-browser` is the default and only first-class backend in 2.0
-- each browser session is backed by a supervised external daemon
-- Elixir talks to the daemon over the upstream local JSON socket/TCP protocol
-- `Vibium` and `Web` remain available as legacy, feature-frozen adapters for transitional use
+- `web_fetch/2` for stateless HTTP-first retrieval
+- `start_session/1` and `end_session/1` for browser-backed workflows
+- `Jido.Browser.Pool` plus `start_session(pool: ...)` as an optional acceleration layer
+
+`agent-browser` remains the default adapter. `Web` also supports warm pools when
+you want browser-backed sessions with lower cold-start overhead. `Vibium`
+remains available without warm-pool support.
 
 The Hex package and OTP app remain `jido_browser`, while the public Elixir namespace is `Jido.Browser.*`.
 
@@ -125,6 +128,9 @@ File.mkdir_p!(Path.dirname(state_path))
 
 ### Warm Session Pools
 
+Warm pools are explicit and optional. They speed up browser-backed workflows,
+while `web_fetch/2` stays stateless and never uses pools.
+
 For OTP applications, prefer adding a named pool to your supervision tree:
 
 ```elixir
@@ -178,7 +184,17 @@ Use `start_pool/1` for scripts, tests, or ad hoc startup:
 :ok = Jido.Browser.end_session(session)
 ```
 
-Warm pools are explicit and currently supported only by `Jido.Browser.Adapters.AgentBrowser`. Each pooled checkout gets one warm full AgentBrowser session. `end_session/1` recycles that worker and the pool warms a replacement in the background.
+Warm pools are currently supported by `Jido.Browser.Adapters.AgentBrowser` and
+`Jido.Browser.Adapters.Web`.
+
+- AgentBrowser pools keep full warm daemon-backed sessions ready for checkout.
+- Web pools keep reserved warmed profiles ready for checkout.
+- `end_session/1` always recycles the checked-out worker and warms a replacement
+  in the background.
+
+For the `Web` adapter, pooled sessions are still browser sessions, not HTTP
+fetches. Use `web_fetch/2` when you want the simplest request/response API
+without browser state.
 
 ### Plugin Setup
 
@@ -210,7 +226,7 @@ config :jido_browser, :agent_browser,
   headed: false
 ```
 
-Legacy adapters can still be configured explicitly:
+Other adapters can still be configured explicitly:
 
 ```elixir
 config :jido_browser, :vibium,

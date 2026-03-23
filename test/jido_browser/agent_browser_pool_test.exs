@@ -4,8 +4,11 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
 
   alias Jido.Browser
   alias Jido.Browser.Adapters.AgentBrowser
+  alias Jido.Browser.Adapters.Vibium
   alias Jido.Browser.Pool
   alias Jido.Browser.TestPoolRuntime
+  alias Jido.Browser.WarmPool.Manager
+  alias Jido.Browser.WarmPool.Names
 
   setup :set_mimic_global
 
@@ -135,6 +138,33 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
       assert :ok = Browser.end_session(replacement)
     end
 
+    test "stop_pool succeeds even if the pool manager is suspended" do
+      name = unique_pool_name()
+      assert {:ok, pool} = start_pool!(name, size: 1)
+      {:ok, manager} = Names.resolve_manager(pool)
+      pool_ref = Process.monitor(pool)
+
+      try do
+        :sys.suspend(manager)
+
+        assert :ok = Browser.stop_pool(pool)
+        assert_receive {:DOWN, ^pool_ref, :process, ^pool, _reason}, 1_000
+      after
+        if Process.alive?(manager) do
+          :sys.resume(manager)
+        end
+      end
+    end
+
+    test "checkout fails cleanly once the pool is marked stopping" do
+      name = unique_pool_name()
+      assert {:ok, pool} = start_pool!(name, size: 1)
+      on_exit(fn -> Browser.stop_pool(pool) end)
+
+      assert :ok = Manager.prepare_stop(name)
+      assert {:error, :pool_stopping} = Manager.checkout_session(name, owner: self(), checkout_timeout: 50)
+    end
+
     test "caller crashes discard the lease and a replacement can be checked out" do
       name = unique_pool_name()
       assert {:ok, pool} = start_pool!(name, size: 1)
@@ -204,12 +234,12 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
   describe "pool validation" do
     test "unsupported adapters return clear errors" do
       assert {:error, error} =
-               Browser.start_pool(adapter: Jido.Browser.Adapters.Web, name: unique_pool_name(), size: 1)
+               Browser.start_pool(adapter: Vibium, name: unique_pool_name(), size: 1)
 
       assert Exception.message(error) =~ "does not support pooled sessions"
 
       assert {:error, error} =
-               Browser.start_session(adapter: Jido.Browser.Adapters.Web, pool: unique_pool_name())
+               Browser.start_session(adapter: Vibium, pool: unique_pool_name())
 
       assert Exception.message(error) =~ "does not support pooled sessions"
     end
@@ -250,16 +280,16 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
       assert :ok = Browser.end_session(session)
     end
 
-    test "supervised pool child rejects invalid process names" do
-      assert {:error, error} =
-               Pool.start_link(name: "default", size: 1, pool_runtime_module: TestPoolRuntime)
+    test "supervised pool child accepts string pool names" do
+      start_supervised!({Pool, name: "default", size: 1, pool_runtime_module: TestPoolRuntime})
 
-      assert Exception.message(error) =~ "Supervised pool name must be an atom"
+      assert {:ok, session} = Browser.start_session(pool: "default")
+      assert :ok = Browser.end_session(session)
     end
 
     test "supervised pool child rejects unsupported adapters" do
       assert {:error, error} =
-               Pool.start_link(name: :default, size: 1, adapter: Jido.Browser.Adapters.Web)
+               Pool.start_link(name: :default, size: 1, adapter: Vibium)
 
       assert Exception.message(error) =~ "does not support supervised warm pools"
     end

@@ -1,4 +1,4 @@
-defmodule Jido.Browser.AgentBrowser.PoolLease do
+defmodule Jido.Browser.WarmPool.Lease do
   @moduledoc false
 
   use GenServer
@@ -140,16 +140,17 @@ defmodule Jido.Browser.AgentBrowser.PoolLease do
     {:reply, runtime_module.command(worker_state, payload, timeout), state}
   end
 
-  def handle_call({:command, _payload, _timeout}, {_owner, _ref}, %{owner: owner} = state) do
-    {:reply, {:error, {:not_owner, owner}}, state}
-  end
-
-  def handle_call({:command, _payload, _timeout}, _from, %{failed_reason: reason} = state) when not is_nil(reason) do
+  def handle_call({:command, _payload, _timeout}, {owner, _ref}, %{owner: owner, failed_reason: reason} = state)
+      when not is_nil(reason) do
     {:reply, {:error, reason}, state}
   end
 
-  def handle_call({:command, _payload, _timeout}, _from, state) do
+  def handle_call({:command, _payload, _timeout}, {owner, _ref}, %{owner: owner} = state) do
     {:reply, {:error, :lease_not_ready}, state}
+  end
+
+  def handle_call({:command, _payload, _timeout}, {_owner, _ref}, %{owner: owner} = state) do
+    {:reply, {:error, {:not_owner, owner}}, state}
   end
 
   def handle_call(request, from, %{closing: true} = state) when request in [:shutdown, :force_shutdown] do

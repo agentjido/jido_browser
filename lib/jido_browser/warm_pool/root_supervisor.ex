@@ -1,4 +1,4 @@
-defmodule Jido.Browser.AgentBrowser.PoolRootSupervisor do
+defmodule Jido.Browser.WarmPool.RootSupervisor do
   @moduledoc false
 
   use Supervisor
@@ -12,8 +12,8 @@ defmodule Jido.Browser.AgentBrowser.PoolRootSupervisor do
   @impl true
   def init(:ok) do
     children = [
-      {Registry, keys: :unique, name: Jido.Browser.AgentBrowser.PoolRegistry},
-      {DynamicSupervisor, strategy: :one_for_one, name: Jido.Browser.AgentBrowser.PoolSupervisor}
+      {Registry, keys: :unique, name: Jido.Browser.WarmPool.Registry},
+      {DynamicSupervisor, strategy: :one_for_one, name: Jido.Browser.WarmPool.Supervisor}
     ]
 
     Supervisor.init(children, strategy: :rest_for_one)

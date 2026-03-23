@@ -57,7 +57,7 @@ defmodule Jido.Browser.Plugin do
   * `:headless` - Run browser in headless mode (default: `true`)
   * `:timeout` - Default timeout in milliseconds (default: `30_000`)
   * `:adapter` - Browser adapter module (optional)
-  * `:pool` - Named warm session pool for AgentBrowser (optional)
+  * `:pool` - Named warm session pool for a pool-capable adapter (optional)
   * `:checkout_timeout` - Warm pool checkout timeout in milliseconds (default: `5_000`)
   * `:viewport` - Browser viewport dimensions (default: `%{width: 1280, height: 720}`)
   * `:base_url` - Base URL for relative navigation (optional)

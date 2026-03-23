@@ -1,6 +1,8 @@
-defmodule Jido.Browser.AgentBrowser.PoolWorker do
+defmodule Jido.Browser.WarmPool.Worker do
   @moduledoc false
   @behaviour NimblePool
+
+  alias Jido.Browser.WarmPool.Runtime
 
   @impl NimblePool
   def init_pool(init_arg), do: {:ok, init_arg}
@@ -21,8 +23,14 @@ defmodule Jido.Browser.AgentBrowser.PoolWorker do
   end
 
   @impl NimblePool
-  def handle_checkout(:lease, _from, worker_state, pool_state) do
-    {:ok, worker_state, worker_state, pool_state}
+  def handle_checkout(:lease, _from, worker_state, %{runtime_module: runtime_module} = pool_state) do
+    case Runtime.healthy?(runtime_module, worker_state) do
+      :ok ->
+        {:ok, worker_state, worker_state, pool_state}
+
+      {:error, reason} ->
+        {:remove, {:unhealthy, reason}, pool_state}
+    end
   end
 
   @impl NimblePool
@@ -37,7 +45,6 @@ defmodule Jido.Browser.AgentBrowser.PoolWorker do
         %{cleanup_supervisor: cleanup_supervisor, runtime_module: runtime_module} = pool_state
       ) do
     _ = start_cleanup_task(cleanup_supervisor, runtime_module, worker_state)
-
     {:ok, pool_state}
   end
 

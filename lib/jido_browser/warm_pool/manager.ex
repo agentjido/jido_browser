@@ -1,16 +1,15 @@
-defmodule Jido.Browser.AgentBrowser.PoolManager do
+defmodule Jido.Browser.WarmPool.Manager do
   @moduledoc false
 
   use GenServer
 
-  alias Jido.Browser.AgentBrowser.PoolLease
-  alias Jido.Browser.AgentBrowser.PoolNames
-  alias Jido.Browser.AgentBrowser.PoolRuntime
-  alias Jido.Browser.AgentBrowser.PoolTreeSupervisor
-  alias Jido.Browser.AgentBrowser.PoolWorker
   alias Jido.Browser.Application, as: BrowserApplication
+  alias Jido.Browser.WarmPool.Lease
+  alias Jido.Browser.WarmPool.Names
+  alias Jido.Browser.WarmPool.Worker
 
   defstruct [
+    :adapter,
     :name,
     :size,
     :pool_pid,
@@ -28,6 +27,7 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
 
   @type t :: %__MODULE__{
           name: term(),
+          adapter: module() | nil,
           size: pos_integer() | nil,
           pool_pid: pid() | nil,
           pool_tree: pid() | nil,
@@ -41,16 +41,6 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
           lease_refs: %{reference() => pid()},
           stopping: boolean()
         }
-
-  @type state :: %__MODULE__{}
-
-  @doc false
-  @spec start_pool(keyword()) :: DynamicSupervisor.on_start_child()
-  def start_pool(opts), do: PoolTreeSupervisor.start_pool(opts)
-
-  @doc false
-  @spec stop_pool(term()) :: :ok | {:error, term()}
-  def stop_pool(pool), do: PoolTreeSupervisor.stop_pool(pool)
 
   @doc false
   @spec await_ready(pid(), timeout()) :: :ok
@@ -75,11 +65,21 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
   end
 
   @doc false
+  @spec prepare_stop(term()) :: :ok | {:error, term()}
+  def prepare_stop(pool) do
+    with {:ok, pid} <- resolve(pool) do
+      GenServer.call(pid, :prepare_stop)
+    end
+  catch
+    :exit, reason ->
+      {:error, reason}
+  end
+
+  @doc false
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     name = Keyword.fetch!(opts, :name)
-    process_name = Keyword.get(opts, :process_name, PoolNames.manager(name))
-
+    process_name = Keyword.get(opts, :process_name, Names.manager(name))
     GenServer.start_link(__MODULE__, opts, name: process_name)
   end
 
@@ -95,9 +95,10 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
   @impl true
   def init(opts) do
     name = Keyword.fetch!(opts, :name)
+    adapter = Keyword.fetch!(opts, :adapter)
     size = Keyword.fetch!(opts, :size)
-    runtime_module = Keyword.get(opts, :pool_runtime_module) || PoolRuntime
-    session_opts = Keyword.fetch!(opts, :session_opts)
+    runtime_module = Keyword.fetch!(opts, :pool_runtime_module)
+    worker_opts = Keyword.fetch!(opts, :worker_opts)
     pool_tree = Keyword.fetch!(opts, :pool_tree)
     session_supervisor = Keyword.fetch!(opts, :session_supervisor)
     lease_supervisor = Keyword.fetch!(opts, :lease_supervisor)
@@ -106,10 +107,11 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
     {:ok, pool_pid} =
       NimblePool.start_link(
         worker:
-          {PoolWorker,
+          {Worker,
            %{
+             adapter: adapter,
              manager: self(),
-             session_opts: session_opts,
+             worker_opts: worker_opts,
              session_supervisor: session_supervisor,
              cleanup_supervisor: cleanup_supervisor,
              runtime_module: runtime_module
@@ -120,6 +122,7 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
     {:ok,
      %__MODULE__{
        name: name,
+       adapter: adapter,
        size: size,
        pool_pid: pool_pid,
        pool_tree: pool_tree,
@@ -148,9 +151,12 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
     {:reply, {:ok, state.pool_pid, state.runtime_module, state.lease_supervisor}, state}
   end
 
-  def handle_call(:stop_pool, _from, state) do
-    _ = PoolTreeSupervisor.stop_pool(state.pool_tree)
+  def handle_call(:prepare_stop, _from, state) do
     {:reply, :ok, %{state | stopping: true}}
+  end
+
+  def handle_call(:adapter, _from, state) do
+    {:reply, state.adapter, state}
   end
 
   @impl true
@@ -187,13 +193,13 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
 
   @impl true
   def terminate(_reason, state) do
-    Enum.each(Map.values(state.lease_refs), &PoolLease.force_shutdown/1)
+    Enum.each(Map.values(state.lease_refs), &Lease.force_shutdown/1)
     :ok
   end
 
   @doc false
   @spec resolve(term()) :: {:ok, pid()} | {:error, term()}
-  def resolve(pool), do: PoolNames.resolve_manager(pool)
+  def resolve(pool), do: Names.resolve_manager(pool)
 
   defp start_lease(lease_supervisor, pool_pid, runtime_module, opts, retries_left) do
     checkout_timeout = Keyword.get(opts, :checkout_timeout, 5_000)
@@ -202,7 +208,7 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
     try do
       DynamicSupervisor.start_child(
         lease_supervisor,
-        {PoolLease, owner: owner, pool: pool_pid, runtime_module: runtime_module, checkout_timeout: checkout_timeout}
+        {Lease, owner: owner, pool: pool_pid, runtime_module: runtime_module, checkout_timeout: checkout_timeout}
       )
     catch
       :exit, reason ->
@@ -213,12 +219,12 @@ defmodule Jido.Browser.AgentBrowser.PoolManager do
   defp await_lease(lease_pid, opts) do
     checkout_timeout = Keyword.get(opts, :checkout_timeout, 5_000)
 
-    case PoolLease.await_ready(lease_pid, checkout_timeout + 1_000) do
+    case Lease.await_ready(lease_pid, checkout_timeout + 1_000) do
       {:ok, worker_state} ->
         {:ok, worker_state}
 
       {:error, reason} ->
-        _ = PoolLease.force_shutdown(lease_pid)
+        _ = Lease.force_shutdown(lease_pid)
         {:error, reason}
     end
   end

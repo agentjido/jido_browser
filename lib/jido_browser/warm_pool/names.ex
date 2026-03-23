@@ -1,7 +1,7 @@
-defmodule Jido.Browser.AgentBrowser.PoolNames do
+defmodule Jido.Browser.WarmPool.Names do
   @moduledoc false
 
-  @registry Jido.Browser.AgentBrowser.PoolRegistry
+  @registry Jido.Browser.WarmPool.Registry
 
   @tree :tree
   @manager :manager
@@ -46,9 +46,7 @@ defmodule Jido.Browser.AgentBrowser.PoolNames do
     end
   end
 
-  def resolve_tree(name) do
-    resolve_key({@tree, name})
-  end
+  def resolve_tree(name), do: resolve_key({@tree, name})
 
   @doc false
   @spec resolve_manager(term()) :: {:ok, pid()} | {:error, :pool_not_found}
@@ -59,9 +57,7 @@ defmodule Jido.Browser.AgentBrowser.PoolNames do
     end
   end
 
-  def resolve_manager(name) do
-    resolve_key({@manager, name})
-  end
+  def resolve_manager(name), do: resolve_key({@manager, name})
 
   @doc false
   @spec resolve_name_for_pid(pid(), component()) :: {:ok, pool_name()} | :error

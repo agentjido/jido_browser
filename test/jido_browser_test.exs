@@ -2,6 +2,7 @@ defmodule Jido.BrowserTest do
   use ExUnit.Case, async: true
   use Mimic
 
+  alias Jido.Browser.Pool
   alias Jido.Browser.Session
 
   describe "start_session/1" do
@@ -35,7 +36,7 @@ defmodule Jido.BrowserTest do
   end
 
   describe "pool management" do
-    test "delegates start_pool to AgentBrowser" do
+    test "delegates start_pool to a pool-capable adapter" do
       expect(Jido.Browser.Adapters.AgentBrowser, :start_pool, fn opts ->
         assert opts[:name] == "default"
         assert opts[:size] == 2
@@ -46,17 +47,25 @@ defmodule Jido.BrowserTest do
       assert pid == self()
     end
 
-    test "delegates stop_pool to AgentBrowser" do
-      expect(Jido.Browser.Adapters.AgentBrowser, :stop_pool, fn "default" ->
-        :ok
+    test "permits pooled sessions for a pool-capable adapter" do
+      expect(Jido.Browser.Adapters.Web, :start_session, fn opts ->
+        assert opts[:pool] == "default"
+
+        Session.new(%{
+          adapter: Jido.Browser.Adapters.Web,
+          connection: %{profile: "pooled-default"}
+        })
       end)
 
-      assert :ok = Jido.Browser.stop_pool("default")
+      assert {:ok, %Session{adapter: Jido.Browser.Adapters.Web}} =
+               Jido.Browser.start_session(adapter: Jido.Browser.Adapters.Web, pool: "default")
     end
 
-    test "returns a clear error when pooled sessions are requested for an unsupported adapter" do
-      assert {:error, error} = Jido.Browser.start_session(adapter: Jido.Browser.Adapters.Web, pool: "default")
-      assert Exception.message(error) =~ "does not support pooled sessions"
+    test "public pool child spec is a supervisor with infinite shutdown" do
+      child_spec = Pool.child_spec(name: :default, size: 2)
+
+      assert child_spec.type == :supervisor
+      assert child_spec.shutdown == :infinity
     end
   end
 

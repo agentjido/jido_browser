@@ -1,5 +1,6 @@
 defmodule Jido.Browser.AgentBrowser.PoolRuntime do
   @moduledoc false
+  @behaviour Jido.Browser.WarmPool.Runtime
 
   alias Jido.Browser.AgentBrowser.Runtime
   alias Jido.Browser.AgentBrowser.SessionServer
@@ -13,7 +14,7 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
 
   @doc false
   @spec start_worker(map()) :: {:ok, worker_state()} | {:error, term()}
-  def start_worker(%{session_opts: session_opts, session_supervisor: session_supervisor}) do
+  def start_worker(%{worker_opts: session_opts, session_supervisor: session_supervisor}) do
     session_id = Uniq.UUID.uuid4()
 
     child_spec =
@@ -66,5 +67,11 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
   catch
     :exit, _reason ->
       :ok
+  end
+
+  @doc false
+  @spec health_check(worker_state()) :: :ok | {:error, term()}
+  def health_check(%{manager: pid}) when is_pid(pid) do
+    if Process.alive?(pid), do: :ok, else: {:error, :session_unavailable}
   end
 end
