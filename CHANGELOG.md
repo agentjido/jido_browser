@@ -7,22 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Generic warm-pool capability support across pool-capable adapters via `Jido.Browser.PoolAdapter`
-- Warm pooled session support for `Jido.Browser.Adapters.Web` using reserved warmed profiles
-
 ### Changed
 
 - Rename the public Elixir namespace from `JidoBrowser.*` to `Jido.Browser.*`
 - Keep source and test files in `lib/jido_browser/**` and `test/jido_browser/**` while exposing the `Jido.Browser.*` namespace
-- Keep the public `Jido.Browser` API centered on three lanes: `web_fetch/2`, session lifecycle, and optional warm pools
-- Make `Jido.Browser.Pool`, `start_pool/1`, `stop_pool/1`, and `start_session(pool: ...)` adapter-generic for pool-capable adapters
 
 ### Fixed
 
 - Sync `mix.lock` with the stable `jido ~> 2.0` / `jido_action ~> 2.0` dependency declarations in `mix.exs`
-- Keep `web_fetch/2` independent from browser adapters and warm pools
 
 ## [1.0.0] - 2026-02-22
 
