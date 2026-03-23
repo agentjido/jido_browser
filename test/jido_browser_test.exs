@@ -2,6 +2,7 @@ defmodule Jido.BrowserTest do
   use ExUnit.Case, async: true
   use Mimic
 
+  alias Jido.Browser.Pool
   alias Jido.Browser.Session
 
   describe "start_session/1" do
@@ -31,6 +32,40 @@ defmodule Jido.BrowserTest do
       # Mock returns bare session, adapter wraps with {:ok, ...}
       assert {:ok, %Session{adapter: Jido.Browser.Adapters.Web}} =
                Jido.Browser.start_session(adapter: Jido.Browser.Adapters.Web)
+    end
+  end
+
+  describe "pool management" do
+    test "delegates start_pool to a pool-capable adapter" do
+      expect(Jido.Browser.Adapters.AgentBrowser, :start_pool, fn opts ->
+        assert opts[:name] == "default"
+        assert opts[:size] == 2
+        {:ok, self()}
+      end)
+
+      assert {:ok, pid} = Jido.Browser.start_pool(name: "default", size: 2)
+      assert pid == self()
+    end
+
+    test "permits pooled sessions for a pool-capable adapter" do
+      expect(Jido.Browser.Adapters.Web, :start_session, fn opts ->
+        assert opts[:pool] == "default"
+
+        Session.new(%{
+          adapter: Jido.Browser.Adapters.Web,
+          connection: %{profile: "pooled-default"}
+        })
+      end)
+
+      assert {:ok, %Session{adapter: Jido.Browser.Adapters.Web}} =
+               Jido.Browser.start_session(adapter: Jido.Browser.Adapters.Web, pool: "default")
+    end
+
+    test "public pool child spec is a supervisor with infinite shutdown" do
+      child_spec = Pool.child_spec(name: :default, size: 2)
+
+      assert child_spec.type == :supervisor
+      assert child_spec.shutdown == :infinity
     end
   end
 

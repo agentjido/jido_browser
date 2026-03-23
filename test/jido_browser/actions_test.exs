@@ -417,6 +417,25 @@ defmodule Jido.Browser.ActionsTest do
                Actions.StartSession.run(%{headless: false}, %{})
     end
 
+    test "StartSession uses pooled defaults from skill state when params omit them" do
+      stub(Jido.Browser, :start_session, fn opts ->
+        assert opts[:pool] == "warm"
+        assert opts[:checkout_timeout] == 7_500
+
+        {:ok,
+         Session.new!(%{
+           adapter: Jido.Browser.Adapters.AgentBrowser,
+           connection: %{binary: "/usr/local/bin/agent-browser"},
+           runtime: %{manager: self()},
+           capabilities: %{native_snapshot: true},
+           opts: Map.new(opts)
+         })}
+      end)
+
+      assert {:ok, %{status: "success", session: %Session{}}} =
+               Actions.StartSession.run(%{}, %{skill_state: %{pool: "warm", checkout_timeout: 7_500}})
+    end
+
     test "EndSession ends the session", %{context: context} do
       stub(Jido.Browser, :end_session, fn _session ->
         :ok

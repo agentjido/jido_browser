@@ -50,6 +50,7 @@ defmodule Jido.Browser.Adapter do
   ## Optional Callbacks
 
   - `evaluate/3` - JavaScript evaluation (not all backends support this)
+  - pooling is modeled separately through `Jido.Browser.PoolAdapter`
 
   ## Built-in Adapters
 

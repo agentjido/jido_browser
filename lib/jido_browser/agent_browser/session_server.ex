@@ -38,8 +38,15 @@ defmodule Jido.Browser.AgentBrowser.SessionServer do
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     session_id = Keyword.fetch!(opts, :session_id)
+    registration = Keyword.get(opts, :registration, {:registry, Jido.Browser.AgentBrowser.Registry})
 
-    GenServer.start_link(__MODULE__, opts, name: {:via, Registry, {Jido.Browser.AgentBrowser.Registry, session_id}})
+    case registration do
+      :none ->
+        GenServer.start_link(__MODULE__, opts)
+
+      {:registry, registry} ->
+        GenServer.start_link(__MODULE__, opts, name: {:via, Registry, {registry, session_id}})
+    end
   end
 
   @doc false

@@ -57,6 +57,8 @@ defmodule Jido.Browser.Plugin do
   * `:headless` - Run browser in headless mode (default: `true`)
   * `:timeout` - Default timeout in milliseconds (default: `30_000`)
   * `:adapter` - Browser adapter module (optional)
+  * `:pool` - Named warm session pool for a pool-capable adapter (optional)
+  * `:checkout_timeout` - Warm pool checkout timeout in milliseconds (default: `5_000`)
   * `:viewport` - Browser viewport dimensions (default: `%{width: 1280, height: 720}`)
   * `:base_url` - Base URL for relative navigation (optional)
 
@@ -135,6 +137,8 @@ defmodule Jido.Browser.Plugin do
       headless: Map.get(config, :headless, true),
       timeout: Map.get(config, :timeout, 30_000),
       adapter: Map.get(config, :adapter, Jido.Browser.Adapters.AgentBrowser),
+      pool: Map.get(config, :pool),
+      checkout_timeout: Map.get(config, :checkout_timeout, 5_000),
       viewport: Map.get(config, :viewport, %{width: 1280, height: 720}),
       base_url: Map.get(config, :base_url),
       last_url: nil,
@@ -152,6 +156,8 @@ defmodule Jido.Browser.Plugin do
       headless: Zoi.boolean(description: "Run browser in headless mode") |> Zoi.default(true),
       timeout: Zoi.integer(description: "Default timeout in milliseconds") |> Zoi.default(30_000),
       adapter: Zoi.atom(description: "Browser adapter module") |> Zoi.optional(),
+      pool: Zoi.any(description: "Named warm session pool") |> Zoi.optional(),
+      checkout_timeout: Zoi.integer(description: "Warm pool checkout timeout in milliseconds") |> Zoi.default(5_000),
       viewport: Zoi.any(description: "Browser viewport dimensions") |> Zoi.optional(),
       base_url: Zoi.string(description: "Base URL for relative navigation") |> Zoi.optional(),
       last_url: Zoi.string(description: "Last navigated URL") |> Zoi.optional(),

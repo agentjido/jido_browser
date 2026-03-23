@@ -7,50 +7,83 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   """
 
   @behaviour Jido.Browser.Adapter
+  @behaviour Jido.Browser.PoolAdapter
 
   alias Jido.Browser.AgentBrowser.Runtime
   alias Jido.Browser.AgentBrowser.SessionServer
+  alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.Error
   alias Jido.Browser.Session
+  alias Jido.Browser.WarmPool.Lease
+  alias Jido.Browser.WarmPool.Manager
+  alias Jido.Browser.WarmPool.TreeSupervisor
 
   @default_timeout 30_000
+  @default_checkout_timeout 5_000
 
   @impl true
-  def start_session(opts \\ []) do
-    with {:ok, binary} <- Runtime.find_binary(),
-         :ok <- Runtime.ensure_supported_version(binary) do
-      session_id = opts[:session_id] || Uniq.UUID.uuid4()
-      headed = Keyword.get(opts, :headed, not Keyword.get(opts, :headless, true))
-      timeout = Keyword.get(opts, :timeout, @default_timeout)
+  @spec start_pool(keyword()) :: {:ok, pid()} | {:error, term()}
+  def start_pool(opts) do
+    with {:ok, manager_opts, startup_timeout} <- build_pool_start_opts(opts) do
+      case TreeSupervisor.start_pool(manager_opts) do
+        {:ok, pid} ->
+          await_pool_ready(pid, startup_timeout, "Failed to warm agent-browser pool")
 
-      session_opts =
-        opts
-        |> Keyword.put(:binary, binary)
-        |> Keyword.put(:headed, headed)
-        |> Keyword.put(:timeout, timeout)
-
-      case Runtime.ensure_session_server(session_id, session_opts) do
-        {:ok, pid, runtime} ->
-          Session.new(%{
-            id: session_id,
-            adapter: __MODULE__,
-            connection: %{
-              binary: binary,
-              session_id: session_id,
-              current_url: nil
-            },
-            runtime: Map.put(runtime, :manager, pid),
-            capabilities: Runtime.capabilities(),
-            opts: Map.new(session_opts)
-          })
+        {:error, {:already_started, pid}} ->
+          {:error, {:already_started, pid}}
 
         {:error, reason} ->
-          {:error, Error.adapter_error("Failed to start agent-browser session", %{reason: reason})}
+          {:error, Error.adapter_error("Failed to start agent-browser pool", %{reason: reason})}
       end
     end
   end
 
   @impl true
+  @spec start_supervised_pool(keyword()) :: GenServer.on_start()
+  def start_supervised_pool(opts) do
+    with :ok <- BrowserApplication.ensure_started(),
+         {:ok, manager_opts, startup_timeout} <- build_pool_start_opts(opts) do
+      case TreeSupervisor.start_link(manager_opts) do
+        {:ok, pid} ->
+          await_pool_ready(pid, startup_timeout, "Failed to warm supervised agent-browser pool")
+
+        {:error, {:already_started, pid}} ->
+          {:error, {:already_started, pid}}
+
+        {:error, reason} ->
+          {:error, Error.adapter_error("Failed to start supervised agent-browser pool", %{reason: reason})}
+      end
+    end
+  end
+
+  @impl true
+  @spec stop_pool(term()) :: :ok | {:error, term()}
+  def stop_pool(pool), do: TreeSupervisor.stop_pool(pool)
+
+  @impl true
+  def start_session(opts \\ []) do
+    if pool = opts[:pool] do
+      start_pooled_session(pool, opts)
+    else
+      start_unpooled_session(opts)
+    end
+  end
+
+  @impl true
+  def end_session(%Session{runtime: %{pooled: true, manager: pid}}) when is_pid(pid) do
+    case Lease.shutdown(pid) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        {:error, Error.adapter_error("Failed to end pooled session", %{reason: reason})}
+    end
+  end
+
+  def end_session(%Session{runtime: %{pooled: true}}) do
+    :ok
+  end
+
   def end_session(%Session{runtime: %{manager: pid}}) when is_pid(pid) do
     SessionServer.shutdown(pid)
   end
@@ -224,6 +257,22 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   defp command_payload(:console, _opts), do: %{"action" => "console"}
   defp command_payload(:errors, _opts), do: %{"action" => "errors"}
 
+  defp run(%Session{runtime: %{pooled: true, manager: pid}} = session, payload, opts) when is_pid(pid) do
+    timeout = opts[:timeout] || @default_timeout
+
+    case Lease.command(pid, payload, timeout) do
+      {:ok, data} ->
+        {:ok, session, data}
+
+      {:error, reason} ->
+        {:error, Error.adapter_error("agent-browser pooled command failed", %{reason: reason, payload: payload})}
+    end
+  end
+
+  defp run(%Session{runtime: %{pooled: true}}, _payload, _opts) do
+    {:error, Error.adapter_error("No pooled agent-browser lease available", %{})}
+  end
+
   defp run(%Session{runtime: %{manager: pid}} = session, payload, opts) when is_pid(pid) do
     timeout = opts[:timeout] || @default_timeout
 
@@ -312,6 +361,155 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
       fun.(path)
     after
       File.rm(path)
+    end
+  end
+
+  defp start_unpooled_session(opts) do
+    with {:ok, session_opts} <- build_session_opts(opts) do
+      session_id = opts[:session_id] || Uniq.UUID.uuid4()
+
+      case Runtime.ensure_session_server(session_id, session_opts) do
+        {:ok, pid, runtime} ->
+          build_session(session_id, session_opts, runtime, pid)
+
+        {:error, reason} ->
+          {:error, Error.adapter_error("Failed to start agent-browser session", %{reason: reason})}
+      end
+    end
+  end
+
+  defp start_pooled_session(pool, opts) do
+    with :ok <- reject_pooled_session_name(opts),
+         {:ok, lease_pid, worker_state} <-
+           Manager.checkout_session(
+             pool,
+             owner: self(),
+             checkout_timeout: Keyword.get(opts, :checkout_timeout, @default_checkout_timeout)
+           ) do
+      Session.new(%{
+        id: opts[:session_id] || Uniq.UUID.uuid4(),
+        adapter: __MODULE__,
+        connection: %{
+          binary: worker_state.binary,
+          session_id: worker_state.session_id,
+          current_url: nil
+        },
+        runtime:
+          worker_state.runtime
+          |> Map.put(:manager, lease_pid)
+          |> Map.put(:manager_module, Lease)
+          |> Map.put(:pool, pool)
+          |> Map.put(:pooled, true),
+        capabilities: Runtime.capabilities(),
+        opts:
+          opts
+          |> Keyword.put_new(:checkout_timeout, @default_checkout_timeout)
+          |> Map.new()
+      })
+    else
+      {:error, %Jido.Browser.Error.InvalidError{} = reason} ->
+        {:error, reason}
+
+      {:error, :pool_not_found} ->
+        {:error, Error.adapter_error("No agent-browser pool available", %{pool: pool})}
+
+      {:error, :pool_stopping} ->
+        {:error, Error.adapter_error("Agent-browser pool is stopping", %{pool: pool})}
+
+      {:error, :checkout_timeout} ->
+        {:error, Error.adapter_error("Timed out waiting for a warm pooled session", %{pool: pool})}
+
+      {:error, reason} ->
+        {:error, Error.adapter_error("Failed to check out pooled agent-browser session", %{pool: pool, reason: reason})}
+    end
+  end
+
+  defp build_pool_start_opts(opts, extra_manager_opts \\ []) do
+    with :ok <- reject_pooled_session_name(opts),
+         {:ok, name} <- fetch_pool_name(opts),
+         {:ok, size} <- fetch_pool_size(opts),
+         {:ok, session_opts} <- build_session_opts(opts) do
+      manager_opts =
+        [
+          name: name,
+          size: size,
+          adapter: __MODULE__,
+          worker_opts: session_opts,
+          pool_runtime_module: Keyword.get(opts, :pool_runtime_module, Jido.Browser.AgentBrowser.PoolRuntime)
+        ] ++ extra_manager_opts
+
+      startup_timeout =
+        Keyword.get(
+          opts,
+          :startup_timeout,
+          max(Keyword.get(session_opts, :timeout, @default_timeout), @default_timeout) * size
+        )
+
+      {:ok, manager_opts, startup_timeout}
+    end
+  end
+
+  defp await_pool_ready(pid, startup_timeout, message) do
+    :ok = TreeSupervisor.await_ready(pid, startup_timeout)
+    {:ok, pid}
+  catch
+    :exit, reason ->
+      Process.unlink(pid)
+      _ = GenServer.stop(pid, :shutdown, 10_000)
+      {:error, Error.adapter_error(message, %{reason: reason})}
+  end
+
+  defp build_session_opts(opts) do
+    with {:ok, binary} <- Runtime.find_binary(),
+         :ok <- Runtime.ensure_supported_version(binary) do
+      headed = Keyword.get(opts, :headed, not Keyword.get(opts, :headless, true))
+      timeout = Keyword.get(opts, :timeout, @default_timeout)
+
+      {:ok,
+       opts
+       |> Keyword.put(:binary, binary)
+       |> Keyword.put(:headed, headed)
+       |> Keyword.put(:timeout, timeout)}
+    end
+  end
+
+  defp build_session(session_id, session_opts, runtime, pid) do
+    Session.new(%{
+      id: session_id,
+      adapter: __MODULE__,
+      connection: %{
+        binary: Keyword.fetch!(session_opts, :binary),
+        session_id: session_id,
+        current_url: nil
+      },
+      runtime: Map.put(runtime, :manager, pid),
+      capabilities: Runtime.capabilities(),
+      opts: Map.new(session_opts)
+    })
+  end
+
+  defp fetch_pool_name(opts) do
+    case opts[:name] do
+      nil -> {:error, Error.invalid_error("Pool name is required", %{})}
+      name -> {:ok, name}
+    end
+  end
+
+  defp fetch_pool_size(opts) do
+    case opts[:size] do
+      size when is_integer(size) and size > 0 -> {:ok, size}
+      size -> {:error, Error.invalid_error("Pool size must be a positive integer", %{size: size})}
+    end
+  end
+
+  defp reject_pooled_session_name(opts) do
+    if opts[:session_name] do
+      {:error,
+       Error.invalid_error("Pooled agent-browser sessions do not support session_name", %{
+         session_name: opts[:session_name]
+       })}
+    else
+      :ok
     end
   end
 end

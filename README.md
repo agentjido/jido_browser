@@ -8,12 +8,15 @@ Browser automation for Jido AI agents.
 
 ## Overview
 
-`Jido.Browser` is an agent-browser-first browser automation library for Jido.
+`Jido.Browser` is organized around three simple lanes:
 
-- `agent-browser` is the default and only first-class backend in 2.0
-- each browser session is backed by a supervised external daemon
-- Elixir talks to the daemon over the upstream local JSON socket/TCP protocol
-- `Vibium` and `Web` remain available as legacy, feature-frozen adapters for transitional use
+- `web_fetch/2` for stateless HTTP-first retrieval
+- `start_session/1` and `end_session/1` for browser-backed workflows
+- `Jido.Browser.Pool` plus `start_session(pool: ...)` as an optional acceleration layer
+
+`agent-browser` remains the default adapter. `Web` also supports warm pools when
+you want browser-backed sessions with lower cold-start overhead. `Vibium`
+remains available without warm-pool support.
 
 The Hex package and OTP app remain `jido_browser`, while the public Elixir namespace is `Jido.Browser.*`.
 
@@ -123,6 +126,76 @@ File.mkdir_p!(Path.dirname(state_path))
 {:ok, session, _} = Jido.Browser.close_tab(session, 1)
 ```
 
+### Warm Session Pools
+
+Warm pools are explicit and optional. They speed up browser-backed workflows,
+while `web_fetch/2` stays stateless and never uses pools.
+
+For OTP applications, prefer adding a named pool to your supervision tree:
+
+```elixir
+defmodule MyApp.Application do
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      {Jido.Browser.Pool,
+       name: :default,
+       size: 2,
+       headless: true,
+       startup_timeout: 60_000}
+    ]
+
+    Supervisor.start_link(children, strategy: :one_for_one, name: MyApp.Supervisor)
+  end
+end
+```
+
+Then check out pooled sessions by name:
+
+```elixir
+{:ok, session} =
+  Jido.Browser.start_session(
+    pool: :default,
+    checkout_timeout: 5_000
+  )
+
+{:ok, session, _} = Jido.Browser.navigate(session, "https://example.com")
+:ok = Jido.Browser.end_session(session)
+```
+
+Use `start_pool/1` for scripts, tests, or ad hoc startup:
+
+```elixir
+{:ok, _pool} =
+  Jido.Browser.start_pool(
+    name: :default,
+    size: 2,
+    headless: true
+  )
+
+{:ok, session} =
+  Jido.Browser.start_session(
+    pool: :default,
+    checkout_timeout: 5_000
+  )
+
+{:ok, session, _} = Jido.Browser.navigate(session, "https://example.com")
+:ok = Jido.Browser.end_session(session)
+```
+
+Warm pools are currently supported by `Jido.Browser.Adapters.AgentBrowser` and
+`Jido.Browser.Adapters.Web`.
+
+- AgentBrowser pools keep full warm daemon-backed sessions ready for checkout.
+- Web pools keep reserved warmed profiles ready for checkout.
+- `end_session/1` always recycles the checked-out worker and warms a replacement
+  in the background.
+
+For the `Web` adapter, pooled sessions are still browser sessions, not HTTP
+fetches. Use `web_fetch/2` when you want the simplest request/response API
+without browser state.
+
 ### Plugin Setup
 
 ```elixir
@@ -133,6 +206,8 @@ defmodule MyBrowsingAgent do
       {Jido.Browser.Plugin,
        [
          adapter: Jido.Browser.Adapters.AgentBrowser,
+         pool: :default,
+         checkout_timeout: 5_000,
          headless: true,
          timeout: 30_000
        ]}
@@ -151,7 +226,7 @@ config :jido_browser, :agent_browser,
   headed: false
 ```
 
-Legacy adapters can still be configured explicitly:
+Other adapters can still be configured explicitly:
 
 ```elixir
 config :jido_browser, :vibium,
@@ -181,6 +256,7 @@ Configured `extractous` options are merged with any per-call `extractous:` keywo
 
 - native snapshot support with refs
 - supervised daemon per session
+- optional warm session pools with explicit checkout
 - direct JSON IPC from Elixir
 - built-in state save/load and tab management support
 
@@ -198,6 +274,8 @@ Configured `extractous` options are merged with any per-call `extractous:` keywo
 
 Core operations:
 
+- `start_pool/1`
+- `stop_pool/1`
 - `start_session/1`
 - `end_session/1`
 - `navigate/3`
