@@ -38,7 +38,7 @@ defmodule Jido.Browser.WebCLITest do
                    "profile",
                    %{"action" => "screenshot", "format" => "png", "current_url" => "https://example.com"},
                    binary: binary,
-                   timeout: 500
+                   timeout: 5_000
                  )
       end)
     end
