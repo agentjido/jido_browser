@@ -60,11 +60,11 @@ defmodule Jido.Browser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.1"},
-      {:jido_action, "~> 2.1"},
+      {:jido, "~> 2.3"},
+      {:jido_action, "~> 2.3"},
 
       # Runtime
-      {:zoi, "~> 0.16"},
+      {:zoi, "~> 0.18"},
       {:splode, "~> 0.3.0"},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
