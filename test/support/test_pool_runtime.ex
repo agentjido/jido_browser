@@ -3,6 +3,8 @@ defmodule Jido.Browser.TestPoolRuntime.Worker do
 
   use GenServer
 
+  @doc false
+  @spec start_link(String.t()) :: GenServer.on_start()
   def start_link(session_id) do
     GenServer.start_link(__MODULE__, session_id)
   end
@@ -50,6 +52,8 @@ defmodule Jido.Browser.TestPoolRuntime do
 
   alias Jido.Browser.TestPoolRuntime.Worker
 
+  @doc false
+  @spec start_worker(%{optional(:worker_opts) => keyword()} | keyword()) :: {:ok, map()}
   def start_worker(%{worker_opts: opts}), do: start_worker(opts)
 
   def start_worker(opts) do
@@ -71,6 +75,9 @@ defmodule Jido.Browser.TestPoolRuntime do
      }}
   end
 
+  @doc false
+  @spec command(%{required(:manager) => pid(), optional(atom()) => term()}, map(), pos_integer()) ::
+          {:ok, map()} | {:error, term()}
   def command(%{manager: pid}, payload, timeout) do
     GenServer.call(pid, {:command, payload}, timeout)
   catch
@@ -78,6 +85,8 @@ defmodule Jido.Browser.TestPoolRuntime do
       {:error, :worker_down}
   end
 
+  @doc false
+  @spec shutdown_worker(%{required(:manager) => pid(), optional(atom()) => term()}) :: :ok
   def shutdown_worker(%{manager: pid}) do
     if Process.alive?(pid) do
       GenServer.stop(pid, :normal, 5_000)
@@ -89,6 +98,9 @@ defmodule Jido.Browser.TestPoolRuntime do
       :ok
   end
 
+  @doc false
+  @spec health_check(%{required(:manager) => pid(), optional(atom()) => term()}) ::
+          :ok | {:error, :worker_down}
   def health_check(%{manager: pid}) when is_pid(pid) do
     if Process.alive?(pid), do: :ok, else: {:error, :worker_down}
   end
