@@ -18,7 +18,7 @@ Expose browser automation as session-scoped Jido actions with predictable adapte
 - `Jido.Browser`: public API for session lifecycle + browser operations
 - `Jido.Browser.Session`: session state/schema
 - `Jido.Browser.Adapter`: behavior for backend adapters
-- Adapters: `Jido.Browser.Adapters.Vibium` (default), `Jido.Browser.Adapters.Web`
+- Adapters: `Jido.Browser.Adapters.AgentBrowser` (default), `Jido.Browser.Adapters.Lightpanda` (limited), `Jido.Browser.Adapters.Vibium`, `Jido.Browser.Adapters.Web`
 - `Jido.Browser.Plugin`: bundles browser actions for agent integration
 - `Jido.Browser.Actions.*`: navigation, interaction, wait/query, snapshot/screenshot/extraction
 

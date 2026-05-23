@@ -56,6 +56,7 @@ defmodule Jido.Browser.Adapter do
 
   - `Jido.Browser.Adapters.Vibium` - Uses Vibium Go binary (WebDriver BiDi)
   - `Jido.Browser.Adapters.Web` - Uses chrismccord/web CLI
+  - `Jido.Browser.Adapters.Lightpanda` - Uses Lightpanda via CDP for limited browser automation
 
   """
 

@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.JidoBrowser.Install do
-  @shortdoc "Install browser automation binaries (agent_browser, web, vibium)"
+  @shortdoc "Install browser automation binaries (agent_browser, web, vibium, lightpanda)"
   @moduledoc """
   Install browser automation binaries for Jido.Browser.
 
@@ -12,9 +12,10 @@ defmodule Mix.Tasks.JidoBrowser.Install do
       mix jido_browser.install agent_browser
       mix jido_browser.install web
       mix jido_browser.install vibium
+      mix jido_browser.install lightpanda
 
-      # Install both
-      mix jido_browser.install agent_browser web vibium
+      # Install several
+      mix jido_browser.install agent_browser web vibium lightpanda
 
   ## Options
 
@@ -79,12 +80,13 @@ defmodule Mix.Tasks.JidoBrowser.Install do
       Jido.Browser.Adapters.AgentBrowser -> :agent_browser
       Jido.Browser.Adapters.Vibium -> :vibium
       Jido.Browser.Adapters.Web -> :web
+      Jido.Browser.Adapters.Lightpanda -> :lightpanda
       _ -> :agent_browser
     end
   end
 
   defp install_binary(binary, install_path, force, if_missing)
-       when binary in [:agent_browser, :vibium, :web] do
+       when binary in [:agent_browser, :vibium, :web, :lightpanda] do
     already_installed = Installer.installed?(binary)
 
     cond do
@@ -115,7 +117,7 @@ defmodule Mix.Tasks.JidoBrowser.Install do
   end
 
   defp install_binary(other, _install_path, _force, _if_missing) do
-    Mix.shell().error("Unknown binary: #{other}. Use 'agent_browser', 'web', or 'vibium'.")
+    Mix.shell().error("Unknown binary: #{other}. Use 'agent_browser', 'web', 'vibium', or 'lightpanda'.")
   end
 
   defp normalize_binary_name("agent-browser"), do: :agent_browser

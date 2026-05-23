@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add optional `Jido.Browser.Adapters.Lightpanda` support backed by `light_cdp` and `lightpanda_ex`, including warm pools for prestarted CDP sessions
+
 ### Changed
 
 - Rename the public Elixir namespace from `JidoBrowser.*` to `Jido.Browser.*`
