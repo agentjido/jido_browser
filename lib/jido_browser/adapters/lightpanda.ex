@@ -46,6 +46,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   @supported_extract_formats [:markdown, :html, :text]
 
   @impl true
+  @spec start_pool(keyword()) :: {:ok, pid()} | {:error, term()}
   def start_pool(opts) do
     with {:ok, manager_opts, startup_timeout} <- build_pool_start_opts(opts) do
       case TreeSupervisor.start_pool(manager_opts) do
@@ -62,6 +63,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   end
 
   @impl true
+  @spec start_supervised_pool(keyword()) :: GenServer.on_start()
   def start_supervised_pool(opts) do
     with :ok <- BrowserApplication.ensure_started(),
          {:ok, manager_opts, startup_timeout} <- build_pool_start_opts(opts) do
@@ -79,9 +81,11 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   end
 
   @impl true
+  @spec stop_pool(term()) :: :ok | {:error, term()}
   def stop_pool(pool), do: TreeSupervisor.stop_pool(pool)
 
   @impl true
+  @spec start_session(keyword()) :: {:ok, Session.t()} | {:error, Error.t()}
   def start_session(opts \\ []) do
     if pool = opts[:pool] do
       start_pooled_session(pool, opts)
@@ -121,6 +125,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   end
 
   @impl true
+  @spec end_session(Session.t()) :: :ok | {:error, Error.t()}
   def end_session(%Session{runtime: %{pooled: true, manager: pid}}) when is_pid(pid) do
     case Lease.shutdown(pid) do
       :ok -> :ok
@@ -137,6 +142,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   def end_session(%Session{}), do: :ok
 
   @impl true
+  @spec navigate(Session.t(), String.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, Error.t()}
   def navigate(%Session{} = session, url, opts) do
     case page_call(session, :navigate, [page(session), url, timeout_opts(opts)]) do
       :ok ->
@@ -149,6 +155,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   end
 
   @impl true
+  @spec click(Session.t(), String.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, Error.t()}
   def click(%Session{} = session, selector, opts) do
     case page_call(session, :click, [page(session), selector, timeout_opts(opts)]) do
       :ok -> {:ok, session, %{selector: selector}}
@@ -157,6 +164,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   end
 
   @impl true
+  @spec type(Session.t(), String.t(), String.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, Error.t()}
   def type(%Session{} = session, selector, text, opts) do
     case page_call(session, :fill, [page(session), selector, text, timeout_opts(opts)]) do
       :ok -> {:ok, session, %{selector: selector}}
@@ -165,6 +173,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   end
 
   @impl true
+  @spec screenshot(Session.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, Error.t()}
   def screenshot(%Session{} = session, opts) do
     format = opts[:format] || :png
 
@@ -181,6 +190,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   end
 
   @impl true
+  @spec extract_content(Session.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, Error.t()}
   def extract_content(%Session{} = session, opts) do
     format = opts[:format] || :markdown
     selector = opts[:selector] || "body"
@@ -200,6 +210,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   end
 
   @impl true
+  @spec evaluate(Session.t(), String.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, Error.t()}
   def evaluate(%Session{} = session, script, opts) do
     case page_call(session, :evaluate, [page(session), script, timeout_opts(opts)]) do
       {:ok, result} -> {:ok, session, %{result: result}}

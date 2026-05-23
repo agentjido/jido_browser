@@ -5,6 +5,7 @@ defmodule Jido.Browser.Adapters.Lightpanda.PoolRuntime do
   alias Jido.Browser.Adapters.Lightpanda
 
   @impl true
+  @spec start_worker(map()) :: {:ok, map()} | {:error, term()}
   def start_worker(%{worker_opts: worker_opts}) do
     session_id = "lightpanda-pool-#{System.unique_integer([:positive])}"
 
@@ -20,14 +21,17 @@ defmodule Jido.Browser.Adapters.Lightpanda.PoolRuntime do
   end
 
   @impl true
+  @spec command(map(), term(), timeout()) :: {:error, :unsupported}
   def command(_worker_state, _payload, _timeout), do: {:error, :unsupported}
 
   @impl true
+  @spec shutdown_worker(map()) :: :ok | {:error, term()}
   def shutdown_worker(worker_state) do
     Lightpanda.stop_connection(worker_state)
   end
 
   @impl true
+  @spec health_check(map()) :: :ok | {:error, atom()}
   def health_check(worker_state) do
     cond do
       not File.exists?(worker_state.binary) -> {:error, :binary_missing}
