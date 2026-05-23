@@ -1,7 +1,7 @@
 defmodule Jido.Browser.MixProject do
   use Mix.Project
 
-  @version "2.0.0"
+  @version "2.1.0"
   @source_url "https://github.com/agentjido/jido_browser"
   @description "Browser automation actions for Jido AI agents"
   @otp_release List.to_string(:erlang.system_info(:otp_release))
