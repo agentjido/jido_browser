@@ -34,10 +34,10 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.Error
   alias Jido.Browser.Installer
+  alias Jido.Browser.Session
   alias Jido.Browser.WarmPool.Lease
   alias Jido.Browser.WarmPool.Manager
   alias Jido.Browser.WarmPool.TreeSupervisor
-  alias Jido.Browser.Session
 
   @default_timeout 30_000
   @default_checkout_timeout 5_000
@@ -219,32 +219,10 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   end
 
   defp start_pooled_session(pool, opts) do
-    with {:ok, lease_pid, worker_state} <-
-           Manager.checkout_session(
-             pool,
-             owner: self(),
-             checkout_timeout: Keyword.get(opts, :checkout_timeout, @default_checkout_timeout)
-           ) do
-      Session.new(%{
-        id: opts[:session_id] || Uniq.UUID.uuid4(),
-        adapter: __MODULE__,
-        connection:
-          worker_state
-          |> Map.take([:binary, :cdp_session, :page, :light_cdp_module, :page_module])
-          |> Map.put(:current_url, nil),
-        runtime:
-          worker_state.runtime
-          |> Map.put(:manager, lease_pid)
-          |> Map.put(:manager_module, Lease)
-          |> Map.put(:pool, pool)
-          |> Map.put(:pooled, true),
-        capabilities: capabilities(),
-        opts:
-          opts
-          |> Keyword.put_new(:checkout_timeout, @default_checkout_timeout)
-          |> Map.new()
-      })
-    else
+    case checkout_pooled_session(pool, opts) do
+      {:ok, lease_pid, worker_state} ->
+        build_pooled_session(pool, opts, lease_pid, worker_state)
+
       {:error, :pool_not_found} ->
         {:error, Error.adapter_error("No Lightpanda adapter pool available", %{pool: pool})}
 
@@ -258,6 +236,36 @@ defmodule Jido.Browser.Adapters.Lightpanda do
         {:error,
          Error.adapter_error("Failed to check out pooled Lightpanda adapter session", %{pool: pool, reason: reason})}
     end
+  end
+
+  defp checkout_pooled_session(pool, opts) do
+    Manager.checkout_session(
+      pool,
+      owner: self(),
+      checkout_timeout: Keyword.get(opts, :checkout_timeout, @default_checkout_timeout)
+    )
+  end
+
+  defp build_pooled_session(pool, opts, lease_pid, worker_state) do
+    Session.new(%{
+      id: opts[:session_id] || Uniq.UUID.uuid4(),
+      adapter: __MODULE__,
+      connection:
+        worker_state
+        |> Map.take([:binary, :cdp_session, :page, :light_cdp_module, :page_module])
+        |> Map.put(:current_url, nil),
+      runtime:
+        worker_state.runtime
+        |> Map.put(:manager, lease_pid)
+        |> Map.put(:manager_module, Lease)
+        |> Map.put(:pool, pool)
+        |> Map.put(:pooled, true),
+      capabilities: capabilities(),
+      opts:
+        opts
+        |> Keyword.put_new(:checkout_timeout, @default_checkout_timeout)
+        |> Map.new()
+    })
   end
 
   defp start_page(light_cdp, page_module, cdp_session, binary) do
@@ -474,7 +482,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   end
 
   defp put_current_url(%Session{connection: connection} = session, url) do
-    %{session | connection: Map.put(connection || %{}, :current_url, url)}
+    %{session | connection: Map.put(connection, :current_url, url)}
   end
 
   defp timeout_opts(opts), do: [timeout: opts[:timeout] || @default_timeout]

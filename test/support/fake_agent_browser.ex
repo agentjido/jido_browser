@@ -1,6 +1,7 @@
 defmodule Jido.Browser.TestSupport.FakeAgentBrowser do
   @moduledoc false
 
+  @doc false
   @spec with_binary(atom(), (String.t(), String.t() -> result)) :: result when result: var
   def with_binary(mode, fun) when is_atom(mode) and is_function(fun, 2) do
     tmp_dir = Path.join("/tmp", "jbfa_#{System.unique_integer([:positive])}")
