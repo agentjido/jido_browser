@@ -29,3 +29,5 @@ Local vendor patches:
 - Process execution uses a local port-based shell runner instead of `erlexec`,
   because `erlexec` is retired and fails package audit checks.
 - Curl wrapper command arguments are shell-quoted before execution.
+- Runtime options are validated before shell command construction.
+- Cookie jars are request-scoped temporary files instead of a shared temp path.

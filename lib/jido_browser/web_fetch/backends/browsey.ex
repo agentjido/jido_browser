@@ -13,14 +13,16 @@ defmodule Jido.Browser.WebFetch.Backends.Browsey do
   alias Jido.Browser.Vendor.BrowseyHttp
 
   @default_client BrowseyHttp
+  @default_timeout 30_000
+  @default_max_redirects 5
 
   @impl true
   def fetch(url, opts) do
     browsey_opts =
       opts
       |> Keyword.get(:browsey, [])
-      |> Keyword.put_new(:timeout, opts[:timeout])
-      |> Keyword.put_new(:follow_redirects?, opts[:max_redirects] > 0)
+      |> Keyword.put_new(:timeout, opts[:timeout] || @default_timeout)
+      |> Keyword.put_new(:follow_redirects?, Keyword.get(opts, :max_redirects, @default_max_redirects) > 0)
 
     {client, browsey_opts} = Keyword.pop(browsey_opts, :client, @default_client)
 

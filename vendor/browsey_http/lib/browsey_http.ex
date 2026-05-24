@@ -82,7 +82,7 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
   @type uri_or_url :: URI.t() | String.t()
   @type get_result :: {:ok, Jido.Browser.Vendor.BrowseyHttp.Response.t()} | {:error, Exception.t()}
 
-  @type browser :: :chrome | :chrome_android | :edge | :safari
+  @type browser :: :chrome | :chrome_android | :android | :edge | :safari
 
   @type http_get_option ::
           {:follow_redirects?, boolean()}
@@ -93,13 +93,16 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
           | {:browser, browser() | :random}
           | {:ignore_ssl_errors?, boolean()}
           | {:timeout, timeout()}
+          | {:cookie_file, Path.t()}
 
   @available_browsers %{
-    android: "curl_chrome99_android",
     chrome: "curl_chrome116",
+    chrome_android: "curl_chrome99_android",
     edge: "curl_edge101",
     safari: "curl_safari15_5"
   }
+
+  @browser_aliases %{android: :chrome_android}
 
   # Matches Chrome's behavior:
   # https://stackoverflow.com/questions/10895406/what-is-the-maximum-number-of-http-redirections-allowed-by-all-major-browsers
@@ -143,25 +146,22 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
   """
   @spec get(uri_or_url(), [http_get_option()]) :: get_result()
   def get(url_or_uri, opts \\ []) do
-    case validate_url(url_or_uri) do
-      {:ok, %URI{} = uri} ->
-        start_time = DateTime.utc_now()
-        retries = Access.get(opts, :max_retries, 0)
+    with {:ok, opts} <- validate_opts(opts),
+         {:ok, %URI{} = uri} <- validate_url(url_or_uri) do
+      start_time = DateTime.utc_now()
+      retries = Access.get(opts, :max_retries, 0)
 
-        Enum.reduce_while(0..retries, nil, fn attempt, _ ->
-          result = get_internal(uri, [], opts)
-          {error_or_ok, resp_or_exception} = result
+      Enum.reduce_while(0..retries, nil, fn attempt, _ ->
+        result = get_internal(uri, [], opts)
+        {error_or_ok, resp_or_exception} = result
 
-          if should_retry?(resp_or_exception) and attempt < retries do
-            Process.sleep(retry_delay_slow(attempt))
-            {:cont, result}
-          else
-            {:halt, {error_or_ok, finalize_response(resp_or_exception, start_time)}}
-          end
-        end)
-
-      error ->
-        error
+        if should_retry?(resp_or_exception) and attempt < retries do
+          Process.sleep(retry_delay_slow(attempt))
+          {:cont, result}
+        else
+          {:halt, {error_or_ok, finalize_response(resp_or_exception, start_time)}}
+        end
+      end)
     end
   end
 
@@ -257,7 +257,7 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
   end
 
   defp browser_default_overrides_by_domain do
-    %{"realtor.com" => :android}
+    %{"realtor.com" => :chrome_android}
   end
 
   @spec get_internal(URI.t(), [URI.t()], Keyword.t()) ::
@@ -265,12 +265,7 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
   defp get_internal(%URI{} = uri, prev_uris, opts) do
     default_browser_for_host = default_browser(uri)
 
-    browser_script =
-      case Access.get(opts, :browser, default_browser_for_host) do
-        :random -> @available_browsers |> Map.values() |> Enum.random()
-        b when is_map_key(@available_browsers, b) -> Map.fetch!(@available_browsers, b)
-        _ -> Map.fetch!(@available_browsers, default_browser_for_host)
-      end
+    browser_script = browser_script(Access.get(opts, :browser, default_browser_for_host), default_browser_for_host)
 
     script = Application.app_dir(:jido_browser, ["priv", "vendor", "browsey_http", "curl", browser_script])
 
@@ -282,70 +277,70 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
 
     redirect_args =
       if Access.get(opts, :follow_redirects?, true) do
-        "--location --max-redirs #{@max_redirects}"
+        ["--location", "--max-redirs", Integer.to_string(@max_redirects)]
       else
-        ""
+        []
       end
 
     security_args =
       if Access.get(opts, :ignore_ssl_errors?, false) do
-        "--insecure"
+        ["--insecure"]
       else
-        ""
+        []
       end
 
-    # TODO: Should we have a separate cookie file for every request?
-    tmp_dir = System.tmp_dir!()
-    cookie_file = Path.join(tmp_dir, "cookie-jar")
+    {cookie_file, cleanup_cookie?} = request_cookie_file(opts)
 
-    command =
-      Enum.join(
+    args =
+      [
+        script,
+        "-v",
+        to_string(uri)
+      ] ++
+        redirect_args ++
+        security_args ++
         [
-          shell_quote(script),
-          "-v",
-          shell_quote(to_string(uri)),
-          redirect_args,
-          security_args,
-          "--max-time #{timeout / 1_000}",
-          "--max-filesize #{max_bytes}",
-          "--cookie #{shell_quote(cookie_file)}",
-          "--cookie-jar #{shell_quote(cookie_file)}",
-          if uri.host in ["twitter.com", "x.com"] do
-            "--header #{shell_quote(request_server_side_rendering_user_agent())}"
-          else
-            ""
+          "--max-time",
+          Float.to_string(timeout / 1_000),
+          "--cookie",
+          cookie_file,
+          "--cookie-jar",
+          cookie_file
+        ] ++ max_filesize_args(max_bytes) ++ server_side_rendering_header_args(uri)
+
+    try do
+      command = shell_join(args)
+
+      with {:ok, result} <- Util.Exec.exec(command, timeout + 5_000),
+           metadata = Enum.join(result[:stderr] || []),
+           {:ok, %Curl.Result{} = metadata} <- Curl.parse_metadata(metadata, uri) do
+        body = Enum.join(result[:stdout] || [])
+        {:ok, curl_output_to_response(body, metadata, prev_uris)}
+      else
+        {:error, error_kwlist} ->
+          metadata = Enum.join(error_kwlist[:stderr] || [])
+
+          status =
+            case Curl.parse_metadata(metadata, uri) do
+              {:error, %Curl.Error{code: code}} -> code
+              _ -> Access.fetch!(error_kwlist, :exit_status)
+            end
+
+          case status do
+            3 -> {:error, ConnectionException.invalid_url(uri)}
+            6 -> {:error, ConnectionException.could_not_resolve_host(uri)}
+            7 -> {:error, ConnectionException.could_not_connect(uri)}
+            28 -> {:error, TimeoutException.timed_out(uri, timeout)}
+            35 -> {:error, SslException.new(uri)}
+            47 -> {:error, TooManyRedirectsException.new(uri, @max_redirects)}
+            56 -> {:error, ConnectionException.failed_to_receive(uri)}
+            60 -> {:error, SslException.new(uri)}
+            63 -> {:error, TooLargeException.new(uri, max_bytes)}
+            _ -> {:error, ConnectionException.unknown_error(uri, status)}
           end
-        ],
-        " "
-      )
-
-    with {:ok, result} <- Util.Exec.exec(command, timeout + 5_000),
-         metadata = Enum.join(result[:stderr] || []),
-         {:ok, %Curl.Result{} = metadata} <- Curl.parse_metadata(metadata, uri) do
-      body = Enum.join(result[:stdout] || [])
-      {:ok, curl_output_to_response(body, metadata, prev_uris)}
-    else
-      {:error, error_kwlist} ->
-        metadata = Enum.join(error_kwlist[:stderr] || [])
-
-        status =
-          case Curl.parse_metadata(metadata, uri) do
-            {:error, %Curl.Error{code: code}} -> code
-            _ -> Access.fetch!(error_kwlist, :exit_status)
-          end
-
-        case status do
-          3 -> {:error, ConnectionException.invalid_url(uri)}
-          6 -> {:error, ConnectionException.could_not_resolve_host(uri)}
-          7 -> {:error, ConnectionException.could_not_connect(uri)}
-          28 -> {:error, TimeoutException.timed_out(uri, timeout)}
-          35 -> {:error, SslException.new(uri)}
-          47 -> {:error, TooManyRedirectsException.new(uri, @max_redirects)}
-          56 -> {:error, ConnectionException.failed_to_receive(uri)}
-          60 -> {:error, SslException.new(uri)}
-          63 -> {:error, TooLargeException.new(uri, max_bytes)}
-          _ -> {:error, ConnectionException.unknown_error(uri, status)}
-        end
+      end
+    after
+      if cleanup_cookie?, do: File.rm(cookie_file)
     end
   end
 
@@ -356,6 +351,111 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
       "Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)"
 
     "User-Agent: #{baidu_bot}"
+  end
+
+  defp browser_script(:random, _default_browser) do
+    @available_browsers |> Map.values() |> Enum.random()
+  end
+
+  defp browser_script(browser, default_browser) do
+    browser =
+      @browser_aliases
+      |> Map.get(browser, browser)
+      |> case do
+        b when is_map_key(@available_browsers, b) -> b
+        _ -> default_browser
+      end
+
+    Map.fetch!(@available_browsers, browser)
+  end
+
+  defp server_side_rendering_header_args(%URI{host: host}) when host in ["twitter.com", "x.com"] do
+    ["--header", request_server_side_rendering_user_agent()]
+  end
+
+  defp server_side_rendering_header_args(_uri), do: []
+
+  defp max_filesize_args(:infinity), do: []
+  defp max_filesize_args(max_bytes), do: ["--max-filesize", Integer.to_string(max_bytes)]
+
+  defp request_cookie_file(opts) do
+    case Access.get(opts, :cookie_file) do
+      path when is_binary(path) and path != "" ->
+        {path, false}
+
+      _ ->
+        {Path.join(System.tmp_dir!(), "browsey_cookie_#{System.unique_integer([:positive])}"), true}
+    end
+  end
+
+  defp validate_opts(opts) when is_list(opts) do
+    if Keyword.keyword?(opts) do
+      Enum.reduce_while(opts, {:ok, opts}, fn {key, value}, {:ok, acc} ->
+        case validate_option(key, value) do
+          :ok -> {:cont, {:ok, acc}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+      end)
+    else
+      {:error, ArgumentError.exception("BrowseyHttp options must be a keyword list")}
+    end
+  end
+
+  defp validate_opts(_opts), do: {:error, ArgumentError.exception("BrowseyHttp options must be a keyword list")}
+
+  defp validate_option(key, value) when key in [:follow_redirects?, :ignore_ssl_errors?] and is_boolean(value), do: :ok
+
+  defp validate_option(:max_retries, value) do
+    if is_integer(value) and value >= 0 do
+      :ok
+    else
+      {:error, ArgumentError.exception("max_retries must be a non-negative integer")}
+    end
+  end
+
+  defp validate_option(key, value) when key in [:timeout, :receive_timeout] do
+    if is_integer(value) and value > 0 do
+      :ok
+    else
+      {:error, ArgumentError.exception("#{key} must be a positive integer")}
+    end
+  end
+
+  defp validate_option(:max_response_size_bytes, :infinity), do: :ok
+
+  defp validate_option(:max_response_size_bytes, value) do
+    if is_integer(value) and value >= 0 do
+      :ok
+    else
+      {:error, ArgumentError.exception("max_response_size_bytes must be a non-negative integer or :infinity")}
+    end
+  end
+
+  defp validate_option(:browser, browser) do
+    browser = Map.get(@browser_aliases, browser, browser)
+
+    if browser == :random or Map.has_key?(@available_browsers, browser) do
+      :ok
+    else
+      {:error, ArgumentError.exception("browser must be one of :chrome, :chrome_android, :edge, :safari, or :random")}
+    end
+  end
+
+  defp validate_option(:cookie_file, value) when is_binary(value) and value != "", do: :ok
+
+  defp validate_option(:cookie_file, _value) do
+    {:error, ArgumentError.exception("cookie_file must be a non-empty path")}
+  end
+
+  defp validate_option(key, _value) do
+    {:error, ArgumentError.exception("unsupported BrowseyHttp option #{inspect(key)}")}
+  end
+
+  defp shell_join(args) do
+    args
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.map(&shell_quote/1)
+    |> Enum.join(" ")
   end
 
   defp shell_quote(value) do

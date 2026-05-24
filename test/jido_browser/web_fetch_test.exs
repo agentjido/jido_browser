@@ -3,6 +3,7 @@ defmodule Jido.Browser.WebFetchTest do
   use Mimic
 
   alias Jido.Browser.Error
+  alias Jido.Browser.Vendor.BrowseyHttp
   alias Jido.Browser.WebFetch
 
   defmodule TestBackend do
@@ -414,6 +415,25 @@ defmodule Jido.Browser.WebFetchTest do
       assert result.content =~ "Fetched by Browsey."
       assert result.cached == false
       assert result.passages == []
+    end
+
+    test "Browsey backend rejects unsafe option values before shell execution" do
+      assert {:error, %Error.AdapterError{} = error} =
+               Jido.Browser.web_fetch(
+                 "https://example.com/stealth",
+                 backend: :browsey,
+                 cache: false,
+                 browsey: [max_response_size_bytes: "1; touch /tmp/jido-browser-owned"]
+               )
+
+      assert error.details.error_code == :unavailable
+      assert %ArgumentError{} = error.details.reason
+      assert error.details.reason.message =~ "max_response_size_bytes"
+    end
+
+    test "vendored Browsey validates browser option aliases" do
+      assert {:error, %ArgumentError{} = error} = BrowseyHttp.get("https://example.com", browser: :netscape)
+      assert error.message =~ "browser must be one of"
     end
 
     @tag :integration
