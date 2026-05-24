@@ -20,7 +20,9 @@ Browser automation for Jido AI agents.
 
 `agent-browser` remains the default adapter. `Web` also supports warm pools when
 you want browser-backed sessions with lower cold-start overhead. `Vibium`
-remains available without warm-pool support.
+remains available without warm-pool support. `Lightpanda` is available as an
+optional limited adapter for lightweight DOM and JavaScript automation, with
+warm-pool support for prestarted CDP sessions.
 
 The Hex package and OTP app remain `jido_browser`, while the public Elixir namespace is `Jido.Browser.*`.
 
@@ -61,6 +63,20 @@ end
 mix jido_browser.install agent_browser
 mix jido_browser.install vibium
 mix jido_browser.install web
+mix jido_browser.install lightpanda
+```
+
+Lightpanda support uses optional dependencies. Add them to applications that
+select `Jido.Browser.Adapters.Lightpanda`:
+
+```elixir
+def deps do
+  [
+    {:jido_browser, "~> 2.0"},
+    {:light_cdp, "~> 0.2.1"},
+    {:lightpanda_ex, "~> 0.1.0"}
+  ]
+end
 ```
 
 ## Quick Start
@@ -188,10 +204,11 @@ Use `start_pool/1` for scripts, tests, or ad hoc startup:
 :ok = Jido.Browser.end_session(session)
 ```
 
-Warm pools are currently supported by `Jido.Browser.Adapters.AgentBrowser` and
-`Jido.Browser.Adapters.Web`.
+Warm pools are currently supported by `Jido.Browser.Adapters.AgentBrowser`,
+`Jido.Browser.Adapters.Lightpanda`, and `Jido.Browser.Adapters.Web`.
 
 - AgentBrowser pools keep full warm daemon-backed sessions ready for checkout.
+- Lightpanda pools keep prestarted Lightpanda/CDP sessions ready for checkout.
 - Web pools keep reserved warmed profiles ready for checkout.
 - `end_session/1` always recycles the checked-out worker and warms a replacement
   in the background.
@@ -239,6 +256,10 @@ config :jido_browser, :vibium,
 config :jido_browser, :web,
   binary_path: "/usr/local/bin/web",
   profile: "default"
+
+config :jido_browser, :lightpanda,
+  binary_path: "/usr/local/bin/lightpanda",
+  disable_telemetry: true
 ```
 
 Optional web fetch settings:
@@ -263,6 +284,15 @@ Configured `extractous` options are merged with any per-call `extractous:` keywo
 - optional warm session pools with explicit checkout
 - direct JSON IPC from Elixir
 - built-in state save/load and tab management support
+
+### Lightpanda (Limited)
+
+- optional adapter backed by `light_cdp`
+- supports session lifecycle, navigation, click, type, PNG screenshots, content extraction, and JavaScript evaluation
+- supports warm pools for prestarted Lightpanda/CDP sessions
+- uses `lightpanda_ex` for pinned Lightpanda binary installation
+- disables Lightpanda telemetry by default with `LIGHTPANDA_DISABLE_TELEMETRY=true`
+- does not provide AgentBrowser-native refs, state persistence, tab management, or console capture
 
 ### Vibium (Legacy)
 

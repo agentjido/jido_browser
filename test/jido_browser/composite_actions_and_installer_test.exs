@@ -286,6 +286,21 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
       with_app_env(:jido_browser, :web_version, "stable", fn ->
         assert Installer.configured_version(:web) == "stable"
       end)
+
+      with_app_env(:jido_browser, :lightpanda_version, nil, fn ->
+        assert Installer.configured_version(:lightpanda) == "0.3.0"
+      end)
+
+      with_app_env(:jido_browser, :lightpanda_version, "0.4.0", fn ->
+        assert Installer.configured_version(:lightpanda) == "0.4.0"
+      end)
+    end
+
+    test "does not pull Lightpanda dependencies into the package" do
+      deps = Mix.Project.config()[:deps]
+
+      refute dep?(deps, :light_cdp)
+      refute dep?(deps, :lightpanda_ex)
     end
 
     test "bin_path/installed? use configured web path when present" do
@@ -297,6 +312,26 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
         with_app_env(:jido_browser, :web, [binary_path: path], fn ->
           assert Installer.bin_path(:web) == path
           assert Installer.installed?(:web)
+        end)
+      after
+        File.rm(path)
+      end
+    end
+
+    test "bin_path/installed? use configured lightpanda path when present" do
+      path =
+        Path.join(
+          System.tmp_dir!(),
+          "jido_browser_test_lightpanda_#{System.unique_integer([:positive])}"
+        )
+
+      File.write!(path, "lightpanda")
+      File.chmod!(path, 0o755)
+
+      try do
+        with_app_env(:jido_browser, :lightpanda, [binary_path: path], fn ->
+          assert Installer.bin_path(:lightpanda) == path
+          assert Installer.installed?(:lightpanda)
         end)
       after
         File.rm(path)
@@ -339,6 +374,14 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
         File.rm(path)
       end
     end
+  end
+
+  defp dep?(deps, app) do
+    Enum.any?(deps, fn
+      {^app, _requirement} -> true
+      {^app, _requirement, _opts} -> true
+      _ -> false
+    end)
   end
 
   defp with_app_env(app, key, value, fun) do

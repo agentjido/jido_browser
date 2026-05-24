@@ -121,6 +121,7 @@ defmodule Jido.Browser.MixProject do
         Adapters: [
           Jido.Browser.Adapter,
           Jido.Browser.Adapters.AgentBrowser,
+          Jido.Browser.Adapters.Lightpanda,
           Jido.Browser.Adapters.Vibium,
           Jido.Browser.Adapters.Web
         ],
