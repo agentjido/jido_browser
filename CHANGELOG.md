@@ -11,11 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add Lightpanda adapter support with optional warm pools.
 - Add vendored BrowseyHttp-backed `web_fetch/2` backend while upstream is not published on Hex.
+- Add `fetch_rich/2` and `browser.fetch_rich` for HTTP-first retrieval with optional browser fallback.
+- Add `pool_status/1` and `browser.pool_status` for warm pool observability.
+- Add opt-in persistent warm pool lifecycle with `max_uses` and `max_age_ms` recycling controls.
 
 ### Changed
 
 - Rename the public Elixir namespace from `JidoBrowser.*` to `Jido.Browser.*`
 - Keep source and test files in `lib/jido_browser/**` and `test/jido_browser/**` while exposing the `Jido.Browser.*` namespace
+- Strengthen warm pool health checks to validate browser/runtime responsiveness before reuse.
 
 ### Fixed
 

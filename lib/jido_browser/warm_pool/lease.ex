@@ -9,6 +9,7 @@ defmodule Jido.Browser.WarmPool.Lease do
     :pool,
     :runtime_module,
     :checkout_timeout,
+    :normal_release,
     :task_pid,
     :task_ref,
     :worker_state,
@@ -24,6 +25,7 @@ defmodule Jido.Browser.WarmPool.Lease do
           pool: pid() | nil,
           runtime_module: module() | nil,
           checkout_timeout: timeout() | nil,
+          normal_release: :checkin | :recycle | nil,
           task_pid: pid() | nil,
           task_ref: reference() | nil,
           worker_state: map() | nil,
@@ -90,13 +92,15 @@ defmodule Jido.Browser.WarmPool.Lease do
     pool = Keyword.fetch!(opts, :pool)
     runtime_module = Keyword.fetch!(opts, :runtime_module)
     checkout_timeout = Keyword.fetch!(opts, :checkout_timeout)
+    normal_release = Keyword.get(opts, :normal_release, :recycle)
 
     state = %__MODULE__{
       owner: owner,
       owner_ref: Process.monitor(owner),
       pool: pool,
       runtime_module: runtime_module,
-      checkout_timeout: checkout_timeout
+      checkout_timeout: checkout_timeout,
+      normal_release: normal_release
     }
 
     {:ok, state, {:continue, :checkout}}
@@ -163,7 +167,7 @@ defmodule Jido.Browser.WarmPool.Lease do
   end
 
   def handle_call(:shutdown, {owner, _ref} = from, %{owner: owner} = state) do
-    send(state.task_pid, {:release, :recycle})
+    send(state.task_pid, {:release, state.normal_release})
     {:noreply, %{state | closing: true, pending_shutdown_from: from}}
   end
 

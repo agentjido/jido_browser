@@ -23,9 +23,9 @@ defmodule Jido.Browser.PluginTest do
       assert "automation" in tags
     end
 
-    test "has 38 actions" do
+    test "has 40 actions" do
       actions = Plugin.actions()
-      assert length(actions) == 38
+      assert length(actions) == 40
     end
 
     test "includes all expected action modules" do
@@ -35,6 +35,7 @@ defmodule Jido.Browser.PluginTest do
       assert Jido.Browser.Actions.StartSession in actions
       assert Jido.Browser.Actions.EndSession in actions
       assert Jido.Browser.Actions.GetStatus in actions
+      assert Jido.Browser.Actions.PoolStatus in actions
       assert Jido.Browser.Actions.SaveState in actions
       assert Jido.Browser.Actions.LoadState in actions
 
@@ -74,13 +75,14 @@ defmodule Jido.Browser.PluginTest do
       # Advanced
       assert Jido.Browser.Actions.Evaluate in actions
       assert Jido.Browser.Actions.WebFetch in actions
+      assert Jido.Browser.Actions.FetchRich in actions
     end
   end
 
   describe "signal_routes/1" do
-    test "returns 38 routes" do
+    test "returns 40 routes" do
       routes = Plugin.signal_routes(%{})
-      assert length(routes) == 38
+      assert length(routes) == 40
     end
 
     test "maps browser.navigate to Navigate action" do
@@ -127,6 +129,7 @@ defmodule Jido.Browser.PluginTest do
       assert state.last_title == nil
       assert state.seen_urls == []
       assert state.web_fetch_uses == 0
+      assert state.fetch_rich_uses == 0
     end
 
     test "accepts headless config override" do
@@ -165,7 +168,7 @@ defmodule Jido.Browser.PluginTest do
     test "returns list of signal patterns" do
       patterns = Plugin.signal_patterns()
       assert is_list(patterns)
-      assert length(patterns) == 38
+      assert length(patterns) == 40
     end
 
     test "all patterns have browser. prefix" do
@@ -185,6 +188,8 @@ defmodule Jido.Browser.PluginTest do
       assert "browser.tab_list" in patterns
       assert "browser.console" in patterns
       assert "browser.web_fetch" in patterns
+      assert "browser.fetch_rich" in patterns
+      assert "browser.pool_status" in patterns
     end
   end
 
@@ -230,6 +235,21 @@ defmodule Jido.Browser.PluginTest do
       assert state_updates.seen_urls == ["https://elixir-lang.org"]
     end
 
+    test "tracks discovered URLs and usage for rich fetch results" do
+      context = %{skill_state: %{seen_urls: [], fetch_rich_uses: 3}}
+
+      result =
+        Plugin.transform_result(
+          Jido.Browser.Actions.FetchRich,
+          {:ok, %{url: "https://example.com", final_url: "https://example.com/final", status: "success"}},
+          context
+        )
+
+      assert {:ok, _result, state_updates} = result
+      assert Enum.sort(state_updates.seen_urls) == Enum.sort(["https://example.com", "https://example.com/final"])
+      assert state_updates.fetch_rich_uses == 4
+    end
+
     test "enhances error results when session available" do
       context = %{
         skill_state: %{
@@ -245,6 +265,8 @@ defmodule Jido.Browser.PluginTest do
       assert {:error, enhanced} = result
       assert enhanced.diagnostics.url == "https://example.com"
       assert enhanced.diagnostics.title == "Test Page"
+      assert Map.has_key?(enhanced.diagnostics, :adapter)
+      assert Map.has_key?(enhanced.diagnostics, :pool)
     end
   end
 end

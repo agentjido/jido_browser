@@ -36,6 +36,7 @@ defmodule Jido.Browser.Adapters.Lightpanda.PoolRuntime do
     cond do
       not File.exists?(worker_state.binary) -> {:error, :binary_missing}
       not connection_alive?(worker_state.cdp_session) -> {:error, :connection_closed}
+      not page_healthy?(worker_state) -> {:error, :page_unavailable}
       true -> :ok
     end
   end
@@ -46,4 +47,17 @@ defmodule Jido.Browser.Adapters.Lightpanda.PoolRuntime do
       _other -> true
     end
   end
+
+  defp page_healthy?(%{page_module: page_module, page: page}) do
+    case page_module.content(page) do
+      {:ok, _content} -> true
+      _other -> false
+    end
+  rescue
+    _error -> false
+  catch
+    _kind, _reason -> false
+  end
+
+  defp page_healthy?(_worker_state), do: true
 end

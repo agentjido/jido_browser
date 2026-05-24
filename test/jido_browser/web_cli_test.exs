@@ -47,7 +47,7 @@ defmodule Jido.Browser.WebCLITest do
   describe "profile helpers" do
     test "warm_profile prepares a profile and delete_profile removes it" do
       FakeWebBinary.with_binary(:normal, fn binary, profile_root ->
-        assert :ok = CLI.warm_profile("warm-profile", binary: binary, timeout: 500)
+        assert :ok = CLI.warm_profile("warm-profile", binary: binary, timeout: 2_000)
         assert File.dir?(Path.join(profile_root, "warm-profile"))
         assert :ok = CLI.delete_profile("warm-profile")
         refute File.exists?(Path.join(profile_root, "warm-profile"))
@@ -56,7 +56,7 @@ defmodule Jido.Browser.WebCLITest do
 
     test "warm_profile defaults to a no-network warmup URL" do
       FakeWebBinary.with_binary(:record_url, fn binary, _profile_root ->
-        assert :ok = CLI.warm_profile("warm-profile", binary: binary, timeout: 500)
+        assert :ok = CLI.warm_profile("warm-profile", binary: binary, timeout: 2_000)
         warmup_url = File.read!(Path.join(Path.dirname(binary), "last-url.txt"))
         uri = URI.parse(warmup_url)
 

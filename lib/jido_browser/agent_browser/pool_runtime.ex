@@ -9,6 +9,7 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
           session_id: String.t(),
           binary: String.t(),
           manager: pid(),
+          health_check_timeout: pos_integer(),
           runtime: map()
         }
 
@@ -30,6 +31,7 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
            session_id: session_id,
            binary: Keyword.fetch!(session_opts, :binary),
            manager: pid,
+           health_check_timeout: Keyword.get(session_opts, :health_check_timeout, 2_000),
            runtime: Runtime.session_runtime_metadata(session_id, pid)
          }}
 
@@ -39,6 +41,7 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
            session_id: session_id,
            binary: Keyword.fetch!(session_opts, :binary),
            manager: pid,
+           health_check_timeout: Keyword.get(session_opts, :health_check_timeout, 2_000),
            runtime: Runtime.session_runtime_metadata(session_id, pid)
          }}
 
@@ -71,7 +74,17 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
 
   @doc false
   @spec health_check(worker_state()) :: :ok | {:error, term()}
-  def health_check(%{manager: pid}) when is_pid(pid) do
-    if Process.alive?(pid), do: :ok, else: {:error, :session_unavailable}
+  def health_check(%{manager: pid, health_check_timeout: timeout}) when is_pid(pid) do
+    if Process.alive?(pid) do
+      case SessionServer.command(pid, %{"action" => "title"}, timeout) do
+        {:ok, _data} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:error, :session_unavailable}
+    end
+  catch
+    :exit, reason ->
+      {:error, reason}
   end
 end

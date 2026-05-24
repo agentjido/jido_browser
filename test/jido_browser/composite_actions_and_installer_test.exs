@@ -2,6 +2,8 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
   use ExUnit.Case, async: false
   use Mimic
 
+  alias Jido.Browser.Actions.FetchRich
+  alias Jido.Browser.Actions.PoolStatus
   alias Jido.Browser.Actions.ReadPage
   alias Jido.Browser.Actions.SearchWeb
   alias Jido.Browser.Actions.SnapshotUrl
@@ -297,6 +299,73 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
                )
 
       assert result.status == "success"
+    end
+  end
+
+  describe "FetchRich.run/2" do
+    test "passes agent retrieval options through and returns success" do
+      expect(Jido.Browser, :fetch_rich, fn "https://example.com/guide", opts ->
+        assert opts[:pool] == "warm"
+        assert opts[:browser_fallback] == true
+        assert opts[:http_backends] == [:req, :browsey]
+        assert "https://example.com/guide" in opts[:known_urls]
+
+        {:ok,
+         %{
+           url: "https://example.com/guide",
+           final_url: "https://example.com/guide",
+           title: "Guide",
+           content: "Rendered guide content",
+           format: :markdown,
+           content_type: "text/html",
+           document_type: :html,
+           estimated_tokens: 6,
+           truncated: false,
+           citations: %{enabled: false},
+           passages: [],
+           retrieval_path: :browser,
+           fallback_reason: :blocked_content,
+           blocked?: false
+         }}
+      end)
+
+      context = %{skill_state: %{seen_urls: ["https://example.com/guide"], pool: "warm", fetch_rich_uses: 0}}
+
+      assert {:ok, result} =
+               FetchRich.run(
+                 %{
+                   url: "https://example.com/guide",
+                   browser_fallback: true,
+                   http_backends: [:req, :browsey]
+                 },
+                 context
+               )
+
+      assert result.status == "success"
+      assert result.retrieval_path == :browser
+    end
+
+    test "returns max_uses_exceeded before calling the fetch API" do
+      assert {:error, error} =
+               FetchRich.run(
+                 %{url: "https://example.com/guide", max_uses: 2},
+                 %{skill_state: %{fetch_rich_uses: 2}}
+               )
+
+      assert %Jido.Browser.Error.InvalidError{} = error
+      assert error.details.error_code == :max_uses_exceeded
+    end
+  end
+
+  describe "PoolStatus.run/2" do
+    test "uses explicit pool or plugin pool state" do
+      expect(Jido.Browser, :pool_status, fn "warm" ->
+        {:ok, %{name: "warm", ready: 2, leased: 0, lifecycle: :persistent}}
+      end)
+
+      assert {:ok, result} = PoolStatus.run(%{}, %{skill_state: %{pool: "warm"}})
+      assert result.status == "success"
+      assert result.pool_status.ready == 2
     end
   end
 

@@ -124,6 +124,7 @@ defmodule Jido.Browser.MixProject do
           Jido.Browser.Pool,
           Jido.Browser.Session,
           Jido.Browser.Plugin,
+          Jido.Browser.FetchRich,
           Jido.Browser.WebFetch
         ],
         "Web Fetch": [
@@ -141,7 +142,8 @@ defmodule Jido.Browser.MixProject do
         "Session Lifecycle": [
           Jido.Browser.Actions.StartSession,
           Jido.Browser.Actions.EndSession,
-          Jido.Browser.Actions.GetStatus
+          Jido.Browser.Actions.GetStatus,
+          Jido.Browser.Actions.PoolStatus
         ],
         Navigation: [
           Jido.Browser.Actions.Navigate,
@@ -174,7 +176,8 @@ defmodule Jido.Browser.MixProject do
           Jido.Browser.Actions.Snapshot,
           Jido.Browser.Actions.Screenshot,
           Jido.Browser.Actions.ExtractContent,
-          Jido.Browser.Actions.WebFetch
+          Jido.Browser.Actions.WebFetch,
+          Jido.Browser.Actions.FetchRich
         ],
         Advanced: [
           Jido.Browser.Actions.Evaluate

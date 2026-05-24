@@ -9,6 +9,7 @@ defmodule Jido.Browser.Adapters.Web.PoolRuntime do
           profile: String.t(),
           profile_path: String.t(),
           binary: String.t(),
+          worker_opts: keyword(),
           runtime: map()
         }
 
@@ -29,6 +30,7 @@ defmodule Jido.Browser.Adapters.Web.PoolRuntime do
          profile: profile,
          profile_path: profile_path,
          binary: binary,
+         worker_opts: worker_opts,
          runtime: %{
            transport: :web_cli,
            profile: profile,
@@ -51,11 +53,11 @@ defmodule Jido.Browser.Adapters.Web.PoolRuntime do
   end
 
   @impl true
-  def health_check(%{profile_path: profile_path, binary: binary}) do
+  def health_check(%{profile: profile, profile_path: profile_path, binary: binary, worker_opts: worker_opts}) do
     cond do
       not File.exists?(binary) -> {:error, :binary_missing}
       not File.dir?(profile_path) -> {:error, :profile_missing}
-      true -> :ok
+      true -> CLI.health_check(profile, worker_opts)
     end
   end
 

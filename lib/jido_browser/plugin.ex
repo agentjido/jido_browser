@@ -7,6 +7,7 @@ require Jido.Browser.Actions.EndSession
 require Jido.Browser.Actions.Evaluate
 require Jido.Browser.Actions.Errors
 require Jido.Browser.Actions.ExtractContent
+require Jido.Browser.Actions.FetchRich
 require Jido.Browser.Actions.Focus
 require Jido.Browser.Actions.Forward
 require Jido.Browser.Actions.GetAttribute
@@ -20,6 +21,7 @@ require Jido.Browser.Actions.ListTabs
 require Jido.Browser.Actions.LoadState
 require Jido.Browser.Actions.Navigate
 require Jido.Browser.Actions.NewTab
+require Jido.Browser.Actions.PoolStatus
 require Jido.Browser.Actions.Query
 require Jido.Browser.Actions.Reload
 require Jido.Browser.Actions.SaveState
@@ -80,6 +82,7 @@ defmodule Jido.Browser.Plugin do
       Jido.Browser.Actions.StartSession,
       Jido.Browser.Actions.EndSession,
       Jido.Browser.Actions.GetStatus,
+      Jido.Browser.Actions.PoolStatus,
       Jido.Browser.Actions.SaveState,
       Jido.Browser.Actions.LoadState,
       # Navigation
@@ -123,7 +126,8 @@ defmodule Jido.Browser.Plugin do
       Jido.Browser.Actions.ReadPage,
       Jido.Browser.Actions.SnapshotUrl,
       Jido.Browser.Actions.SearchWeb,
-      Jido.Browser.Actions.WebFetch
+      Jido.Browser.Actions.WebFetch,
+      Jido.Browser.Actions.FetchRich
     ],
     description: "Browser automation for web navigation, interaction, and content extraction",
     category: "browser",
@@ -144,7 +148,8 @@ defmodule Jido.Browser.Plugin do
       last_url: nil,
       last_title: nil,
       seen_urls: [],
-      web_fetch_uses: 0
+      web_fetch_uses: 0,
+      fetch_rich_uses: 0
     }
 
     {:ok, initial_state}
@@ -163,7 +168,8 @@ defmodule Jido.Browser.Plugin do
       last_url: Zoi.string(description: "Last navigated URL") |> Zoi.optional(),
       last_title: Zoi.string(description: "Last page title") |> Zoi.optional(),
       seen_urls: Zoi.array(Zoi.string(description: "Known URLs discovered during tool use")) |> Zoi.default([]),
-      web_fetch_uses: Zoi.integer(description: "Successful web fetch calls in current skill state") |> Zoi.default(0)
+      web_fetch_uses: Zoi.integer(description: "Successful web fetch calls in current skill state") |> Zoi.default(0),
+      fetch_rich_uses: Zoi.integer(description: "Successful rich fetch calls in current skill state") |> Zoi.default(0)
     })
   end
 
@@ -174,6 +180,7 @@ defmodule Jido.Browser.Plugin do
       {"browser.start_session", Jido.Browser.Actions.StartSession},
       {"browser.end_session", Jido.Browser.Actions.EndSession},
       {"browser.get_status", Jido.Browser.Actions.GetStatus},
+      {"browser.pool_status", Jido.Browser.Actions.PoolStatus},
       {"browser.save_state", Jido.Browser.Actions.SaveState},
       {"browser.load_state", Jido.Browser.Actions.LoadState},
       # Navigation
@@ -217,7 +224,8 @@ defmodule Jido.Browser.Plugin do
       {"browser.read_page", Jido.Browser.Actions.ReadPage},
       {"browser.snapshot_url", Jido.Browser.Actions.SnapshotUrl},
       {"browser.search_web", Jido.Browser.Actions.SearchWeb},
-      {"browser.web_fetch", Jido.Browser.Actions.WebFetch}
+      {"browser.web_fetch", Jido.Browser.Actions.WebFetch},
+      {"browser.fetch_rich", Jido.Browser.Actions.FetchRich}
     ]
   end
 
@@ -263,7 +271,9 @@ defmodule Jido.Browser.Plugin do
          %{
            url: get_in(context, [:skill_state, :last_url]),
            title: get_in(context, [:skill_state, :last_title]),
-           hint: "Use browser.screenshot for visual debugging"
+           adapter: get_in(context, [:skill_state, :adapter]),
+           pool: get_in(context, [:skill_state, :pool]),
+           hint: "Use browser.screenshot, browser.console, or browser.errors for live-session debugging"
          }}
     end
   end
@@ -306,6 +316,11 @@ defmodule Jido.Browser.Plugin do
     Map.put(acc, :web_fetch_uses, current_uses + 1)
   end
 
+  defp maybe_increment_web_fetch_uses(acc, Jido.Browser.Actions.FetchRich, context) do
+    current_uses = get_in(context, [:skill_state, :fetch_rich_uses]) || 0
+    Map.put(acc, :fetch_rich_uses, current_uses + 1)
+  end
+
   defp maybe_increment_web_fetch_uses(acc, _action, _context), do: acc
 
   defp extract_urls(result) do
@@ -335,6 +350,7 @@ defmodule Jido.Browser.Plugin do
       "browser.start_session",
       "browser.end_session",
       "browser.get_status",
+      "browser.pool_status",
       "browser.save_state",
       "browser.load_state",
       # Navigation
@@ -378,7 +394,8 @@ defmodule Jido.Browser.Plugin do
       "browser.read_page",
       "browser.snapshot_url",
       "browser.search_web",
-      "browser.web_fetch"
+      "browser.web_fetch",
+      "browser.fetch_rich"
     ]
   end
 end

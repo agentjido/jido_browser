@@ -23,6 +23,7 @@ defmodule Jido.Browser.Adapters.Web do
   alias Jido.Browser.Session
   alias Jido.Browser.WarmPool.Lease
   alias Jido.Browser.WarmPool.Manager
+  alias Jido.Browser.WarmPool.Options, as: PoolOptions
   alias Jido.Browser.WarmPool.TreeSupervisor
 
   @default_timeout 30_000
@@ -287,16 +288,18 @@ defmodule Jido.Browser.Adapters.Web do
 
   defp build_pool_start_opts(opts) do
     with :ok <- reject_pooled_state_opts(opts),
+         {:ok, pool_opts} <- PoolOptions.normalize(opts),
          {:ok, name} <- fetch_pool_name(opts),
          {:ok, size} <- fetch_pool_size(opts),
          {:ok, worker_opts} <- build_worker_opts(opts) do
-      manager_opts = [
-        name: name,
-        size: size,
-        adapter: __MODULE__,
-        worker_opts: Keyword.put(worker_opts, :pool_name, name),
-        pool_runtime_module: Keyword.get(opts, :pool_runtime_module, PoolRuntime)
-      ]
+      manager_opts =
+        [
+          name: name,
+          size: size,
+          adapter: __MODULE__,
+          worker_opts: Keyword.put(worker_opts, :pool_name, name),
+          pool_runtime_module: Keyword.get(opts, :pool_runtime_module, PoolRuntime)
+        ] ++ pool_opts
 
       startup_timeout =
         Keyword.get(

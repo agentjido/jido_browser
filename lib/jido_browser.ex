@@ -7,8 +7,10 @@ defmodule Jido.Browser do
   """
 
   alias Jido.Browser.Error
+  alias Jido.Browser.FetchRich
   alias Jido.Browser.PoolAdapter
   alias Jido.Browser.Session
+  alias Jido.Browser.WarmPool.Manager
   alias Jido.Browser.WarmPool.Names
   alias Jido.Browser.WarmPool.TreeSupervisor
   alias Jido.Browser.WebFetch
@@ -43,6 +45,10 @@ defmodule Jido.Browser do
   @doc "Stops a previously started warm browser pool."
   @spec stop_pool(term()) :: :ok | {:error, term()}
   def stop_pool(pool), do: TreeSupervisor.stop_pool(pool)
+
+  @doc "Returns status for a warm browser pool."
+  @spec pool_status(term()) :: {:ok, map()} | {:error, term()}
+  def pool_status(pool), do: Manager.status(pool)
 
   @doc "Starts a browser session using the configured adapter or an explicit adapter override."
   @spec start_session(keyword()) :: {:ok, Session.t()} | {:error, term()}
@@ -169,6 +175,34 @@ defmodule Jido.Browser do
     else
       {:error,
        Error.invalid_error("Unsupported web fetch format: #{inspect(format)}", %{
+         format: format,
+         supported: @supported_web_fetch_formats
+       })}
+    end
+  end
+
+  @doc """
+  Fetches a URL with HTTP-first retrieval and optional browser fallback.
+
+  `web_fetch/2` remains stateless. This helper adds an agent-oriented strategy
+  layer that can fall back to a browser session when explicitly configured with
+  `:browser_fallback` or `:pool`.
+  """
+  @spec fetch_rich(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  def fetch_rich(url, opts \\ [])
+
+  def fetch_rich(url, _opts) when url in [nil, ""] do
+    {:error, Error.invalid_error("URL cannot be nil or empty", %{url: url})}
+  end
+
+  def fetch_rich(url, opts) when is_binary(url) do
+    format = opts[:format] || :markdown
+
+    if format in @supported_web_fetch_formats do
+      FetchRich.fetch(url, normalize_timeout(opts))
+    else
+      {:error,
+       Error.invalid_error("Unsupported rich fetch format: #{inspect(format)}", %{
          format: format,
          supported: @supported_web_fetch_formats
        })}

@@ -30,6 +30,9 @@ defmodule Jido.Browser.Pool do
           | {:timeout, pos_integer()}
           | {:checkout_timeout, pos_integer()}
           | {:startup_timeout, pos_integer()}
+          | {:lifecycle, :ephemeral | :persistent}
+          | {:max_uses, pos_integer()}
+          | {:max_age_ms, pos_integer()}
           | {:pool_runtime_module, module()}
           | {atom(), term()}
 

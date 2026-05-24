@@ -15,6 +15,7 @@ Browser automation for Jido AI agents.
 `Jido.Browser` is organized around three simple lanes:
 
 - `web_fetch/2` for stateless HTTP-first retrieval
+- `fetch_rich/2` for agent-friendly retrieval with optional browser fallback
 - `start_session/1` and `end_session/1` for browser-backed workflows
 - `Jido.Browser.Pool` plus `start_session(pool: ...)` as an optional acceleration layer
 
@@ -148,6 +149,31 @@ under its MIT license because it is not currently published on Hex. The vendored
 copy keeps `jido_browser` Hex-publishable; if BrowseyHttp is released on Hex,
 this project should replace the vendored copy with the upstream Hex dependency.
 
+### Agent-Friendly Rich Fetch
+
+Use `fetch_rich/2` when an agent needs one retrieval tool that starts with cheap
+HTTP/document extraction and can fall back to a browser only when explicitly
+allowed:
+
+```elixir
+{:ok, result} =
+  Jido.Browser.fetch_rich(
+    "https://example.com/protected-docs",
+    http_backends: [:req, :browsey],
+    browser_fallback: true,
+    pool: :default,
+    citations: true
+  )
+
+result.retrieval_path # :web_fetch, :browsey, or :browser
+result.blocked?
+result.content
+```
+
+`fetch_rich/2` returns the same core result shape as `web_fetch/2` and adds
+`retrieval_path`, `fallback_reason`, and `blocked?`. `web_fetch/2` remains
+stateless and never uses pools.
+
 ### State Persistence
 
 ```elixir
@@ -187,11 +213,11 @@ defmodule MyApp.Application do
 
   def start(_type, _args) do
     children = [
-      {Jido.Browser.Pool,
-       name: :default,
-       size: 2,
-       headless: true,
-       startup_timeout: 60_000}
+	      {Jido.Browser.Pool,
+	       name: :default,
+	       size: 2,
+	       headless: true,
+	       startup_timeout: 60_000}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: MyApp.Supervisor)
@@ -238,12 +264,30 @@ Warm pools are currently supported by `Jido.Browser.Adapters.AgentBrowser`,
 - AgentBrowser pools keep full warm daemon-backed sessions ready for checkout.
 - Lightpanda pools keep prestarted Lightpanda/CDP sessions ready for checkout.
 - Web pools keep reserved warmed profiles ready for checkout.
-- `end_session/1` always recycles the checked-out worker and warms a replacement
-  in the background.
+- `lifecycle: :ephemeral` is the default: `end_session/1` recycles the checked-out
+  worker and warms a replacement in the background.
+- `lifecycle: :persistent` returns healthy workers to the pool after normal
+  `end_session/1`; owner crashes, failed health checks, `max_uses`, and
+  `max_age_ms` still recycle workers.
+
+Inspect a pool with:
+
+```elixir
+{:ok, status} = Jido.Browser.pool_status(:default)
+
+status.ready
+status.leased
+status.lifecycle
+```
 
 For the `Web` adapter, pooled sessions are still browser sessions, not HTTP
 fetches. Use `web_fetch/2` when you want the simplest request/response API
 without browser state.
+
+Persistent pools can preserve browser profile continuity, cookies, storage, and
+session history for application-managed workflows. They do not guarantee access
+through bot filters; egress, traffic rate, target-site policy, and user-provided
+state remain application concerns.
 
 ### Plugin Setup
 

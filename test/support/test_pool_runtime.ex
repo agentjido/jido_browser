@@ -11,7 +11,7 @@ defmodule Jido.Browser.TestPoolRuntime.Worker do
 
   @impl true
   def init(session_id) do
-    {:ok, %{session_id: session_id, current_url: nil}}
+    {:ok, %{session_id: session_id, current_url: nil, healthy: true}}
   end
 
   @impl true
@@ -35,6 +35,18 @@ defmodule Jido.Browser.TestPoolRuntime.Worker do
       end
 
     {:reply, {:ok, %{"title" => title}}, state}
+  end
+
+  def handle_call({:command, %{"action" => "mark_unhealthy"}}, _from, state) do
+    {:reply, {:ok, %{}}, %{state | healthy: false}}
+  end
+
+  def handle_call(:health_check, _from, %{healthy: true} = state) do
+    {:reply, :ok, state}
+  end
+
+  def handle_call(:health_check, _from, state) do
+    {:reply, {:error, :marked_unhealthy}, state}
   end
 
   def handle_call({:command, %{"action" => "close"}}, _from, state) do
@@ -100,6 +112,10 @@ defmodule Jido.Browser.TestPoolRuntime do
   @impl true
   @spec health_check(map()) :: :ok | {:error, :worker_down}
   def health_check(%{manager: pid}) when is_pid(pid) do
-    if Process.alive?(pid), do: :ok, else: {:error, :worker_down}
+    if Process.alive?(pid) do
+      GenServer.call(pid, :health_check, 1_000)
+    else
+      {:error, :worker_down}
+    end
   end
 end

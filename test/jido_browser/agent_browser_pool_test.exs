@@ -7,6 +7,7 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
   alias Jido.Browser.Adapters.Vibium
   alias Jido.Browser.Pool
   alias Jido.Browser.TestPoolRuntime
+  alias Jido.Browser.WarmPool.Lease
   alias Jido.Browser.WarmPool.Manager
   alias Jido.Browser.WarmPool.Names
 
@@ -85,6 +86,91 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
       assert {:ok, session_two} = Browser.start_session(pool: name)
       refute session_two.connection.session_id == session_id_one
       assert :ok = Browser.end_session(session_two)
+    end
+
+    test "persistent lifecycle returns healthy workers to the pool" do
+      name = unique_pool_name()
+      assert {:ok, pool} = start_pool!(name, size: 1, lifecycle: :persistent)
+      on_exit(fn -> Browser.stop_pool(pool) end)
+
+      assert {:ok, session_one} = Browser.start_session(pool: name)
+      session_id_one = session_one.connection.session_id
+      assert :ok = Browser.end_session(session_one)
+
+      assert {:ok, session_two} = Browser.start_session(pool: name)
+      assert session_two.connection.session_id == session_id_one
+      assert :ok = Browser.end_session(session_two)
+    end
+
+    test "persistent lifecycle recycles after failed health checks" do
+      name = unique_pool_name()
+      assert {:ok, pool} = start_pool!(name, size: 1, lifecycle: :persistent)
+      on_exit(fn -> Browser.stop_pool(pool) end)
+
+      assert {:ok, session_one} = Browser.start_session(pool: name)
+      session_id_one = session_one.connection.session_id
+      assert {:ok, %{}} = Lease.command(session_one.runtime.manager, %{"action" => "mark_unhealthy"}, 1_000)
+      assert :ok = Browser.end_session(session_one)
+
+      assert {:ok, session_two} = Browser.start_session(pool: name)
+      refute session_two.connection.session_id == session_id_one
+      assert :ok = Browser.end_session(session_two)
+    end
+
+    test "persistent lifecycle recycles after max_uses" do
+      name = unique_pool_name()
+      assert {:ok, pool} = start_pool!(name, size: 1, lifecycle: :persistent, max_uses: 1)
+      on_exit(fn -> Browser.stop_pool(pool) end)
+
+      assert {:ok, session_one} = Browser.start_session(pool: name)
+      session_id_one = session_one.connection.session_id
+      assert :ok = Browser.end_session(session_one)
+
+      assert {:ok, session_two} = Browser.start_session(pool: name)
+      refute session_two.connection.session_id == session_id_one
+      assert :ok = Browser.end_session(session_two)
+    end
+
+    test "persistent lifecycle recycles after max_age_ms" do
+      name = unique_pool_name()
+      assert {:ok, pool} = start_pool!(name, size: 1, lifecycle: :persistent, max_age_ms: 1)
+      on_exit(fn -> Browser.stop_pool(pool) end)
+
+      assert {:ok, session_one} = Browser.start_session(pool: name)
+      session_id_one = session_one.connection.session_id
+      Process.sleep(5)
+      assert :ok = Browser.end_session(session_one)
+
+      assert {:ok, session_two} = Browser.start_session(pool: name)
+      refute session_two.connection.session_id == session_id_one
+      assert :ok = Browser.end_session(session_two)
+    end
+
+    test "pool_status reports ready and leased workers" do
+      name = unique_pool_name()
+      assert {:ok, pool} = start_pool!(name, size: 2)
+      on_exit(fn -> Browser.stop_pool(pool) end)
+
+      assert_eventually(fn ->
+        assert {:ok, status} = Browser.pool_status(name)
+        assert status.ready == 2
+        assert status.leased == 0
+        assert status.lifecycle == :ephemeral
+      end)
+
+      assert {:ok, session} = Browser.start_session(pool: name)
+
+      assert_eventually(fn ->
+        assert {:ok, status} = Browser.pool_status(name)
+        assert status.ready == 1
+        assert status.leased == 1
+      end)
+
+      assert :ok = Browser.end_session(session)
+    end
+
+    test "pool_status returns pool_not_found for missing pools" do
+      assert {:error, :pool_not_found} = Browser.pool_status(unique_pool_name())
     end
 
     test "pooled command errors keep the lease usable until explicit end" do
@@ -191,6 +277,36 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
       assert_receive {:DOWN, ^ref, :process, ^worker, _reason}, 1_000
 
       Process.sleep(100)
+
+      assert {:ok, replacement} = Browser.start_session(pool: name, checkout_timeout: 500)
+      refute replacement.connection.session_id == session_id
+      assert :ok = Browser.end_session(replacement)
+    end
+
+    test "persistent lifecycle still recycles when the checkout owner crashes" do
+      name = unique_pool_name()
+      assert {:ok, pool} = start_pool!(name, size: 1, lifecycle: :persistent)
+      on_exit(fn -> Browser.stop_pool(pool) end)
+
+      parent = self()
+
+      worker =
+        spawn(fn ->
+          {:ok, session} = Browser.start_session(pool: name)
+          send(parent, {:leased_session, session.connection.session_id})
+          Process.sleep(:infinity)
+        end)
+
+      session_id =
+        receive do
+          {:leased_session, id} -> id
+        after
+          1_000 -> flunk("timed out waiting for leased session")
+        end
+
+      ref = Process.monitor(worker)
+      Process.exit(worker, :kill)
+      assert_receive {:DOWN, ^ref, :process, ^worker, _reason}, 1_000
 
       assert {:ok, replacement} = Browser.start_session(pool: name, checkout_timeout: 500)
       refute replacement.connection.session_id == session_id
@@ -306,5 +422,19 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
 
   defp unique_pool_name do
     "pool-#{System.unique_integer([:positive])}"
+  end
+
+  defp assert_eventually(fun, attempts \\ 20)
+
+  defp assert_eventually(fun, attempts) when attempts > 0 do
+    fun.()
+  rescue
+    error ->
+      if attempts == 1 do
+        reraise error, __STACKTRACE__
+      else
+        Process.sleep(25)
+        assert_eventually(fun, attempts - 1)
+      end
   end
 end

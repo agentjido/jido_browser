@@ -16,6 +16,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   alias Jido.Browser.Session
   alias Jido.Browser.WarmPool.Lease
   alias Jido.Browser.WarmPool.Manager
+  alias Jido.Browser.WarmPool.Options, as: PoolOptions
   alias Jido.Browser.WarmPool.TreeSupervisor
 
   @default_timeout 30_000
@@ -426,6 +427,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
 
   defp build_pool_start_opts(opts, extra_manager_opts \\ []) do
     with :ok <- reject_pooled_session_name(opts),
+         {:ok, pool_opts} <- PoolOptions.normalize(opts),
          {:ok, name} <- fetch_pool_name(opts),
          {:ok, size} <- fetch_pool_size(opts),
          {:ok, session_opts} <- build_session_opts(opts) do
@@ -436,7 +438,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
           adapter: __MODULE__,
           worker_opts: session_opts,
           pool_runtime_module: Keyword.get(opts, :pool_runtime_module, Jido.Browser.AgentBrowser.PoolRuntime)
-        ] ++ extra_manager_opts
+        ] ++ pool_opts ++ extra_manager_opts
 
       startup_timeout =
         Keyword.get(

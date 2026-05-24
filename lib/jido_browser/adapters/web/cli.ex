@@ -86,6 +86,23 @@ defmodule Jido.Browser.Adapters.Web.CLI do
   end
 
   @doc false
+  @spec health_check(String.t(), keyword()) :: :ok | {:error, term()}
+  def health_check(profile, opts) do
+    warmup_opts =
+      Keyword.put(opts, :timeout, Keyword.get(opts, :health_check_timeout, Keyword.get(opts, :timeout, 2_000)))
+
+    case opts[:health_check_url] || opts[:warmup_url] do
+      nil ->
+        with_default_warmup_url(fn default_warmup_url ->
+          run_warmup_command(profile, default_warmup_url, warmup_opts)
+        end)
+
+      warmup_url ->
+        run_warmup_command(profile, warmup_url, warmup_opts)
+    end
+  end
+
+  @doc false
   @spec profile_path(String.t()) :: String.t()
   def profile_path(profile) do
     Path.join(profile_root(), profile)
