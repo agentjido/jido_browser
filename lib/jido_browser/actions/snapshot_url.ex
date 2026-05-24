@@ -37,7 +37,10 @@ defmodule Jido.Browser.Actions.SnapshotUrl do
       include_headings: [type: :boolean, default: true, doc: "Include heading structure"],
       max_content_length: [type: :integer, default: 50_000, doc: "Truncate content at this length"],
       pool: [type: :any, doc: "Optional warm session pool name"],
-      checkout_timeout: [type: :integer, default: 5_000, doc: "Warm pool checkout timeout in ms"]
+      checkout_timeout: [type: :integer, doc: "Warm pool checkout timeout in ms"],
+      adapter: [type: :atom, doc: "Browser adapter module"],
+      headless: [type: :boolean, doc: "Run in headless mode"],
+      timeout: [type: :integer, doc: "Default browser timeout in ms"]
     ]
 
   alias Jido.Browser.ActionHelpers
@@ -113,8 +116,19 @@ defmodule Jido.Browser.Actions.SnapshotUrl do
 
   defp session_start_opts(params, context) do
     []
-    |> maybe_put(:pool, params[:pool] || get_in(context, [:skill_state, :pool]))
-    |> maybe_put(:checkout_timeout, params[:checkout_timeout] || get_in(context, [:skill_state, :checkout_timeout]))
+    |> maybe_put(:adapter, session_option(params, context, :adapter))
+    |> maybe_put(:headless, session_option(params, context, :headless))
+    |> maybe_put(:timeout, session_option(params, context, :timeout))
+    |> maybe_put(:pool, session_option(params, context, :pool))
+    |> maybe_put(:checkout_timeout, session_option(params, context, :checkout_timeout))
+  end
+
+  defp session_option(params, context, key) do
+    case Map.fetch(params, key) do
+      {:ok, nil} -> get_in(context, [:skill_state, key])
+      {:ok, value} -> value
+      :error -> get_in(context, [:skill_state, key])
+    end
   end
 
   defp maybe_put(opts, _key, nil), do: opts

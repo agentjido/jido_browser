@@ -50,8 +50,17 @@ defmodule Jido.Browser do
     with {:ok, adapter} <- resolve_session_adapter(opts),
          :ok <- validate_pool_capability(adapter, opts) do
       case adapter.start_session(opts) do
-        %Session{} = session -> {:ok, session}
-        error -> error
+        {:ok, %Session{} = session} ->
+          {:ok, session}
+
+        %Session{} = session ->
+          {:ok, session}
+
+        {:error, _reason} = error ->
+          error
+
+        other ->
+          {:error, Error.adapter_error("Adapter returned invalid session result", %{adapter: adapter, result: other})}
       end
     end
   end

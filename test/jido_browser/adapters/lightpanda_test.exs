@@ -13,7 +13,8 @@ defmodule Jido.Browser.Adapters.LightpandaTest do
   defmodule FakeLightCDP do
     def start(opts) do
       session = %{fake: :session, id: System.unique_integer([:positive])}
-      send(owner(), {:light_cdp_start, opts, session})
+      telemetry_env = System.get_env("LIGHTPANDA_DISABLE_TELEMETRY")
+      send(owner(), {:light_cdp_start, opts, session, telemetry_env})
       {:ok, session}
     end
 
@@ -91,6 +92,8 @@ defmodule Jido.Browser.Adapters.LightpandaTest do
     test "starts LightCDP with the configured Lightpanda binary and disables telemetry by default" do
       with_binary(fn binary ->
         with_lightpanda_config([binary_path: binary, light_cdp_module: FakeLightCDP, page_module: FakePage], fn ->
+          System.delete_env("LIGHTPANDA_DISABLE_TELEMETRY")
+
           assert {:ok, %Session{} = session} = Lightpanda.start_session(port: 9333, server_timeout: 7)
 
           assert session.adapter == Lightpanda
@@ -100,13 +103,25 @@ defmodule Jido.Browser.Adapters.LightpandaTest do
           assert session.connection.page_module == FakePage
           assert session.capabilities.limited == true
 
-          assert_receive {:light_cdp_start, opts, %{fake: :session}}
+          assert_receive {:light_cdp_start, opts, %{fake: :session}, "true"}
           assert opts[:binary] == binary
           assert opts[:port] == 9333
           assert opts[:timeout] == 7
-          assert System.get_env("LIGHTPANDA_DISABLE_TELEMETRY") == "true"
+          assert System.get_env("LIGHTPANDA_DISABLE_TELEMETRY") == nil
 
           assert_receive {:light_cdp_new_page, %{fake: :session}}
+        end)
+      end)
+    end
+
+    test "restores preexisting Lightpanda telemetry environment value" do
+      with_binary(fn binary ->
+        with_lightpanda_config([binary_path: binary, light_cdp_module: FakeLightCDP, page_module: FakePage], fn ->
+          System.put_env("LIGHTPANDA_DISABLE_TELEMETRY", "already-set")
+
+          assert {:ok, %Session{}} = Lightpanda.start_session([])
+          assert_receive {:light_cdp_start, _opts, %{fake: :session}, "true"}
+          assert System.get_env("LIGHTPANDA_DISABLE_TELEMETRY") == "already-set"
         end)
       end)
     end
@@ -129,7 +144,7 @@ defmodule Jido.Browser.Adapters.LightpandaTest do
           assert {:ok, pool} = Browser.start_pool(adapter: Lightpanda, name: pool_name, size: 1)
           on_exit(fn -> Browser.stop_pool(pool) end)
 
-          assert_receive {:light_cdp_start, _opts, first_cdp_session}
+          assert_receive {:light_cdp_start, _opts, first_cdp_session, "true"}
           assert_receive {:light_cdp_new_page, ^first_cdp_session}
 
           assert {:ok, session} = Browser.start_session(adapter: Lightpanda, pool: pool_name)
@@ -154,7 +169,7 @@ defmodule Jido.Browser.Adapters.LightpandaTest do
           pool_name = unique_pool_name()
           start_supervised!({Pool, adapter: Lightpanda, name: pool_name, size: 1})
 
-          assert_receive {:light_cdp_start, _opts, cdp_session}
+          assert_receive {:light_cdp_start, _opts, cdp_session, "true"}
           assert_receive {:light_cdp_new_page, ^cdp_session}
 
           assert {:ok, session} = Browser.start_session(adapter: Lightpanda, pool: pool_name)

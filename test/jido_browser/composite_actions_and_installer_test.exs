@@ -29,6 +29,9 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
   describe "ReadPage.run/2" do
     test "returns content and closes session on success", %{session: session} do
       expect(Jido.Browser, :start_session, fn opts ->
+        assert opts[:adapter] == Jido.Browser.Adapters.Web
+        assert opts[:headless] == false
+        assert opts[:timeout] == 45_000
         assert opts[:pool] == "warm"
         assert opts[:checkout_timeout] == 7_500
         {:ok, session}
@@ -49,7 +52,15 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
       assert {:ok, result} =
                ReadPage.run(
                  %{url: "https://example.com", selector: "article", format: :text},
-                 %{skill_state: %{pool: "warm", checkout_timeout: 7_500}}
+                 %{
+                   skill_state: %{
+                     adapter: Jido.Browser.Adapters.Web,
+                     headless: false,
+                     timeout: 45_000,
+                     pool: "warm",
+                     checkout_timeout: 7_500
+                   }
+                 }
                )
 
       assert result.url == "https://example.com"
@@ -75,6 +86,9 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
   describe "SnapshotUrl.run/2" do
     test "returns rich snapshot when evaluate returns structured data", %{session: session} do
       expect(Jido.Browser, :start_session, fn opts ->
+        assert opts[:adapter] == Jido.Browser.Adapters.Web
+        assert opts[:headless] == false
+        assert opts[:timeout] == 45_000
         assert opts[:pool] == "warm"
         assert opts[:checkout_timeout] == 4_000
         {:ok, session}
@@ -94,7 +108,15 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
       expect(Jido.Browser, :end_session, fn ^session -> :ok end)
 
       assert {:ok, result} =
-               SnapshotUrl.run(%{url: "https://example.com"}, %{skill_state: %{pool: "warm", checkout_timeout: 4_000}})
+               SnapshotUrl.run(%{url: "https://example.com"}, %{
+                 skill_state: %{
+                   adapter: Jido.Browser.Adapters.Web,
+                   headless: false,
+                   timeout: 45_000,
+                   pool: "warm",
+                   checkout_timeout: 4_000
+                 }
+               })
 
       assert result[:status] == "success"
       assert result["title"] == "Example Domain"

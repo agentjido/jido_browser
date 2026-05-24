@@ -20,11 +20,11 @@ defmodule Jido.Browser.Actions.StartSession do
     tags: ["browser", "session", "lifecycle"],
     vsn: "2.0.0",
     schema: [
-      headless: [type: :boolean, default: true, doc: "Run in headless mode"],
-      timeout: [type: :integer, default: 30_000, doc: "Default timeout in ms"],
+      headless: [type: :boolean, doc: "Run in headless mode"],
+      timeout: [type: :integer, doc: "Default timeout in ms"],
       adapter: [type: :atom, doc: "Browser adapter module"],
       pool: [type: :any, doc: "Optional warm session pool name"],
-      checkout_timeout: [type: :integer, default: 5_000, doc: "Warm pool checkout timeout in ms"]
+      checkout_timeout: [type: :integer, doc: "Warm pool checkout timeout in ms"]
     ]
 
   alias Jido.Browser.Error
@@ -32,13 +32,13 @@ defmodule Jido.Browser.Actions.StartSession do
   @impl true
   def run(params, context) do
     opts = [
-      headless: Map.get(params, :headless, true),
-      timeout: Map.get(params, :timeout, 30_000)
+      headless: session_option(params, context, :headless, true),
+      timeout: session_option(params, context, :timeout, 30_000)
     ]
 
-    opts = if params[:adapter], do: [{:adapter, params[:adapter]} | opts], else: opts
-    opts = maybe_put_context_default(opts, :pool, params[:pool], context)
-    opts = maybe_put_context_default(opts, :checkout_timeout, params[:checkout_timeout], context)
+    opts = maybe_put(opts, :adapter, session_option(params, context, :adapter, nil))
+    opts = maybe_put(opts, :pool, session_option(params, context, :pool, nil))
+    opts = maybe_put(opts, :checkout_timeout, session_option(params, context, :checkout_timeout, nil))
 
     case Jido.Browser.start_session(opts) do
       {:ok, session} ->
@@ -55,14 +55,21 @@ defmodule Jido.Browser.Actions.StartSession do
     end
   end
 
-  defp maybe_put_context_default(opts, key, explicit, _context) when not is_nil(explicit) do
-    Keyword.put(opts, key, explicit)
-  end
-
-  defp maybe_put_context_default(opts, key, _explicit, context) do
-    case get_in(context, [:skill_state, key]) do
-      nil -> opts
-      value -> Keyword.put(opts, key, value)
+  defp session_option(params, context, key, default) do
+    case Map.fetch(params, key) do
+      {:ok, nil} -> context_option(context, key, default)
+      {:ok, value} -> value
+      :error -> context_option(context, key, default)
     end
   end
+
+  defp context_option(context, key, default) do
+    case get_in(context, [:skill_state, key]) do
+      nil -> default
+      value -> value
+    end
+  end
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
 end

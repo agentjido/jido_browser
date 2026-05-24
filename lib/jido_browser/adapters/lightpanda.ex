@@ -24,7 +24,8 @@ defmodule Jido.Browser.Adapters.Lightpanda do
         ]
 
   Lightpanda telemetry is disabled by default by setting
-  `LIGHTPANDA_DISABLE_TELEMETRY=true` before the browser process starts.
+  `LIGHTPANDA_DISABLE_TELEMETRY=true` while the browser process starts, then
+  restoring the host VM environment.
   """
 
   @compile {:no_warn_undefined, LightCDP}
@@ -45,6 +46,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   @default_timeout 30_000
   @default_checkout_timeout 5_000
   @default_server_timeout 30
+  @telemetry_env "LIGHTPANDA_DISABLE_TELEMETRY"
   @supported_screenshot_formats [:png]
   @supported_extract_formats [:markdown, :html, :text]
 
@@ -105,8 +107,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
     with :ok <- ensure_optional_module(light_cdp, "light_cdp optional dependency"),
          :ok <- ensure_optional_module(page_module, "light_cdp optional dependency"),
          {:ok, binary} <- find_lightpanda_binary(opts),
-         :ok <- maybe_disable_telemetry(opts),
-         {:ok, cdp_session} <- call(light_cdp, :start, [start_opts(opts, binary)]) do
+         {:ok, cdp_session} <- start_light_cdp(light_cdp, opts, binary) do
       start_page(light_cdp, page_module, cdp_session, binary)
     else
       {:error, %Error.AdapterError{} = error} ->
@@ -382,13 +383,27 @@ defmodule Jido.Browser.Adapters.Lightpanda do
     if opts[:pooled], do: nil, else: config(:port, nil)
   end
 
-  defp maybe_disable_telemetry(opts) do
-    if Keyword.get(opts, :disable_telemetry, config(:disable_telemetry, true)) do
-      System.put_env("LIGHTPANDA_DISABLE_TELEMETRY", "true")
-    end
-
-    :ok
+  defp start_light_cdp(light_cdp, opts, binary) do
+    with_telemetry_env(opts, fn -> call(light_cdp, :start, [start_opts(opts, binary)]) end)
   end
+
+  defp with_telemetry_env(opts, fun) do
+    if Keyword.get(opts, :disable_telemetry, config(:disable_telemetry, true)) do
+      original = System.get_env(@telemetry_env)
+      System.put_env(@telemetry_env, "true")
+
+      try do
+        fun.()
+      after
+        restore_env(@telemetry_env, original)
+      end
+    else
+      fun.()
+    end
+  end
+
+  defp restore_env(key, nil), do: System.delete_env(key)
+  defp restore_env(key, value), do: System.put_env(key, value)
 
   defp find_lightpanda_binary(opts) do
     case explicit_binary(opts) do
