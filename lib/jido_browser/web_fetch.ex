@@ -11,6 +11,7 @@ defmodule Jido.Browser.WebFetch do
   alias Jido.Browser.Error
 
   @cache_table :jido_browser_web_fetch_cache
+  @default_backend Jido.Browser.WebFetch.Backends.Req
   @default_timeout 15_000
   @default_max_redirects 5
   @default_cache_ttl_ms 300_000
@@ -149,34 +150,15 @@ defmodule Jido.Browser.WebFetch do
   end
 
   defp do_fetch(url, opts) do
-    request_opts = [
-      url: url,
-      headers: request_headers(),
-      receive_timeout: opts[:timeout],
-      decode_body: false,
-      redirect: true,
-      max_redirects: opts[:max_redirects]
-    ]
+    backend = opts[:backend]
 
-    case Req.run(request_opts) do
-      {%Req.Request{} = request, %Req.Response{} = response} ->
-        with :ok <- validate_http_status(response, url),
-             {:ok, final_url, final_uri} <- normalize_final_url(request),
-             :ok <- validate_domain_filters(final_uri, opts),
-             {:ok, result} <- build_result(url, final_url, response, opts) do
-          maybe_store_cache(url, opts, result)
-          {:ok, result}
-        end
-
-      {_request, %Req.TransportError{} = exception} ->
-        {:error, Error.adapter_error("Web fetch request failed", %{error_code: :url_not_accessible, reason: exception})}
-
-      {_request, %Req.TooManyRedirectsError{} = exception} ->
-        {:error,
-         Error.adapter_error("Web fetch exceeded redirect limit", %{error_code: :url_not_accessible, reason: exception})}
-
-      {_request, %_{} = exception} ->
-        {:error, Error.adapter_error("Web fetch failed", %{error_code: :unavailable, reason: exception})}
+    with {:ok, response} <- backend.fetch(url, opts),
+         :ok <- validate_http_status(response, url),
+         {:ok, final_url, final_uri} <- normalize_final_url(response),
+         :ok <- validate_domain_filters(final_uri, opts),
+         {:ok, result} <- build_result(url, final_url, response, opts) do
+      maybe_store_cache(url, opts, result)
+      {:ok, result}
     end
   end
 
@@ -338,7 +320,12 @@ defmodule Jido.Browser.WebFetch do
     citations = normalize_citations(opts[:citations])
     focus_terms = normalize_focus_terms(opts[:focus_terms])
 
-    with {:ok, configured_extractous_opts} <- normalize_extractous_opts(config(:extractous, [])),
+    with {:ok, backend} <- normalize_backend(Keyword.get(opts, :backend, config(:backend, @default_backend))),
+         {:ok, configured_req_opts} <- normalize_backend_opts(:req, config(:req, [])),
+         {:ok, request_req_opts} <- normalize_backend_opts(:req, Keyword.get(opts, :req, [])),
+         {:ok, configured_browsey_opts} <- normalize_backend_opts(:browsey, config(:browsey, [])),
+         {:ok, request_browsey_opts} <- normalize_backend_opts(:browsey, Keyword.get(opts, :browsey, [])),
+         {:ok, configured_extractous_opts} <- normalize_extractous_opts(config(:extractous, [])),
          {:ok, request_extractous_opts} <- normalize_extractous_opts(Keyword.get(opts, :extractous, [])),
          {:ok, selector} <- normalize_selector(opts[:selector]),
          {:ok, focus_window} <- normalize_integer_opt(:focus_window, Keyword.get(opts, :focus_window, 0), min: 0),
@@ -383,6 +370,9 @@ defmodule Jido.Browser.WebFetch do
         true ->
           normalized =
             opts
+            |> Keyword.put(:backend, backend)
+            |> Keyword.put(:req, Keyword.merge(configured_req_opts, request_req_opts))
+            |> Keyword.put(:browsey, Keyword.merge(configured_browsey_opts, request_browsey_opts))
             |> Keyword.put(:format, format)
             |> Keyword.put(:selector, selector)
             |> Keyword.put(:citations, citations)
@@ -528,18 +518,29 @@ defmodule Jido.Browser.WebFetch do
     host_matches? and path_matches?
   end
 
-  defp normalize_final_url(%Req.Request{url: %URI{} = uri}) do
-    normalized = normalize_uri(uri)
-    {:ok, URI.to_string(normalized), normalized}
+  defp normalize_final_url(%{final_url: final_url}) when is_binary(final_url) do
+    with {:ok, uri} <- parse_fetch_uri(final_url),
+         :ok <- validate_uri_host(uri) do
+      normalized = normalize_uri(uri)
+      {:ok, URI.to_string(normalized), normalized}
+    end
   end
 
-  defp validate_http_status(%Req.Response{status: status}, _url) when status in 200..299, do: :ok
+  defp normalize_final_url(response) do
+    {:error,
+     Error.adapter_error("Web fetch backend returned an invalid final URL", %{
+       error_code: :unavailable,
+       response: response
+     })}
+  end
 
-  defp validate_http_status(%Req.Response{status: 429}, _url) do
+  defp validate_http_status(%{status: status}, _url) when status in 200..299, do: :ok
+
+  defp validate_http_status(%{status: 429}, _url) do
     {:error, Error.adapter_error("Web fetch rate limited", %{error_code: :too_many_requests, status: 429})}
   end
 
-  defp validate_http_status(%Req.Response{status: status}, url) do
+  defp validate_http_status(%{status: status}, url) do
     {:error,
      Error.adapter_error("Web fetch returned an HTTP error", %{
        error_code: :url_not_accessible,
@@ -769,38 +770,24 @@ defmodule Jido.Browser.WebFetch do
 
   defp cache_key(url, opts) do
     {:jido_browser_web_fetch, url, opts[:format], opts[:selector], opts[:allowed_domains], opts[:blocked_domains],
-     opts[:focus_terms], opts[:focus_window], opts[:max_content_tokens], opts[:citations], opts[:extractous]}
-  end
-
-  defp request_headers do
-    [
-      {"accept",
-       "text/html,application/xhtml+xml,text/plain,application/json,application/pdf," <>
-         "application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document," <>
-         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet," <>
-         "application/vnd.openxmlformats-officedocument.presentationml.presentation,*/*;q=0.1"},
-      {"user-agent", user_agent()}
-    ]
-  end
-
-  defp user_agent do
-    vsn =
-      case Application.spec(:jido_browser, :vsn) do
-        nil -> "dev"
-        value -> List.to_string(value)
-      end
-
-    "jido_browser/#{vsn}"
+     opts[:focus_terms], opts[:focus_window], opts[:max_content_tokens], opts[:citations], opts[:extractous],
+     opts[:backend], opts[:req], opts[:browsey]}
   end
 
   defp response_content_type(response) do
-    response
-    |> Req.Response.get_header("content-type")
+    response.headers
+    |> response_header("content-type")
     |> List.first()
     |> case do
       nil -> infer_content_type(response.body)
       content_type -> content_type |> String.split(";") |> hd() |> String.trim() |> String.downcase()
     end
+  end
+
+  defp response_header(headers, name) when is_map(headers) do
+    headers
+    |> Map.get(name, Map.get(headers, String.downcase(name), []))
+    |> List.wrap()
   end
 
   defp infer_content_type(body) when is_binary(body) do
@@ -850,6 +837,52 @@ defmodule Jido.Browser.WebFetch do
     end)
     |> Enum.reject(&(&1 == ""))
     |> Enum.uniq()
+  end
+
+  defp normalize_backend(:req), do: normalize_backend(Jido.Browser.WebFetch.Backends.Req)
+  defp normalize_backend(:browsey), do: normalize_backend(Jido.Browser.WebFetch.Backends.Browsey)
+
+  defp normalize_backend(backend) when is_atom(backend) and not is_nil(backend) do
+    if Code.ensure_loaded?(backend) and function_exported?(backend, :fetch, 2) do
+      {:ok, backend}
+    else
+      {:error,
+       Error.invalid_error("Web fetch backend must implement fetch/2", %{
+         error_code: :invalid_input,
+         backend: backend
+       })}
+    end
+  end
+
+  defp normalize_backend(backend) do
+    {:error,
+     Error.invalid_error("Web fetch backend must be :req, :browsey, or a backend module", %{
+       error_code: :invalid_input,
+       backend: backend
+     })}
+  end
+
+  defp normalize_backend_opts(_name, nil), do: {:ok, []}
+
+  defp normalize_backend_opts(_name, opts) when is_list(opts) do
+    if Keyword.keyword?(opts) do
+      {:ok, canonicalize_keyword_list(opts)}
+    else
+      {:error,
+       Error.invalid_error("Web fetch backend options must be a keyword list", %{
+         error_code: :invalid_input,
+         backend_options: opts
+       })}
+    end
+  end
+
+  defp normalize_backend_opts(name, opts) do
+    {:error,
+     Error.invalid_error("Web fetch backend options must be a keyword list", %{
+       error_code: :invalid_input,
+       option: name,
+       backend_options: opts
+     })}
   end
 
   defp normalize_extractous_opts(nil), do: {:ok, []}

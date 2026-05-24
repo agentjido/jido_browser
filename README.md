@@ -120,6 +120,34 @@ result.metadata # present when extraction returns document metadata
 
 `web_fetch/2` keeps HTML handling native for selector extraction and markdown conversion, and uses `extractous_ex` for fetched binary documents such as PDFs, Word, Excel, PowerPoint, OpenDocument, EPUB, and common email formats. Binary document responses may also include `result.metadata` when extraction returns document metadata.
 
+`Req` is the default HTTP backend. `jido_browser` also includes a vendored
+BrowseyHttp-backed backend when you want a browser-imitating HTTP path for pages
+that do not require JavaScript execution. Select it globally or per request:
+
+```elixir
+config :jido_browser, :web_fetch,
+  backend: Jido.Browser.WebFetch.Backends.Browsey,
+  browsey: [
+    browser: :chrome,
+    timeout: 30_000
+  ]
+
+{:ok, result} =
+  Jido.Browser.web_fetch(
+    "https://example.com/docs",
+    format: :markdown,
+    backend: :browsey,
+    browsey: [browser: :safari]
+  )
+```
+
+BrowseyHttp still does not execute JavaScript. Sites that require a rendered browser should use a browser session instead. Egress also matters: datacenter IP ranges, CI traffic, or too many requests from one IP can still trigger challenges even with browser-like HTTP fingerprints. `web_fetch/2` passes backend-specific `:req` and `:browsey` keyword options from config and runtime opts so applications can supply transport settings without coupling `jido_browser` to a proxy provider.
+
+BrowseyHttp is vendored from [s3cur3/browsey_http](https://github.com/s3cur3/browsey_http)
+under its MIT license because it is not currently published on Hex. The vendored
+copy keeps `jido_browser` Hex-publishable; if BrowseyHttp is released on Hex,
+this project should replace the vendored copy with the upstream Hex dependency.
+
 ### State Persistence
 
 ```elixir
@@ -266,14 +294,20 @@ Optional web fetch settings:
 
 ```elixir
 config :jido_browser, :web_fetch,
+  backend: Jido.Browser.WebFetch.Backends.Req,
   cache_ttl_ms: 300_000,
+  req: [
+    connect_options: [
+      timeout: 10_000
+    ]
+  ],
   extractous: [
     pdf: [extract_annotation_text: true],
     office: [include_headers_and_footers: true]
   ]
 ```
 
-Configured `extractous` options are merged with any per-call `extractous:` keyword options passed to `Jido.Browser.web_fetch/2`.
+Configured `req`, `browsey`, and `extractous` options are merged with any per-call options passed to `Jido.Browser.web_fetch/2`.
 
 ## Backends
 

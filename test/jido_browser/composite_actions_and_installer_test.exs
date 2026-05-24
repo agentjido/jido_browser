@@ -191,6 +191,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
         assert opts[:require_known_url] == true
         assert "https://example.com/guide" in opts[:known_urls]
         assert opts[:allowed_domains] == ["example.com"]
+        refute Keyword.has_key?(opts, :backend)
 
         {:ok,
          %{
@@ -240,6 +241,40 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
       assert %Jido.Browser.Error.InvalidError{} = error
       assert error.details.error_code == :max_uses_exceeded
+    end
+
+    test "passes backend selection through to the fetch API" do
+      expect(Jido.Browser, :web_fetch, fn "https://example.com/guide", opts ->
+        assert opts[:backend] == :browsey
+
+        {:ok,
+         %{
+           url: "https://example.com/guide",
+           final_url: "https://example.com/guide",
+           title: "Guide",
+           content: "Fetched guide content",
+           format: :markdown,
+           content_type: "text/html",
+           document_type: :html,
+           retrieved_at: "2026-03-21T00:00:00Z",
+           estimated_tokens: 5,
+           original_estimated_tokens: 5,
+           truncated: false,
+           filtered: false,
+           focus_matches: 0,
+           cached: false,
+           citations: %{enabled: false},
+           passages: []
+         }}
+      end)
+
+      assert {:ok, result} =
+               WebFetch.run(
+                 %{url: "https://example.com/guide", backend: :browsey},
+                 %{skill_state: %{web_fetch_uses: 0}}
+               )
+
+      assert result.status == "success"
     end
   end
 
