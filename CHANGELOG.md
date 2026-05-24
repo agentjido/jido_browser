@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add Lightpanda adapter support with optional warm pools.
+- Add vendored BrowseyHttp-backed `web_fetch/2` backend while upstream is not published on Hex.
+
 ### Changed
 
 - Rename the public Elixir namespace from `JidoBrowser.*` to `Jido.Browser.*`
@@ -14,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Harden vendored BrowseyHttp option validation, shell quoting, and request cookie isolation.
+- Propagate plugin session defaults into session-starting actions.
+- Recognize Lightpanda in the compile-time binary check.
 - Sync `mix.lock` with the stable `jido ~> 2.0` / `jido_action ~> 2.0` dependency declarations in `mix.exs`
 
 ## [1.0.0] - 2026-02-22

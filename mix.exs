@@ -1,7 +1,7 @@
 defmodule Jido.Browser.MixProject do
   use Mix.Project
 
-  @version "2.1.0"
+  @version "2.2.0"
   @source_url "https://github.com/agentjido/jido_browser"
   @description "Browser automation actions for Jido AI agents"
   @otp_release List.to_string(:erlang.system_info(:otp_release))
@@ -83,7 +83,7 @@ defmodule Jido.Browser.MixProject do
       {:doctor, "~> 0.21", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: [:dev, :test]},
       {:git_ops, "~> 2.9", only: :dev, runtime: false},
-      {:git_hooks, "~> 0.8", only: [:dev, :test], runtime: false},
+      {:git_hooks, "~> 0.8", only: :dev, runtime: false},
       {:mimic, "~> 2.3", only: :test}
     ]
   end

@@ -1,7 +1,5 @@
 import Config
 
-config :git_hooks, project_path: Path.expand("..", __DIR__)
-
 if config_env() == :dev do
   config :git_hooks,
     auto_install: true,

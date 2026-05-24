@@ -444,7 +444,7 @@ defmodule MyBrowsingAgent do
 end
 ```
 
-`Jido.Browser.Plugin` now exposes 37 browser actions, including snapshot/refs workflows, browser state actions, diagnostics, and tab management.
+`Jido.Browser.Plugin` now exposes 38 browser actions, including snapshot/refs workflows, browser state actions, diagnostics, tab management, and stateless web fetch.
 
 ## License
 
