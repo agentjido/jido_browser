@@ -296,11 +296,11 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
       end)
     end
 
-    test "declares Lightpanda support dependencies as optional" do
+    test "does not pull Lightpanda dependencies into the package" do
       deps = Mix.Project.config()[:deps]
 
-      assert optional_dep?(deps, :light_cdp, "~> 0.2.1")
-      assert optional_dep?(deps, :lightpanda_ex, "~> 0.1.0")
+      refute dep?(deps, :light_cdp)
+      refute dep?(deps, :lightpanda_ex)
     end
 
     test "bin_path/installed? use configured web path when present" do
@@ -376,9 +376,10 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
     end
   end
 
-  defp optional_dep?(deps, app, requirement) do
+  defp dep?(deps, app) do
     Enum.any?(deps, fn
-      {^app, ^requirement, opts} -> opts[:optional] == true
+      {^app, _requirement} -> true
+      {^app, _requirement, _opts} -> true
       _ -> false
     end)
   end

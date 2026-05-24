@@ -348,22 +348,23 @@ defmodule Jido.Browser.Installer do
   end
 
   defp install_lightpanda(opts) do
-    with {:ok, _lightpanda_ex} <- ensure_lightpanda_ex() do
+    with {:ok, lightpanda_ex} <- ensure_lightpanda_ex() do
       with_lightpanda_ex_env(opts, fn ->
-        LightpandaEx.bin_path()
-        |> maybe_install_lightpanda(opts[:force] || false)
+        lightpanda_ex
+        |> call_lightpanda_ex(:bin_path, [])
+        |> maybe_install_lightpanda(lightpanda_ex, opts[:force] || false)
       end)
     end
   end
 
-  defp maybe_install_lightpanda(target, force) do
+  defp maybe_install_lightpanda(target, lightpanda_ex, force) do
     case {File.exists?(target), force} do
       {true, false} ->
         Logger.info("lightpanda already installed at #{target}. Use --force to overwrite.")
         :ok
 
       _ ->
-        LightpandaEx.install()
+        call_lightpanda_ex(lightpanda_ex, :install, [])
     end
   end
 
@@ -442,10 +443,11 @@ defmodule Jido.Browser.Installer do
   end
 
   defp lightpanda_version do
-    if Code.ensure_loaded?(LightpandaEx) and function_exported?(LightpandaEx, :latest_version, 0) do
-      LightpandaEx.latest_version()
+    with {:module, lightpanda_ex} <- Code.ensure_loaded(LightpandaEx),
+         true <- function_exported?(lightpanda_ex, :latest_version, 0) do
+      call_lightpanda_ex(lightpanda_ex, :latest_version, [])
     else
-      @lightpanda_version
+      _ -> @lightpanda_version
     end
   rescue
     _ -> @lightpanda_version
@@ -461,11 +463,15 @@ defmodule Jido.Browser.Installer do
 
   defp find_lightpanda_ex_path do
     if Code.ensure_loaded?(LightpandaEx) and function_exported?(LightpandaEx, :bin_path, 0) do
-      path = LightpandaEx.bin_path()
+      path = call_lightpanda_ex(LightpandaEx, :bin_path, [])
       if File.exists?(path), do: path, else: nil
     end
   rescue
     _ -> nil
+  end
+
+  defp call_lightpanda_ex(module, function, args) do
+    apply(module, function, args)
   end
 
   defp run_agent_browser_install(binary) do

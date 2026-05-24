@@ -73,8 +73,6 @@ defmodule Jido.Browser.MixProject do
       {:html2markdown, "~> 0.3"},
       {:extractous_ex, "~> 0.2"},
       {:nimble_pool, "~> 1.1"},
-      {:light_cdp, "~> 0.2.1", optional: true},
-      {:lightpanda_ex, "~> 0.1.0", optional: true},
 
       # Dev/Test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

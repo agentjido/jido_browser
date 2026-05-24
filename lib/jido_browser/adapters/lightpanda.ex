@@ -27,6 +27,9 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   `LIGHTPANDA_DISABLE_TELEMETRY=true` before the browser process starts.
   """
 
+  @compile {:no_warn_undefined, LightCDP}
+  @compile {:no_warn_undefined, LightCDP.Page}
+
   @behaviour Jido.Browser.Adapter
   @behaviour Jido.Browser.PoolAdapter
 
