@@ -18,6 +18,7 @@ defmodule Jido.Browser.Actions.WebFetch do
     schema: [
       url: [type: :string, required: true, doc: "The URL to fetch"],
       format: [type: {:in, [:markdown, :text, :html]}, default: :markdown, doc: "Output format"],
+      backend: [type: {:in, [:req, :browsey]}, doc: "HTTP backend used for the fetch"],
       selector: [type: :string, doc: "Optional CSS selector for HTML pages"],
       allowed_domains: [type: {:list, :string}, default: [], doc: "Allow-list of host or host/path rules"],
       blocked_domains: [type: {:list, :string}, default: [], doc: "Block-list of host or host/path rules"],
@@ -53,6 +54,7 @@ defmodule Jido.Browser.Actions.WebFetch do
 
     []
     |> maybe_put(:format, Map.get(params, :format, :markdown))
+    |> maybe_put(:backend, Map.get(params, :backend))
     |> maybe_put(:selector, params[:selector])
     |> maybe_put(:allowed_domains, Map.get(params, :allowed_domains, []))
     |> maybe_put(:blocked_domains, Map.get(params, :blocked_domains, []))
