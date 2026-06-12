@@ -1034,7 +1034,6 @@ defmodule Jido.Browser.WebFetch do
     %{uri | host: String.downcase(uri.host || ""), fragment: nil}
   end
 
-  defp normalize_rule_path(nil), do: "/"
   defp normalize_rule_path(""), do: "/"
   defp normalize_rule_path(path), do: if(String.starts_with?(path, "/"), do: path, else: "/" <> path)
 
