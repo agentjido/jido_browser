@@ -101,6 +101,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog -->
 
+## [v2.2.0](https://github.com/agentjido/jido_browser/compare/v2.2.0...v2.2.0) (2026-08-10)
+
+
+
+
+### Features:
+
+* harden agent browser retrieval by mikehostetler
+
+* add vendored Browsey web fetch backend by Matthew Neel
+
+* add Lightpanda browser adapter by Matthew Neel
+
+### Bug Fixes:
+
+* deps: update Mint for CVE-2026-59249 by mikehostetler
+
+* support Elixir 1.20 strict compile by mikehostetler
+
+* honor adapter session defaults by mikehostetler
+
+* harden vendored browsey backend by mikehostetler
+
 ## [v2.1.0](https://github.com/agentjido/jido_browser/compare/v2.0.0...v2.1.0) (2026-05-23)
 
 
