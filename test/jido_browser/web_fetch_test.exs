@@ -6,6 +6,11 @@ defmodule Jido.Browser.WebFetchTest do
   alias Jido.Browser.Vendor.BrowseyHttp
   alias Jido.Browser.WebFetch
 
+  @result_keys ~w(
+    cached citations content content_type document_type estimated_tokens filtered final_url
+    focus_matches format original_estimated_tokens passages retrieved_at title truncated url
+  )a
+
   defmodule TestBackend do
     @behaviour Jido.Browser.WebFetch.Backend
 
@@ -116,6 +121,7 @@ defmodule Jido.Browser.WebFetchTest do
       assert result.content =~ "Alpha paragraph."
       assert result.cached == false
       assert result.citations.enabled == true
+      assert result |> Map.keys() |> Enum.sort() == Enum.sort(@result_keys)
       assert [%{start_char: 0, text: passage_text} | _] = result.passages
       assert passage_text =~ "Hello"
     end
@@ -139,6 +145,30 @@ defmodule Jido.Browser.WebFetchTest do
 
       assert result.document_type == :text
       assert result.content =~ ~s("name":"jido")
+    end
+
+    test "keeps the public facade and direct WebFetch result contract equivalent" do
+      expect(Req, :run, 2, fn opts ->
+        request = Req.Request.new(url: opts[:url])
+
+        response =
+          %Req.Response{
+            status: 200,
+            headers: %{"content-type" => ["text/plain"]},
+            body: "public API content"
+          }
+
+        {request, response}
+      end)
+
+      url = "https://example.com/public-api.txt"
+      opts = [format: :text, cache: false]
+
+      assert {:ok, facade_result} = Jido.Browser.web_fetch(url, opts)
+      assert {:ok, direct_result} = WebFetch.fetch(url, opts)
+
+      assert Map.drop(facade_result, [:retrieved_at]) == Map.drop(direct_result, [:retrieved_at])
+      assert facade_result |> Map.keys() |> Enum.sort() == Enum.sort(@result_keys)
     end
 
     test "applies focused filtering to plain text responses" do
@@ -552,6 +582,7 @@ defmodule Jido.Browser.WebFetchTest do
       assert result.content =~ "Fetched by Browsey."
       assert result.cached == false
       assert result.passages == []
+      assert result |> Map.keys() |> Enum.sort() == Enum.sort(@result_keys)
     end
 
     test "WebFetch rejects unsafe response limit values before shell execution" do
