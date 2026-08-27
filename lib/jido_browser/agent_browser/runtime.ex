@@ -3,8 +3,8 @@ defmodule Jido.Browser.AgentBrowser.Runtime do
 
   import Bitwise
 
-  alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.AgentBrowser.Binary
+  alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.Installer
 
   @daemon_timeout 5_000
@@ -39,21 +39,7 @@ defmodule Jido.Browser.AgentBrowser.Runtime do
 
   @doc false
   @spec find_binary() :: {:ok, String.t()} | {:error, term()}
-  def find_binary do
-    case config(:binary_path) do
-      path when is_binary(path) and path != "" ->
-        if File.exists?(path), do: {:ok, path}, else: {:error, "Binary not found at #{path}"}
-
-      _ ->
-        case System.find_executable("agent-browser") || Installer.bin_path(:agent_browser) do
-          nil ->
-            {:error, "agent-browser binary not found. Install with: mix jido_browser.install agent_browser"}
-
-          path ->
-            {:ok, path}
-        end
-    end
-  end
+  def find_binary, do: Binary.resolve(Installer.agent_browser_package_path())
 
   @doc false
   @spec ensure_supported_version(String.t()) :: :ok | {:error, term()}
