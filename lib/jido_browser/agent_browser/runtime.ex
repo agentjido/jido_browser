@@ -3,11 +3,10 @@ defmodule Jido.Browser.AgentBrowser.Runtime do
 
   import Bitwise
 
+  alias Jido.Browser.AgentBrowser.Binary
   alias Jido.Browser.Application, as: BrowserApplication
-  alias Jido.Browser.Error
   alias Jido.Browser.Installer
 
-  @supported_version "0.35.1"
   @daemon_timeout 5_000
   @command_timeout 30_000
 
@@ -24,7 +23,7 @@ defmodule Jido.Browser.AgentBrowser.Runtime do
 
   @doc false
   @spec supported_version() :: String.t()
-  def supported_version, do: @supported_version
+  defdelegate supported_version(), to: Binary
 
   @doc false
   @spec default_command_timeout() :: pos_integer()
@@ -40,62 +39,15 @@ defmodule Jido.Browser.AgentBrowser.Runtime do
 
   @doc false
   @spec find_binary() :: {:ok, String.t()} | {:error, term()}
-  def find_binary do
-    case config(:binary_path) do
-      path when is_binary(path) and path != "" ->
-        if File.exists?(path), do: {:ok, path}, else: {:error, "Binary not found at #{path}"}
-
-      _ ->
-        case System.find_executable("agent-browser") || Installer.bin_path(:agent_browser) do
-          nil ->
-            {:error, "agent-browser binary not found. Install with: mix jido_browser.install agent_browser"}
-
-          path ->
-            {:ok, path}
-        end
-    end
-  end
+  def find_binary, do: Binary.resolve(Installer.agent_browser_package_path())
 
   @doc false
   @spec ensure_supported_version(String.t()) :: :ok | {:error, term()}
-  def ensure_supported_version(binary) do
-    case System.cmd(binary, ["--version"], stderr_to_stdout: true) do
-      {output, 0} ->
-        case parse_version(output) do
-          {:ok, @supported_version} ->
-            :ok
-
-          {:ok, version} ->
-            {:error,
-             Error.adapter_error("Unsupported agent-browser version", %{
-               supported: @supported_version,
-               detected: version
-             })}
-
-          {:error, reason} ->
-            {:error, Error.adapter_error("Could not parse agent-browser version", %{reason: reason})}
-        end
-
-      {output, code} ->
-        {:error,
-         Error.adapter_error("Failed to inspect agent-browser version", %{
-           exit_status: code,
-           output: String.trim(output)
-         })}
-    end
-  rescue
-    error ->
-      {:error, Error.adapter_error("Failed to inspect agent-browser version", %{reason: Exception.message(error)})}
-  end
+  defdelegate ensure_supported_version(binary), to: Binary
 
   @doc false
   @spec parse_version(String.t()) :: {:ok, String.t()} | {:error, String.t()}
-  def parse_version(output) do
-    case Regex.run(~r/agent-browser\s+(\d+\.\d+\.\d+)/, output, capture: :all_but_first) do
-      [version] -> {:ok, version}
-      _ -> {:error, String.trim(output)}
-    end
-  end
+  defdelegate parse_version(output), to: Binary
 
   @doc false
   @spec ensure_session_server(String.t(), session_opts()) :: {:ok, pid(), map()} | {:error, term()}

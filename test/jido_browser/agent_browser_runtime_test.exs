@@ -158,14 +158,15 @@ defmodule Jido.Browser.AgentBrowserRuntimeTest do
 
   describe "runtime helpers" do
     test "find_binary respects configured paths" do
-      with_temporary_script("#!/bin/sh\nexit 0\n", fn binary ->
+      with_temporary_script("#!/bin/sh\nprintf 'agent-browser 0.35.1\\n'\n", fn binary ->
         with_agent_browser_config([binary_path: binary], fn ->
           assert {:ok, ^binary} = Runtime.find_binary()
         end)
       end)
 
       with_agent_browser_config([binary_path: "/missing/agent-browser"], fn ->
-        assert {:error, "Binary not found at /missing/agent-browser"} = Runtime.find_binary()
+        assert {:error, error} = Runtime.find_binary()
+        assert Exception.message(error) == "Configured agent-browser binary was not found"
       end)
     end
 

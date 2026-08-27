@@ -31,7 +31,8 @@ defmodule Jido.Browser.Installer do
   @compile {:no_warn_undefined, LightpandaEx}
   require Logger
 
-  @agent_browser_version "0.35.1"
+  alias Jido.Browser.AgentBrowser.Binary
+
   @vibium_version "26.3.11"
   @web_version "main"
   @lightpanda_version "0.3.0"
@@ -89,10 +90,10 @@ defmodule Jido.Browser.Installer do
     adapter = opts[:adapter] || configured_adapter_binary()
     force = opts[:force] || false
 
-    if force || not installed?(adapter) do
-      install(adapter, opts)
-    else
-      :ok
+    cond do
+      adapter == :agent_browser -> ensure_agent_browser_installed(opts, force)
+      force || not installed?(adapter) -> install(adapter, opts)
+      true -> :ok
     end
   end
 
@@ -103,9 +104,16 @@ defmodule Jido.Browser.Installer do
   def install(binary, opts \\ [])
 
   def install(:agent_browser, opts) do
-    install_path = opts[:path] || default_install_path()
-    force = opts[:force] || false
-    install_agent_browser(install_path, force)
+    if configured_agent_browser_path?() do
+      case resolve_agent_browser() do
+        {:ok, _path} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      install_path = opts[:path] || default_install_path()
+      force = opts[:force] || false
+      install_agent_browser(install_path, force)
+    end
   end
 
   def install(:vibium, opts) do
@@ -138,12 +146,17 @@ defmodule Jido.Browser.Installer do
     end
   end
 
+  @doc false
+  @spec agent_browser_package_path() :: String.t()
+  def agent_browser_package_path do
+    Path.join(default_install_path(), agent_browser_binary_name())
+  end
+
   @doc """
   Returns the configured version for a binary.
   """
   @spec configured_version(atom()) :: String.t()
-  def configured_version(:agent_browser),
-    do: Application.get_env(:jido_browser, :agent_browser_version, @agent_browser_version)
+  def configured_version(:agent_browser), do: Binary.supported_version()
 
   def configured_version(:vibium), do: Application.get_env(:jido_browser, :vibium_version, @vibium_version)
   def configured_version(:web), do: Application.get_env(:jido_browser, :web_version, @web_version)
@@ -164,10 +177,7 @@ defmodule Jido.Browser.Installer do
   end
 
   defp agent_browser_installed? do
-    case find_agent_browser_path() do
-      nil -> false
-      path -> File.exists?(path)
-    end
+    match?({:ok, _path}, resolve_agent_browser())
   end
 
   defp vibium_installed? do
@@ -192,13 +202,37 @@ defmodule Jido.Browser.Installer do
   end
 
   defp find_agent_browser_path do
-    case configured_path(:agent_browser) do
-      path when is_binary(path) and path != "" ->
-        if File.exists?(path), do: path, else: nil
-
-      _ ->
-        find_in_path(agent_browser_binary_name()) || find_in_jido_browser_bin(agent_browser_binary_name())
+    case resolve_agent_browser() do
+      {:ok, path} -> path
+      {:error, _reason} -> nil
     end
+  end
+
+  defp resolve_agent_browser do
+    Binary.resolve(agent_browser_package_path())
+  end
+
+  defp ensure_agent_browser_installed(opts, force) do
+    cond do
+      configured_agent_browser_path?() ->
+        case resolve_agent_browser() do
+          {:ok, _path} -> :ok
+          {:error, reason} -> {:error, reason}
+        end
+
+      force ->
+        install(:agent_browser, opts)
+
+      true ->
+        case resolve_agent_browser() do
+          {:ok, _path} -> :ok
+          {:error, _reason} -> install(:agent_browser, opts)
+        end
+    end
+  end
+
+  defp configured_agent_browser_path? do
+    configured_path(:agent_browser) not in [nil, ""]
   end
 
   defp find_vibium_path do
@@ -318,18 +352,25 @@ defmodule Jido.Browser.Installer do
   defp install_agent_browser(install_path, force) do
     target = Path.join(install_path, agent_browser_binary_name())
 
-    if File.exists?(target) and not force do
-      Logger.info("agent-browser already installed at #{target}. Use --force to overwrite.")
-      :ok
-    else
-      File.mkdir_p!(install_path)
-      url = agent_browser_download_url()
-      Logger.info("Downloading agent-browser from #{url}...")
+    case {force, Binary.validate(target, :package)} do
+      {false, {:ok, _path}} ->
+        Logger.info("agent-browser already installed at #{target}. Use --force to overwrite.")
+        :ok
 
-      with :ok <- download_binary(url, target),
-           :ok <- File.chmod(target, 0o755) do
-        run_agent_browser_install(target)
-      end
+      _ ->
+        download_and_install_agent_browser(install_path, target)
+    end
+  end
+
+  defp download_and_install_agent_browser(install_path, target) do
+    File.mkdir_p!(install_path)
+    url = agent_browser_download_url()
+    Logger.info("Downloading agent-browser from #{url}...")
+
+    with :ok <- download_binary(url, target),
+         :ok <- File.chmod(target, 0o755),
+         {:ok, ^target} <- Binary.validate(target, :package) do
+      run_agent_browser_install(target)
     end
   end
 

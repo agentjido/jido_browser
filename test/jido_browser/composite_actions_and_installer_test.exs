@@ -402,7 +402,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
       end)
 
       with_app_env(:jido_browser, :agent_browser_version, "0.30.0", fn ->
-        assert Installer.configured_version(:agent_browser) == "0.30.0"
+        assert Installer.configured_version(:agent_browser) == "0.35.1"
       end)
 
       with_app_env(:jido_browser, :web_version, nil, fn ->
@@ -488,7 +488,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
           "jido_browser_test_agent_browser_#{System.unique_integer([:positive])}"
         )
 
-      File.write!(path, "agent-browser")
+      File.write!(path, "#!/bin/sh\nprintf 'agent-browser 0.35.1\\n'\n")
       File.chmod!(path, 0o755)
 
       try do
