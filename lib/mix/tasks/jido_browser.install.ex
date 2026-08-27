@@ -47,6 +47,14 @@ defmodule Mix.Tasks.JidoBrowser.Install do
 
   alias Jido.Browser.Installer
 
+  @binary_names %{
+    "agent_browser" => :agent_browser,
+    "agent-browser" => :agent_browser,
+    "web" => :web,
+    "vibium" => :vibium,
+    "lightpanda" => :lightpanda
+  }
+
   @impl Mix.Task
   def run(args) do
     {opts, binaries, _} =
@@ -109,7 +117,7 @@ defmodule Mix.Tasks.JidoBrowser.Install do
             Mix.shell().info("✓ #{binary} installed successfully")
 
           {:error, reason} ->
-            Mix.shell().error("✗ Failed to install #{binary}: #{reason}")
+            Mix.raise("Failed to install #{binary}: #{failure_message(reason)}")
         end
     end
 
@@ -117,9 +125,12 @@ defmodule Mix.Tasks.JidoBrowser.Install do
   end
 
   defp install_binary(other, _install_path, _force, _if_missing) do
-    Mix.shell().error("Unknown binary: #{other}. Use 'agent_browser', 'web', 'vibium', or 'lightpanda'.")
+    Mix.raise("Unknown binary: #{other}. Use 'agent_browser', 'web', 'vibium', or 'lightpanda'.")
   end
 
-  defp normalize_binary_name("agent-browser"), do: :agent_browser
-  defp normalize_binary_name(name), do: String.to_atom(name)
+  defp normalize_binary_name(name), do: Map.get(@binary_names, name, name)
+
+  defp failure_message(%{__exception__: true} = reason), do: Exception.message(reason)
+  defp failure_message(reason) when is_binary(reason), do: reason
+  defp failure_message(reason), do: inspect(reason)
 end
