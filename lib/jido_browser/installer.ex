@@ -36,6 +36,11 @@ defmodule Jido.Browser.Installer do
   @vibium_version "26.3.11"
   @web_version "main"
   @lightpanda_version "0.3.0"
+  @command_probes %{
+    vibium: ["version"],
+    web: ["--help"],
+    lightpanda: ["version"]
+  }
 
   @type platform :: :darwin_arm64 | :darwin_amd64 | :linux_amd64 | :linux_arm64 | :windows_amd64
 
@@ -117,17 +122,18 @@ defmodule Jido.Browser.Installer do
   end
 
   def install(:vibium, opts) do
-    install_vibium(opts)
+    verify_effective_install(:vibium, install_vibium(opts), opts)
   end
 
   def install(:web, opts) do
     install_path = opts[:path] || default_install_path()
     force = opts[:force] || false
-    install_web(install_path, force)
+
+    verify_effective_install(:web, install_web(install_path, force), opts)
   end
 
   def install(:lightpanda, opts) do
-    install_lightpanda(opts)
+    verify_effective_install(:lightpanda, install_lightpanda(opts), opts)
   end
 
   @doc """
@@ -183,22 +189,53 @@ defmodule Jido.Browser.Installer do
   defp vibium_installed? do
     case find_vibium_path() do
       nil -> false
-      path -> File.exists?(path)
+      path -> command_usable?(path, @command_probes.vibium)
     end
   end
 
   defp web_installed? do
     case find_web_path() do
       nil -> false
-      path -> File.exists?(path)
+      path -> command_usable?(path, @command_probes.web)
     end
   end
 
   defp lightpanda_installed? do
     case find_lightpanda_path() do
       nil -> false
-      path -> File.exists?(path)
+      path -> command_usable?(path, @command_probes.lightpanda)
     end
+  end
+
+  defp command_usable?(path, args) do
+    match?({_output, 0}, System.cmd(path, args, stderr_to_stdout: true))
+  rescue
+    _error -> false
+  end
+
+  defp verify_effective_install(binary, :ok, opts) do
+    if effective_install_usable?(binary, opts) do
+      :ok
+    else
+      {:error, effective_install_error(binary, bin_path(binary))}
+    end
+  end
+
+  defp verify_effective_install(_binary, result, _opts), do: result
+
+  defp effective_install_usable?(binary, opts) do
+    case configured_path(binary) do
+      path when path not in [nil, ""] -> installed?(binary)
+      _path -> is_binary(opts[:path]) || installed?(binary)
+    end
+  end
+
+  defp effective_install_error(binary, nil) do
+    "#{binary} installation completed, but the selected executable was not found"
+  end
+
+  defp effective_install_error(binary, path) do
+    "#{binary} installation completed, but the selected executable is not usable at #{path}"
   end
 
   defp find_agent_browser_path do
@@ -322,31 +359,49 @@ defmodule Jido.Browser.Installer do
         packages = vibium_npm_packages(configured_version(:vibium))
         Logger.info("Installing vibium via npm...")
 
-        case System.cmd(npm, ["install", "-g" | packages], stderr_to_stdout: true) do
-          {_output, 0} ->
-            stage_vibium_binary()
-            run_vibium_chrome_install()
-            :ok
+        case run_npm_install(npm, packages) do
+          {:ok, {_output, 0}} ->
+            install_staged_vibium()
 
-          {output, code} ->
+          {:ok, {output, code}} ->
             {:error, "npm install failed (exit #{code}): #{output}"}
+
+          {:error, reason} ->
+            {:error, "npm install failed: #{reason}"}
         end
     end
   end
 
-  defp run_vibium_chrome_install do
-    case find_vibium_path() do
-      nil ->
-        Logger.warning("Could not find vibium binary to run browser install")
+  defp run_npm_install(npm, packages) do
+    {:ok, System.cmd(npm, ["install", "-g" | packages], stderr_to_stdout: true)}
+  rescue
+    error -> {:error, Exception.message(error)}
+  end
 
-      vibium ->
-        Logger.info("Installing Chrome for Testing...")
-
-        case System.cmd(vibium, ["install"], stderr_to_stdout: true) do
-          {_output, 0} -> :ok
-          {output, code} -> Logger.warning("Chrome install returned #{code}: #{output}")
+  defp install_staged_vibium do
+    with {:ok, staged, target} <- stage_vibium_binary() do
+      result =
+        with :ok <- run_vibium_chrome_install(staged) do
+          promote_staged_binary(staged, target)
         end
+
+      if result != :ok, do: remove_staged_binary(staged)
+      result
     end
+  end
+
+  defp run_vibium_chrome_install(vibium) do
+    Logger.info("Installing Chrome for Testing...")
+
+    case System.cmd(vibium, ["install"], stderr_to_stdout: true) do
+      {_output, 0} ->
+        :ok
+
+      {output, code} ->
+        {:error, "vibium browser install failed (exit #{code}): #{output}"}
+    end
+  rescue
+    error -> {:error, "vibium browser install failed: #{Exception.message(error)}"}
   end
 
   defp install_agent_browser(install_path, force) do
@@ -363,28 +418,44 @@ defmodule Jido.Browser.Installer do
   end
 
   defp download_and_install_agent_browser(install_path, target) do
-    File.mkdir_p!(install_path)
+    staged = staged_binary_path(target)
     url = agent_browser_download_url()
     Logger.info("Downloading agent-browser from #{url}...")
 
-    with :ok <- download_binary(url, target),
-         :ok <- File.chmod(target, 0o755),
-         {:ok, ^target} <- Binary.validate(target, :package) do
-      run_agent_browser_install(target)
-    end
+    result =
+      with :ok <- ensure_install_directory(install_path),
+           :ok <- prepare_staged_binary(staged),
+           :ok <- download_binary(url, staged),
+           {:ok, ^staged} <- Binary.validate(staged, :package),
+           :ok <- run_agent_browser_install(staged) do
+        promote_staged_binary(staged, target)
+      end
+
+    remove_staged_binary(staged)
+    result
   end
 
   defp install_web(install_path, force) do
     target = Path.join(install_path, web_binary_name())
 
-    if File.exists?(target) and not force do
+    if command_usable?(target, @command_probes.web) and not force do
       Logger.info("web already installed at #{target}. Use --force to overwrite.")
       :ok
     else
-      File.mkdir_p!(install_path)
+      staged = staged_binary_path(target)
       url = web_download_url()
       Logger.info("Downloading web from #{url}...")
-      download_binary(url, target)
+
+      result =
+        with :ok <- ensure_install_directory(install_path),
+             :ok <- prepare_staged_binary(staged),
+             :ok <- download_binary(url, staged),
+             :ok <- ensure_command_usable(staged, @command_probes.web, "downloaded web binary") do
+          promote_staged_binary(staged, target)
+        end
+
+      if result != :ok, do: remove_staged_binary(staged)
+      result
     end
   end
 
@@ -399,13 +470,15 @@ defmodule Jido.Browser.Installer do
   end
 
   defp maybe_install_lightpanda(target, lightpanda_ex, force) do
-    case {File.exists?(target), force} do
+    case {command_usable?(target, @command_probes.lightpanda), force} do
       {true, false} ->
         Logger.info("lightpanda already installed at #{target}. Use --force to overwrite.")
         :ok
 
       _ ->
-        call_lightpanda_ex(lightpanda_ex, :install, [])
+        with :ok <- call_lightpanda_ex(lightpanda_ex, :install, []) do
+          ensure_command_usable(target, @command_probes.lightpanda, "installed lightpanda binary")
+        end
     end
   end
 
@@ -525,6 +598,8 @@ defmodule Jido.Browser.Installer do
       {output, code} ->
         {:error, "agent-browser install failed (exit #{code}): #{output}"}
     end
+  rescue
+    error -> {:error, "agent-browser install failed: #{Exception.message(error)}"}
   end
 
   defp vibium_npm_packages(version) do
@@ -541,18 +616,86 @@ defmodule Jido.Browser.Installer do
   defp stage_vibium_binary do
     case find_vibium_from_npm() do
       nil ->
-        Logger.warning("Could not stage vibium binary after npm install")
+        {:error, "Could not stage vibium binary after npm install: installed command was not found"}
 
       source ->
         target_dir = default_install_path()
         target = Path.join(target_dir, Path.basename(source))
-        File.mkdir_p!(target_dir)
-        File.cp!(source, target)
-        File.chmod!(target, 0o755)
+        staged = staged_binary_path(target)
+
+        result =
+          with :ok <- ensure_install_directory(target_dir),
+               :ok <- prepare_staged_binary(staged),
+               :ok <- copy_staged_binary(source, staged) do
+            {:ok, staged, target}
+          end
+
+        if not match?({:ok, _staged, _target}, result), do: remove_staged_binary(staged)
+        result
     end
-  rescue
-    error ->
-      Logger.warning("Could not stage vibium binary: #{Exception.message(error)}")
+  end
+
+  defp copy_staged_binary(source, staged) do
+    with :ok <- file_result(File.cp(source, staged), "copy vibium binary to #{staged}") do
+      file_result(File.chmod(staged, 0o755), "make vibium binary executable at #{staged}")
+    end
+  end
+
+  defp staged_binary_path(target) do
+    case Path.extname(target) do
+      "" -> target <> ".tmp"
+      extension -> Path.rootname(target, extension) <> ".tmp" <> extension
+    end
+  end
+
+  defp prepare_staged_binary(staged) do
+    case File.rm(staged) do
+      :ok -> :ok
+      {:error, :enoent} -> :ok
+      {:error, reason} -> {:error, file_error("remove old staged binary at #{staged}", reason)}
+    end
+  end
+
+  defp promote_staged_binary(staged, target) do
+    case File.rename(staged, target) do
+      :ok ->
+        :ok
+
+      {:error, :eexist} ->
+        with :ok <- file_result(File.cp(staged, target), "replace binary at #{target}") do
+          file_result(File.rm(staged), "remove promoted staged binary at #{staged}")
+        end
+
+      {:error, reason} ->
+        {:error, file_error("move staged binary to #{target}", reason)}
+    end
+  end
+
+  defp remove_staged_binary(staged) do
+    case File.rm(staged) do
+      :ok -> :ok
+      {:error, :enoent} -> :ok
+      {:error, reason} -> Logger.warning(file_error("remove staged binary at #{staged}", reason))
+    end
+  end
+
+  defp ensure_install_directory(path) do
+    file_result(File.mkdir_p(path), "create install directory at #{path}")
+  end
+
+  defp ensure_command_usable(path, args, label) do
+    if command_usable?(path, args) do
+      :ok
+    else
+      {:error, "#{label} is not usable at #{path}"}
+    end
+  end
+
+  defp file_result(:ok, _action), do: :ok
+  defp file_result({:error, reason}, action), do: {:error, file_error(action, reason)}
+
+  defp file_error(action, reason) do
+    "Could not #{action}: #{reason |> :file.format_error() |> IO.chardata_to_string()}"
   end
 
   defp find_first_existing(candidates, finder) do
@@ -587,10 +730,11 @@ defmodule Jido.Browser.Installer do
   defp download_binary(url, target) do
     case http_download(url) do
       {:ok, body} ->
-        File.write!(target, body)
-        File.chmod!(target, 0o755)
-        Logger.info("✓ Installed to #{target}")
-        :ok
+        with :ok <- file_result(File.write(target, body), "write downloaded binary to #{target}"),
+             :ok <- file_result(File.chmod(target, 0o755), "make downloaded binary executable at #{target}") do
+          Logger.info("✓ Installed to #{target}")
+          :ok
+        end
 
       {:error, reason} ->
         {:error, "Download failed: #{reason}"}

@@ -431,7 +431,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
     test "bin_path/installed? use configured web path when present" do
       path = Path.join(System.tmp_dir!(), "jido_browser_test_web_#{System.unique_integer([:positive])}")
-      File.write!(path, "web")
+      File.write!(path, "#!/bin/sh\nexit 0\n")
       File.chmod!(path, 0o755)
 
       try do
@@ -451,7 +451,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
           "jido_browser_test_lightpanda_#{System.unique_integer([:positive])}"
         )
 
-      File.write!(path, "lightpanda")
+      File.write!(path, "#!/bin/sh\nexit 0\n")
       File.chmod!(path, 0o755)
 
       try do
@@ -468,7 +468,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
       path =
         Path.join(System.tmp_dir!(), "jido_browser_test_vibium_#{System.unique_integer([:positive])}")
 
-      File.write!(path, "vibium")
+      File.write!(path, "#!/bin/sh\nexit 0\n")
       File.chmod!(path, 0o755)
 
       try do
