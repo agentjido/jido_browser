@@ -175,6 +175,17 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   end
 
   @impl true
+  def command(session, :switch_tab, opts) do
+    run_tab_index_command(session, "tab_switch", Keyword.fetch!(opts, :index), opts)
+  end
+
+  def command(session, :close_tab, opts) do
+    case opts[:index] do
+      nil -> run(session, %{"action" => "tab_close"}, opts)
+      index -> run_tab_index_command(session, "tab_close", index, opts)
+    end
+  end
+
   def command(session, action, opts) do
     payload = command_payload(action, opts)
     run(session, payload, opts)
@@ -253,10 +264,37 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   defp command_payload(:load_state, opts), do: %{"action" => "state_load", "path" => Keyword.fetch!(opts, :path)}
   defp command_payload(:list_tabs, _opts), do: %{"action" => "tab_list"}
   defp command_payload(:new_tab, opts), do: maybe_put(%{"action" => "tab_new"}, "url", opts[:url])
-  defp command_payload(:switch_tab, opts), do: %{"action" => "tab_switch", "index" => Keyword.fetch!(opts, :index)}
-  defp command_payload(:close_tab, opts), do: maybe_put(%{"action" => "tab_close"}, "index", opts[:index])
   defp command_payload(:console, _opts), do: %{"action" => "console"}
   defp command_payload(:errors, _opts), do: %{"action" => "errors"}
+
+  defp run_tab_index_command(session, action, index, opts) do
+    with {:ok, session, tab_list} <- run(session, %{"action" => "tab_list"}, opts),
+         {:ok, tab_id} <- tab_id_at_index(tab_list, index) do
+      run(session, %{"action" => action, "tabId" => tab_id}, opts)
+    end
+  end
+
+  defp tab_id_at_index(%{"tabs" => tabs}, index)
+       when is_list(tabs) and is_integer(index) and index >= 0 do
+    case Enum.fetch(tabs, index) do
+      {:ok, %{"tabId" => tab_id}} when is_binary(tab_id) ->
+        {:ok, tab_id}
+
+      {:ok, tab} ->
+        {:error, Error.adapter_error("Invalid agent-browser tab list entry", %{index: index, tab: tab})}
+
+      :error ->
+        {:error, Error.adapter_error("Tab index out of range", %{index: index, tab_count: length(tabs)})}
+    end
+  end
+
+  defp tab_id_at_index(%{"tabs" => tabs}, index) when is_list(tabs) do
+    {:error, Error.adapter_error("Invalid tab index", %{index: index})}
+  end
+
+  defp tab_id_at_index(tab_list, index) do
+    {:error, Error.adapter_error("Invalid agent-browser tab list response", %{index: index, response: tab_list})}
+  end
 
   defp run(%Session{runtime: %{pooled: true, manager: pid}} = session, payload, opts) when is_pid(pid) do
     timeout = opts[:timeout] || @default_timeout

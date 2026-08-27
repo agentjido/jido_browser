@@ -1,6 +1,7 @@
 defmodule Jido.Browser.AgentBrowserRuntimeTest do
   use ExUnit.Case, async: false
 
+  alias Jido.Browser.Adapters.AgentBrowser
   alias Jido.Browser.AgentBrowser.PoolRuntime
   alias Jido.Browser.AgentBrowser.Runtime
   alias Jido.Browser.AgentBrowser.SessionServer
@@ -16,6 +17,32 @@ defmodule Jido.Browser.AgentBrowserRuntimeTest do
       assert Process.alive?(Process.whereis(Jido.Browser.WarmPool.RootSupervisor))
       assert Process.alive?(Process.whereis(Jido.Browser.WarmPool.Registry))
       assert Process.alive?(Process.whereis(Jido.Browser.WarmPool.Supervisor))
+    end
+  end
+
+  describe "adapter daemon payloads" do
+    test "resolves zero-based indexes against ordered stable tab identifiers" do
+      FakeAgentBrowser.with_binary(:normal, fn binary, _socket_dir ->
+        with_agent_browser_config([binary_path: binary], fn ->
+          assert {:ok, session} = Jido.Browser.start_session(adapter: AgentBrowser, timeout: 1_000)
+
+          try do
+            assert {:ok, ^session, %{"tabId" => "t2"}} =
+                     Jido.Browser.switch_tab(session, 1, timeout: 1_000)
+
+            assert {:ok, ^session, %{"tabId" => "t1"}} =
+                     Jido.Browser.close_tab(session, 0, timeout: 1_000)
+
+            assert {:ok, ^session, %{"tabId" => "t2"}} =
+                     Jido.Browser.switch_tab(session, 0, timeout: 1_000)
+
+            assert {:ok, ^session, %{"tabId" => "t3"}} =
+                     Jido.Browser.close_tab(session, 1, timeout: 1_000)
+          after
+            Jido.Browser.end_session(session)
+          end
+        end)
+      end)
     end
   end
 
@@ -143,10 +170,10 @@ defmodule Jido.Browser.AgentBrowserRuntimeTest do
     end
 
     test "parse_version and ensure_supported_version validate the binary version" do
-      assert {:ok, "0.20.2"} = Runtime.parse_version("agent-browser 0.20.2\n")
+      assert {:ok, "0.35.1"} = Runtime.parse_version("agent-browser 0.35.1\n")
       assert {:error, "unknown output"} = Runtime.parse_version("unknown output")
 
-      with_temporary_script("#!/bin/sh\nprintf 'agent-browser 0.20.2\\n'\n", fn binary ->
+      with_temporary_script("#!/bin/sh\nprintf 'agent-browser 0.35.1\\n'\n", fn binary ->
         assert :ok = Runtime.ensure_supported_version(binary)
       end)
 

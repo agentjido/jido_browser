@@ -7,7 +7,7 @@ defmodule Jido.Browser.AgentBrowser.Runtime do
   alias Jido.Browser.Error
   alias Jido.Browser.Installer
 
-  @supported_version "0.20.2"
+  @supported_version "0.35.1"
   @daemon_timeout 5_000
   @command_timeout 30_000
 

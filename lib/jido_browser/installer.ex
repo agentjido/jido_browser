@@ -31,7 +31,7 @@ defmodule Jido.Browser.Installer do
   @compile {:no_warn_undefined, LightpandaEx}
   require Logger
 
-  @agent_browser_version "0.20.2"
+  @agent_browser_version "0.35.1"
   @vibium_version "26.3.11"
   @web_version "main"
   @lightpanda_version "0.3.0"
