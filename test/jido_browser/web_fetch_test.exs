@@ -24,7 +24,21 @@ defmodule Jido.Browser.WebFetchTest do
   end
 
   defmodule TestBrowseyClient do
-    def get(url, opts) do
+    def get("https://example.com/stealth" = url, opts) do
+      send(opts[:test_pid], {:browsey_get, url, opts})
+
+      {:ok,
+       %{
+         status: 302,
+         headers: %{"location" => ["/final"]},
+         body: "",
+         final_uri: URI.parse(url),
+         uri_sequence: [URI.parse(url)],
+         runtime_ms: 6
+       }}
+    end
+
+    def get("https://example.com/final" = url, opts) do
       send(opts[:test_pid], {:browsey_get, url, opts})
 
       {:ok,
@@ -37,8 +51,8 @@ defmodule Jido.Browser.WebFetchTest do
            <body><main><h1>Stealth HTTP</h1><p>Fetched by Browsey.</p></main></body>
          </html>
          """,
-         final_uri: URI.parse("https://example.com/final"),
-         uri_sequence: [URI.parse("https://example.com/stealth"), URI.parse("https://example.com/final")],
+         final_uri: URI.parse(url),
+         uri_sequence: [URI.parse(url)],
          runtime_ms: 12
        }}
     end
@@ -414,6 +428,10 @@ defmodule Jido.Browser.WebFetchTest do
       assert opts[:follow_redirects?] == false
       assert opts[:resolve] == {"example.com", 443, {93, 184, 216, 34}}
       refute Keyword.has_key?(opts, :client)
+
+      assert_receive {:browsey_get, "https://example.com/final", final_opts}
+      assert final_opts[:follow_redirects?] == false
+      assert final_opts[:resolve] == {"example.com", 443, {93, 184, 216, 34}}
 
       assert result.title == "Browsey Page"
       assert result.final_url == "https://example.com/final"

@@ -95,6 +95,7 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
           | {:timeout, timeout()}
           | {:cookie_file, Path.t()}
           | {:pinned_request?, boolean()}
+          | {:send_cookies?, boolean()}
           | {:resolve, {String.t(), :inet.port_number(), :inet.ip_address()}}
 
   @available_browsers %{
@@ -313,12 +314,10 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
         security_args ++
         [
           "--max-time",
-          Float.to_string(timeout / 1_000),
-          "--cookie",
-          cookie_file,
-          "--cookie-jar",
-          cookie_file
-        ] ++ resolve_args(opts[:resolve]) ++ max_filesize_args(max_bytes) ++ server_side_rendering_header_args(uri)
+          Float.to_string(timeout / 1_000)
+        ] ++
+        cookie_args(cookie_file, opts) ++
+        resolve_args(opts[:resolve]) ++ max_filesize_args(max_bytes) ++ server_side_rendering_header_args(uri)
 
     try do
       command = shell_join(args)
@@ -400,6 +399,11 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
     end
   end
 
+  defp cookie_args(cookie_file, opts) do
+    read_args = if Access.get(opts, :send_cookies?, true), do: ["--cookie", cookie_file], else: []
+    read_args ++ ["--cookie-jar", cookie_file]
+  end
+
   defp validate_opts(opts) when is_list(opts) do
     if Keyword.keyword?(opts) do
       Enum.reduce_while(opts, {:ok, opts}, fn {key, value}, {:ok, acc} ->
@@ -416,7 +420,7 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
   defp validate_opts(_opts), do: {:error, ArgumentError.exception("BrowseyHttp options must be a keyword list")}
 
   defp validate_option(key, value)
-       when key in [:follow_redirects?, :ignore_ssl_errors?, :pinned_request?] and is_boolean(value),
+       when key in [:follow_redirects?, :ignore_ssl_errors?, :pinned_request?, :send_cookies?] and is_boolean(value),
        do: :ok
 
   defp validate_option(:max_retries, value) do
