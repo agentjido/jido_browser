@@ -115,6 +115,8 @@ defmodule Jido.Browser.MixProject do
       end,
       extras: [
         "README.md": [title: "Overview"],
+        "guides/browser_adapter_support.md": [title: "Browser Adapter Support"],
+        "guides/agent_browser_compatibility.md": [title: "AgentBrowser Compatibility"],
         "CHANGELOG.md": [title: "Changelog"],
         LICENSE: [title: "License"]
       ],
@@ -192,7 +194,7 @@ defmodule Jido.Browser.MixProject do
   defp package do
     [
       name: "jido_browser",
-      files: ~w(lib priv/vendor vendor .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
+      files: ~w(lib priv/vendor vendor guides .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
       licenses: ["Apache-2.0", "MIT"],
       links: %{
         "GitHub" => @source_url,

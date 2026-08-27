@@ -25,6 +25,10 @@ remains available without warm-pool support. `Lightpanda` is available as an
 optional limited adapter for lightweight DOM and JavaScript automation, with
 warm-pool support for prestarted CDP sessions.
 
+The [browser adapter support policy](guides/browser_adapter_support.md) is the
+canonical source for support levels, tested versions, CI coverage, and 3.0
+removal notices. It also covers the BrowseyHttp web-fetch runtime.
+
 The Hex package and OTP app remain `jido_browser`, while the public Elixir namespace is `Jido.Browser.*`.
 
 ## Installation
@@ -374,15 +378,15 @@ Configured `req`, `browsey`, and `extractous` options are merged with any per-ca
 - disables Lightpanda telemetry by default with `LIGHTPANDA_DISABLE_TELEMETRY=true`
 - does not provide AgentBrowser-native refs, state persistence, tab management, or console capture
 
-### Vibium (Legacy)
+### Vibium
 
-- retained for transitional compatibility
-- feature-frozen in 2.0
+- CLI-backed browser sessions without warm-pool support
+- navigation, click, type, PNG screenshots, content extraction, and JavaScript evaluation
 
-### Web (Legacy)
+### Web
 
-- retained for transitional compatibility
-- feature-frozen in 2.0
+- Firefox-backed browser sessions through the `web` CLI
+- optional warm session pools with persistent profiles
 
 ## Public API
 

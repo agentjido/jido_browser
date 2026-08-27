@@ -2,6 +2,9 @@
 
 Research date: 2026-08-27.
 
+For the current maintenance promise and CI level, see the canonical
+[browser adapter support policy](browser_adapter_support.md).
+
 ## Decision
 
 Use AgentBrowser 0.35.1 as the preferred supported version for Jido Browser 2.x.
