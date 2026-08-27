@@ -9,29 +9,21 @@ defmodule Jido.Browser.Session do
   @schema Zoi.struct(
             __MODULE__,
             %{
-              id: Zoi.string(),
-              adapter: Zoi.any(),
-              connection: Zoi.any() |> Zoi.nullish(),
-              runtime: Zoi.any() |> Zoi.nullish(),
-              capabilities: Zoi.any() |> Zoi.default(%{}),
-              started_at: Zoi.any(),
-              opts: Zoi.any() |> Zoi.default(%{})
+              id: Zoi.string(typespec: quote(do: String.t())),
+              adapter: Zoi.any(typespec: quote(do: module())),
+              connection: Zoi.any() |> Zoi.nullish(typespec: quote(do: term())),
+              runtime: Zoi.any() |> Zoi.nullish(typespec: quote(do: map() | nil)),
+              capabilities: Zoi.any() |> Zoi.default(%{}, typespec: quote(do: map())),
+              started_at: Zoi.any(typespec: quote(do: DateTime.t())),
+              opts: Zoi.any() |> Zoi.default(%{}, typespec: quote(do: map()))
             },
             coerce: true
           )
 
-  @type t :: %__MODULE__{
-          id: String.t(),
-          adapter: module(),
-          connection: term(),
-          runtime: map() | nil,
-          capabilities: map(),
-          started_at: DateTime.t(),
-          opts: map()
-        }
+  @type t :: unquote(Zoi.type_spec(@schema))
 
-  @enforce_keys [:id, :adapter, :started_at]
-  defstruct [:id, :adapter, :connection, :runtime, started_at: nil, capabilities: %{}, opts: %{}]
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
 
   @doc """
   Returns the Zoi schema for this struct.
