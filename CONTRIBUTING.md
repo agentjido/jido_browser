@@ -32,7 +32,10 @@ Thank you for your interest in contributing to Jido Browser!
 3. Make your changes
 4. Ensure `mix quality` passes
 5. Commit using [Conventional Commits](https://www.conventionalcommits.org/)
-6. Push to your fork and submit a PR
+6. Give the pull request a Conventional Commit title
+7. Push to your fork and submit a PR
+
+Pull requests are squash merged. The Conventional Commit title of the pull request becomes the squash commit and the source for the generated changelog entry. Do not edit generated changelog entries by hand.
 
 ## Code Style
 
