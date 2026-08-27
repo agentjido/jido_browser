@@ -209,8 +209,7 @@ defmodule Jido.Browser.MixProject do
       flags: [
         :error_handling,
         :unknown
-      ],
-      ignore_warnings: ".dialyzer_ignore.exs"
+      ]
     ]
   end
 end
