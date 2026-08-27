@@ -31,6 +31,11 @@ defmodule Jido.Browser.TestSupport.FakeAgentBrowser do
     #!/usr/bin/env elixir
     mode = #{inspect(to_string(mode))}
 
+    if System.argv() == ["--version"] do
+      IO.puts("agent-browser 0.35.1")
+      System.halt(0)
+    end
+
     defmodule FakeAgentBrowserDaemon do
       def run("exit_on_start") do
         IO.binwrite(:stderr, "boot failure")
@@ -53,7 +58,7 @@ defmodule Jido.Browser.TestSupport.FakeAgentBrowser do
             ifaddr: {:local, String.to_charlist(socket_path)}
           ])
 
-        accept_loop(listener, %{mode: mode, current_url: nil, action_counts: %{}})
+        accept_loop(listener, %{mode: mode, current_url: nil, action_counts: %{}, tabs: ["t1", "t2", "t3"]})
       end
 
       defp accept_loop(listener, state) do
@@ -79,11 +84,38 @@ defmodule Jido.Browser.TestSupport.FakeAgentBrowser do
           {:ok, line} ->
             action = capture(line, ~r/"action"\\s*:\\s*"([^"]+)"/)
             url = capture(line, ~r/"url"\\s*:\\s*"([^"]+)"/)
-            respond(socket, state, action, url)
+
+            if action in ["tab_switch", "tab_close"] do
+              respond_to_tab_command(socket, state, action, line)
+            else
+              respond(socket, state, action, url)
+            end
 
           {:error, reason} ->
             IO.binwrite(:stderr, "recv failed: \#{inspect(reason)}")
             {state, 92}
+        end
+      end
+
+      defp respond_to_tab_command(socket, state, action, line) do
+        tab_id = capture(line, ~r/"tabId"\\s*:\\s*"([^"]+)"/)
+
+        cond do
+          Regex.match?(~r/"index"\\s*:/, line) or is_nil(tab_id) ->
+            send_response(socket, false, nil, "expected tabId payload")
+            {state, nil}
+
+          tab_id not in state.tabs ->
+            send_response(socket, false, nil, "unknown stable tab ID")
+            {state, nil}
+
+          action == "tab_close" ->
+            send_response(socket, true, %{"tabId" => tab_id}, nil)
+            {%{state | tabs: List.delete(state.tabs, tab_id)}, nil}
+
+          true ->
+            send_response(socket, true, %{"tabId" => tab_id}, nil)
+            {state, nil}
         end
       end
 
@@ -124,6 +156,12 @@ defmodule Jido.Browser.TestSupport.FakeAgentBrowser do
         {state, nil}
       end
 
+      defp respond(socket, state, "tab_list", _url) do
+        tabs = Enum.map(state.tabs, &%{"tabId" => &1})
+        send_response(socket, true, %{"tabs" => tabs}, nil)
+        {state, nil}
+      end
+
       defp respond(socket, state, "close", _url) do
         send_response(socket, true, %{}, nil)
         {state, 0}
@@ -157,6 +195,7 @@ defmodule Jido.Browser.TestSupport.FakeAgentBrowser do
       end
 
       defp encode_value(map) when is_map(map), do: encode_map(map)
+      defp encode_value(list) when is_list(list), do: "[" <> Enum.map_join(list, ",", &encode_value/1) <> "]"
       defp encode_value(nil), do: "null"
       defp encode_value(true), do: "true"
       defp encode_value(false), do: "false"

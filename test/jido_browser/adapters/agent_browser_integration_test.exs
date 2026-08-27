@@ -148,9 +148,13 @@ defmodule Jido.Browser.Adapters.AgentBrowserIntegrationTest do
       {:ok, _session, article_result} = Browser.get_url(session, timeout: @command_timeout)
       assert fetch_value(article_result, :url) == article_url
 
-      {:ok, session, _close_result} = Browser.close_tab(session, 1, timeout: @command_timeout)
+      {:ok, session, _close_result} = Browser.close_tab(session, 0, timeout: @command_timeout)
       {:ok, _session, remaining_tabs_result} = Browser.list_tabs(session, timeout: @command_timeout)
       assert length(tab_entries(remaining_tabs_result)) == 1
+
+      {:ok, session, _switch_result} = Browser.switch_tab(session, 0, timeout: @command_timeout)
+      {:ok, _session, remaining_url_result} = Browser.get_url(session, timeout: @command_timeout)
+      assert fetch_value(remaining_url_result, :url) == article_url
     end
   end
 
