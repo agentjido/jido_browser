@@ -7,26 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+[Unreleased]: https://github.com/agentjido/jido_browser/compare/v2.2.0...HEAD
 
-- Add Lightpanda adapter support with optional warm pools.
-- Add vendored BrowseyHttp-backed `web_fetch/2` backend while upstream is not published on Hex.
-- Add `fetch_rich/2` and `browser.fetch_rich` for HTTP-first retrieval with optional browser fallback.
-- Add `pool_status/1` and `browser.pool_status` for warm pool observability.
-- Add opt-in persistent warm pool lifecycle with `max_uses` and `max_age_ms` recycling controls.
+<!-- changelog -->
 
-### Changed
+## [v2.2.0](https://github.com/agentjido/jido_browser/compare/v2.1.0...v2.2.0) (2026-08-10)
 
-- Rename the public Elixir namespace from `JidoBrowser.*` to `Jido.Browser.*`
-- Keep source and test files in `lib/jido_browser/**` and `test/jido_browser/**` while exposing the `Jido.Browser.*` namespace
-- Strengthen warm pool health checks to validate browser/runtime responsiveness before reuse.
 
-### Fixed
 
-- Harden vendored BrowseyHttp option validation, shell quoting, and request cookie isolation.
-- Propagate plugin session defaults into session-starting actions.
-- Recognize Lightpanda in the compile-time binary check.
-- Sync `mix.lock` with the stable `jido ~> 2.0` / `jido_action ~> 2.0` dependency declarations in `mix.exs`
+
+### Features:
+
+* harden agent browser retrieval by mikehostetler
+
+* add vendored Browsey web fetch backend by Matthew Neel
+
+* add Lightpanda browser adapter by Matthew Neel
+
+### Bug Fixes:
+
+* deps: update Mint for CVE-2026-59249 by mikehostetler
+
+* support Elixir 1.20 strict compile by mikehostetler
+
+* honor adapter session defaults by mikehostetler
+
+* harden vendored browsey backend by mikehostetler
+
+## [v2.1.0](https://github.com/agentjido/jido_browser/compare/v2.0.0...v2.1.0) (2026-05-23)
+
+
+
+
+### Features:
+
+* add warm agent-browser session pools (#26) by mikehostetler
+
+## [v2.0.0](https://github.com/agentjido/jido_browser/compare/v1.0.0...v2.0.0) (2026-03-14)
+### Breaking Changes:
+
+* rename browser API to Jido.Browser by mikehostetler
+
+
+
+### Features:
+
+* redesign jido browser around agent-browser (#21) by mikehostetler
+
+* redesign jido browser around agent-browser by mikehostetler
+
+### Bug Fixes:
+
+* harden agent-browser integration paths by mikehostetler
+
+* restore vibium compatibility and stabilize ci by mikehostetler
+
+### Refactoring:
+
+* streamline agent-browser runtime defaults by mikehostetler
 
 ## [1.0.0] - 2026-02-22
 
@@ -93,65 +131,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Jido.Browser.Actions.ExtractContent`
   - `Jido.Browser.Actions.Evaluate`
 
-[Unreleased]: https://github.com/agentjido/jido_browser/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/agentjido/jido_browser/compare/v0.8.1...v1.0.0
 [0.8.1]: https://github.com/agentjido/jido_browser/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/agentjido/jido_browser/compare/v0.1.0...v0.8.0
 [0.1.0]: https://github.com/agentjido/jido_browser/releases/tag/v0.1.0
-
-<!-- changelog -->
-
-## [v2.2.0](https://github.com/agentjido/jido_browser/compare/v2.2.0...v2.2.0) (2026-08-10)
-
-
-
-
-### Features:
-
-* harden agent browser retrieval by mikehostetler
-
-* add vendored Browsey web fetch backend by Matthew Neel
-
-* add Lightpanda browser adapter by Matthew Neel
-
-### Bug Fixes:
-
-* deps: update Mint for CVE-2026-59249 by mikehostetler
-
-* support Elixir 1.20 strict compile by mikehostetler
-
-* honor adapter session defaults by mikehostetler
-
-* harden vendored browsey backend by mikehostetler
-
-## [v2.1.0](https://github.com/agentjido/jido_browser/compare/v2.0.0...v2.1.0) (2026-05-23)
-
-
-
-
-### Features:
-
-* add warm agent-browser session pools (#26) by mikehostetler
-
-## [2.0.0](https://github.com/agentjido/jido_browser/compare/v2.0.0...2.0.0) (2026-03-14)
-### Breaking Changes:
-
-* rename browser API to Jido.Browser by mikehostetler
-
-
-
-### Features:
-
-* redesign jido browser around agent-browser (#21) by mikehostetler
-
-* redesign jido browser around agent-browser by mikehostetler
-
-### Bug Fixes:
-
-* harden agent-browser integration paths by mikehostetler
-
-* restore vibium compatibility and stabilize ci by mikehostetler
-
-### Refactoring:
-
-* streamline agent-browser runtime defaults by mikehostetler
