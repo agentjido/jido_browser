@@ -96,6 +96,11 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           default: [],
           doc: "Block-list of host or host/path rules"
         },
+        allow_private_network: %{
+          type: :boolean,
+          default: false,
+          doc: "Allow private network destinations"
+        },
         focus_terms: %{
           type: {:list, :string},
           default: [],
@@ -167,6 +172,11 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           type: {:list, :string},
           default: [],
           doc: "Block-list of host or host/path rules"
+        },
+        allow_private_network: %{
+          type: :boolean,
+          default: false,
+          doc: "Allow private network destinations"
         },
         focus_terms: %{
           type: {:list, :string},

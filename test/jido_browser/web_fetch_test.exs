@@ -350,6 +350,7 @@ defmodule Jido.Browser.WebFetchTest do
                  "https://example.com/backend-cache.txt",
                  format: :text,
                  backend: TestBackend,
+                 allow_private_network: true,
                  test_pid: self()
                )
 
@@ -362,7 +363,12 @@ defmodule Jido.Browser.WebFetchTest do
     test "uses the configured backend when no runtime backend is provided" do
       previous = Application.get_env(:jido_browser, :web_fetch, :__unset__)
 
-      Application.put_env(:jido_browser, :web_fetch, backend: TestBackend)
+      Application.put_env(
+        :jido_browser,
+        :web_fetch,
+        backend: TestBackend,
+        resolver: Jido.Browser.TestSupport.WebFetchResolver
+      )
 
       on_exit(fn ->
         if previous == :__unset__ do
@@ -377,6 +383,7 @@ defmodule Jido.Browser.WebFetchTest do
                  "https://example.com/configured-backend.txt",
                  format: :text,
                  cache: false,
+                 allow_private_network: true,
                  test_pid: self()
                )
 
@@ -404,7 +411,8 @@ defmodule Jido.Browser.WebFetchTest do
       assert opts[:browser] == :safari
       assert opts[:max_response_size_bytes] == 1_000_000
       assert opts[:timeout] == 30_000
-      assert opts[:follow_redirects?] == true
+      assert opts[:follow_redirects?] == false
+      assert opts[:resolve] == {"example.com", 443, {93, 184, 216, 34}}
       refute Keyword.has_key?(opts, :client)
 
       assert result.title == "Browsey Page"

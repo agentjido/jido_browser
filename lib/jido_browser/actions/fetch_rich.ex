@@ -18,6 +18,7 @@ defmodule Jido.Browser.Actions.FetchRich do
       selector: [type: :string, doc: "Optional CSS selector for HTML/browser extraction"],
       allowed_domains: [type: {:list, :string}, default: [], doc: "Allow-list of host or host/path rules"],
       blocked_domains: [type: {:list, :string}, default: [], doc: "Block-list of host or host/path rules"],
+      allow_private_network: [type: :boolean, default: false, doc: "Allow private network destinations"],
       focus_terms: [type: {:list, :string}, default: [], doc: "Terms used to filter fetched documents"],
       focus_window: [type: :integer, default: 0, doc: "Paragraph window around each focus match"],
       max_content_tokens: [type: :integer, doc: "Approximate token cap for returned content"],
@@ -60,6 +61,7 @@ defmodule Jido.Browser.Actions.FetchRich do
     |> maybe_put(:selector, params[:selector])
     |> maybe_put(:allowed_domains, Map.get(params, :allowed_domains, []))
     |> maybe_put(:blocked_domains, Map.get(params, :blocked_domains, []))
+    |> maybe_put(:allow_private_network, Map.get(params, :allow_private_network, false))
     |> maybe_put(:focus_terms, Map.get(params, :focus_terms, []))
     |> maybe_put(:focus_window, Map.get(params, :focus_window, 0))
     |> maybe_put(:max_content_tokens, params[:max_content_tokens])

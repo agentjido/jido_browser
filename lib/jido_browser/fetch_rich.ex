@@ -9,6 +9,7 @@ defmodule Jido.Browser.FetchRich do
   alias Jido.Browser.Error
 
   @http_option_keys [
+    :allow_private_network,
     :allowed_domains,
     :backend,
     :blocked_domains,
