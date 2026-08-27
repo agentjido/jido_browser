@@ -31,7 +31,8 @@ defmodule Jido.Browser.Installer do
   @compile {:no_warn_undefined, LightpandaEx}
   require Logger
 
-  @agent_browser_version "0.35.1"
+  alias Jido.Browser.AgentBrowser.Binary
+
   @vibium_version "26.3.11"
   @web_version "main"
   @lightpanda_version "0.3.0"
@@ -142,8 +143,7 @@ defmodule Jido.Browser.Installer do
   Returns the configured version for a binary.
   """
   @spec configured_version(atom()) :: String.t()
-  def configured_version(:agent_browser),
-    do: Application.get_env(:jido_browser, :agent_browser_version, @agent_browser_version)
+  def configured_version(:agent_browser), do: Binary.supported_version()
 
   def configured_version(:vibium), do: Application.get_env(:jido_browser, :vibium_version, @vibium_version)
   def configured_version(:web), do: Application.get_env(:jido_browser, :web_version, @web_version)

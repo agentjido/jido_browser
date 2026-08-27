@@ -402,7 +402,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
       end)
 
       with_app_env(:jido_browser, :agent_browser_version, "0.30.0", fn ->
-        assert Installer.configured_version(:agent_browser) == "0.30.0"
+        assert Installer.configured_version(:agent_browser) == "0.35.1"
       end)
 
       with_app_env(:jido_browser, :web_version, nil, fn ->
