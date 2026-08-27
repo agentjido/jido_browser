@@ -19,6 +19,10 @@ if config_env() == :dev do
     repository_url: "https://github.com/agentjido/jido_browser",
     manage_mix_version?: true,
     manage_readme_version: "README.md",
+    managed_files: [
+      {"CHANGELOG.md", fn version -> Jido.Browser.Release.unreleased_link(version) end,
+       fn version -> Jido.Browser.Release.unreleased_link(version) end}
+    ],
     version_tag_prefix: "v",
     version_source: :tags,
     types: [

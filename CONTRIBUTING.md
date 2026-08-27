@@ -55,6 +55,18 @@ Pull requests are squash merged. The Conventional Commit title of the pull reque
 `coveralls.json` at `coverage_options.minimum_coverage`. When a feature or bug fix
 raises the coverage baseline, raise this floor in the same pull request.
 
+## Release Preparation
+
+Use the repository release task so version headings, comparison links, and tags
+use the same `v` prefix:
+
+```bash
+mix jido_browser.release --override 2.3.0 --dry-run
+```
+
+The task delegates changelog, `mix.exs`, and README updates to GitOps. Do not edit
+the generated release section by hand.
+
 ## Commit Messages
 
 Use Conventional Commits:

@@ -54,7 +54,8 @@ defmodule Jido.Browser.MixProject do
     ]
   end
 
-  defp elixirc_paths(:test), do: ["lib", "vendor/browsey_http/lib", "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "vendor/browsey_http/lib", "release", "test/support"]
+  defp elixirc_paths(:dev), do: ["lib", "vendor/browsey_http/lib", "release"]
   defp elixirc_paths(_), do: ["lib", "vendor/browsey_http/lib"]
 
   defp deps do
@@ -82,7 +83,7 @@ defmodule Jido.Browser.MixProject do
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:doctor, "~> 0.21", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: [:dev, :test]},
-      {:git_ops, "~> 2.9", only: :dev, runtime: false},
+      {:git_ops, "~> 2.9", only: [:dev, :test], runtime: false},
       {:git_hooks, "~> 0.8", only: :dev, runtime: false},
       {:mimic, "~> 2.3", only: :test}
     ]
@@ -207,7 +208,7 @@ defmodule Jido.Browser.MixProject do
   defp dialyzer do
     [
       plt_file: {:no_warn, @dialyzer_plt},
-      plt_add_apps: [:mix, :ex_unit],
+      plt_add_apps: [:mix, :ex_unit, :git_ops],
       flags: [
         :error_handling,
         :unknown
