@@ -343,6 +343,114 @@ defmodule Jido.Browser.WebFetchTest do
       assert first.content == second.content
     end
 
+    test "expires zero-TTL entries without returning a cache hit" do
+      expect(Req, :run, 2, fn opts ->
+        request = Req.Request.new(url: opts[:url])
+
+        response =
+          %Req.Response{
+            status: 200,
+            headers: %{"content-type" => ["text/plain"]},
+            body: "zero TTL content"
+          }
+
+        {request, response}
+      end)
+
+      options = [format: :text, cache_ttl_ms: 0]
+
+      assert {:ok, first} = Jido.Browser.web_fetch("https://example.com/zero-ttl.txt", options)
+      assert {:ok, second} = Jido.Browser.web_fetch("https://example.com/zero-ttl.txt", options)
+
+      refute first.cached
+      refute second.cached
+    end
+
+    test "canonicalizes backend options and keeps response limits in the cache key" do
+      expect(Req, :run, 2, fn opts ->
+        request = Req.Request.new(url: opts[:url])
+
+        response =
+          %Req.Response{
+            status: 200,
+            headers: %{"content-type" => ["text/plain"]},
+            body: "cache key content"
+          }
+
+        {request, response}
+      end)
+
+      url = "https://example.com/cache-key.txt"
+
+      assert {:ok, first} =
+               Jido.Browser.web_fetch(url,
+                 format: :text,
+                 req: [pool_timeout: 100, connect_options: [timeout: 200, protocols: [:http1]]]
+               )
+
+      assert {:ok, reordered} =
+               Jido.Browser.web_fetch(url,
+                 format: :text,
+                 req: [connect_options: [protocols: [:http1], timeout: 200], pool_timeout: 100]
+               )
+
+      assert {:ok, different_limit} =
+               Jido.Browser.web_fetch(url,
+                 format: :text,
+                 max_response_bytes: 1_024,
+                 req: [connect_options: [timeout: 200, protocols: [:http1]], pool_timeout: 100]
+               )
+
+      refute first.cached
+      assert reordered.cached
+      refute different_limit.cached
+    end
+
+    test "does not cache a response-limit failure or its partial body" do
+      counter_key = {__MODULE__, make_ref()}
+
+      expect(Req, :run, 2, fn opts ->
+        request = Req.Request.new(url: opts[:url])
+        count = Process.get(counter_key, 0)
+        Process.put(counter_key, count + 1)
+
+        response =
+          if count == 0 do
+            %Req.Response{
+              status: 200,
+              headers: %{"content-type" => ["text/plain"]},
+              body:
+                {:jido_browser_response_too_large,
+                 %{
+                   max_response_bytes: 10,
+                   observed_response_bytes: 11,
+                   response_byte_semantics: :transfer_body
+                 }}
+            }
+          else
+            %Req.Response{
+              status: 200,
+              headers: %{"content-type" => ["text/plain"]},
+              body: "complete response"
+            }
+          end
+
+        {request, response}
+      end)
+
+      url = "https://example.com/partial-response.txt"
+
+      assert {:error, %Error.AdapterError{details: %{error_code: :response_too_large}}} =
+               Jido.Browser.web_fetch(url, format: :text)
+
+      assert {:ok, complete} = Jido.Browser.web_fetch(url, format: :text)
+      assert {:ok, cached} = Jido.Browser.web_fetch(url, format: :text)
+
+      refute complete.cached
+      assert cached.cached
+      assert cached.content == "complete response"
+    end
+
     test "separates cache entries by backend" do
       expect(Req, :run, fn opts ->
         request = Req.Request.new(url: opts[:url])

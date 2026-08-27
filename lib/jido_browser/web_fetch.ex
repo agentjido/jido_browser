@@ -9,11 +9,11 @@ defmodule Jido.Browser.WebFetch do
   """
 
   alias Jido.Browser.Error
+  alias Jido.Browser.WebFetch.Cache
   alias Jido.Browser.WebFetch.DestinationPolicy
   alias Jido.Browser.WebFetch.Options
   alias Jido.Browser.WebFetch.URLRules
 
-  @cache_table :jido_browser_web_fetch_cache
   @redirect_statuses [301, 302, 303, 307, 308]
   @cross_origin_req_options [
     :auth,
@@ -137,7 +137,7 @@ defmodule Jido.Browser.WebFetch do
          {:ok, normalized_url, uri} <- URLRules.validate(url, opts),
          :ok <- URLRules.validate_known(normalized_url, opts),
          :ok <- URLRules.validate_domain_filters(uri, opts) do
-      case fetch_cached(normalized_url, opts) do
+      case Cache.fetch(normalized_url, opts) do
         {:ok, result} ->
           {:ok, result}
 
@@ -153,16 +153,7 @@ defmodule Jido.Browser.WebFetch do
 
   @doc false
   @spec clear_cache() :: :ok
-  def clear_cache do
-    case :ets.whereis(@cache_table) do
-      :undefined ->
-        :ok
-
-      table ->
-        :ets.delete_all_objects(table)
-        :ok
-    end
-  end
+  def clear_cache, do: Cache.clear()
 
   defp do_fetch(url, opts) do
     with {:ok, request_opts, cookie_file} <- prepare_redirect_chain(opts) do
@@ -170,7 +161,7 @@ defmodule Jido.Browser.WebFetch do
         with {:ok, response, final_url, _final_uri} <- fetch_with_redirects(url, request_opts),
              :ok <- validate_http_status(response, url),
              {:ok, result} <- build_result(url, final_url, response, request_opts) do
-          maybe_store_cache(url, request_opts, result)
+          Cache.store(url, request_opts, result)
           {:ok, result}
         end
       after
@@ -801,62 +792,6 @@ defmodule Jido.Browser.WebFetch do
          document_type: document_type,
          reason: error
        })}
-  end
-
-  defp fetch_cached(url, opts) do
-    if opts[:cache] do
-      ensure_cache_table!()
-      lookup_cached_result(cache_key(url, opts), System.system_time(:millisecond))
-    else
-      :miss
-    end
-  end
-
-  defp lookup_cached_result(key, now) do
-    case :ets.lookup(@cache_table, key) do
-      [{_key, expires_at, result}] -> handle_cached_result(key, expires_at, result, now)
-      [] -> :miss
-    end
-  end
-
-  defp handle_cached_result(_key, expires_at, result, now) when expires_at > now do
-    {:ok, Map.put(result, :cached, true)}
-  end
-
-  defp handle_cached_result(key, _expires_at, _result, _now) do
-    :ets.delete(@cache_table, key)
-    :miss
-  end
-
-  defp maybe_store_cache(url, opts, result) do
-    if opts[:cache] do
-      ensure_cache_table!()
-
-      expires_at = System.system_time(:millisecond) + max(opts[:cache_ttl_ms], 0)
-      :ets.insert(@cache_table, {cache_key(url, opts), expires_at, result})
-    end
-
-    :ok
-  end
-
-  defp ensure_cache_table! do
-    case :ets.whereis(@cache_table) do
-      :undefined ->
-        try do
-          :ets.new(@cache_table, [:named_table, :set, :public, read_concurrency: true, write_concurrency: true])
-        rescue
-          ArgumentError -> @cache_table
-        end
-
-      table ->
-        table
-    end
-  end
-
-  defp cache_key(url, opts) do
-    {:jido_browser_web_fetch, url, opts[:format], opts[:selector], opts[:allowed_domains], opts[:blocked_domains],
-     opts[:focus_terms], opts[:focus_window], opts[:max_content_tokens], opts[:max_response_bytes], opts[:citations],
-     opts[:extractous], opts[:backend], opts[:req], opts[:browsey], opts[:allow_private_network]}
   end
 
   defp response_content_type(response) do
