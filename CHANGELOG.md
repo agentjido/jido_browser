@@ -7,9 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/agentjido/jido_browser/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/agentjido/jido_browser/compare/v2.3.0...HEAD
 
 <!-- changelog -->
+
+## [v2.3.0](https://github.com/agentjido/jido_browser/compare/v2.2.0...v2.3.0) (2026-08-27)
+
+
+
+
+### Bug Fixes:
+
+* browsey: handle fast process exits without a PID race (#113) by mikehostetler
+
+* installer: stop on all browser installation failures (#106) by mikehostetler
+
+* agent_browser: make binary selection deterministic (#104) by mikehostetler
+
+* agent_browser: support AgentBrowser 0.35.1 daemon payloads (#100) by mikehostetler
+
+### Refactoring:
+
+* session: derive the struct contract from Zoi (#101) by mikehostetler
+
+* plugin: define actions and routes once (#99) by mikehostetler
+
+### Deprecated:
+
+* adapters: publish support tiers and warnings (#108) by mikehostetler
+
+### Security:
+
+* web_fetch: cap response bytes during transport (#109) by mikehostetler
+
+* web_fetch: enforce destination and redirect policy (#105) by mikehostetler
 
 ## [v2.2.0](https://github.com/agentjido/jido_browser/compare/v2.1.0...v2.2.0) (2026-08-10)
 
