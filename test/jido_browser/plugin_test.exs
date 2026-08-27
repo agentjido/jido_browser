@@ -3,6 +3,59 @@ defmodule Jido.Browser.PluginTest do
 
   alias Jido.Browser.Plugin
 
+  @action_registry_contract [
+    {Jido.Browser.Actions.StartSession, "browser.start_session"},
+    {Jido.Browser.Actions.EndSession, "browser.end_session"},
+    {Jido.Browser.Actions.GetStatus, "browser.get_status"},
+    {Jido.Browser.Actions.PoolStatus, "browser.pool_status"},
+    {Jido.Browser.Actions.SaveState, "browser.save_state"},
+    {Jido.Browser.Actions.LoadState, "browser.load_state"},
+    {Jido.Browser.Actions.Navigate, "browser.navigate"},
+    {Jido.Browser.Actions.Back, "browser.back"},
+    {Jido.Browser.Actions.Forward, "browser.forward"},
+    {Jido.Browser.Actions.Reload, "browser.reload"},
+    {Jido.Browser.Actions.GetUrl, "browser.get_url"},
+    {Jido.Browser.Actions.GetTitle, "browser.get_title"},
+    {Jido.Browser.Actions.Click, "browser.click"},
+    {Jido.Browser.Actions.Type, "browser.type"},
+    {Jido.Browser.Actions.Hover, "browser.hover"},
+    {Jido.Browser.Actions.Focus, "browser.focus"},
+    {Jido.Browser.Actions.Scroll, "browser.scroll"},
+    {Jido.Browser.Actions.SelectOption, "browser.select_option"},
+    {Jido.Browser.Actions.Wait, "browser.wait"},
+    {Jido.Browser.Actions.WaitForSelector, "browser.wait_for_selector"},
+    {Jido.Browser.Actions.WaitForNavigation, "browser.wait_for_navigation"},
+    {Jido.Browser.Actions.Query, "browser.query"},
+    {Jido.Browser.Actions.GetText, "browser.get_text"},
+    {Jido.Browser.Actions.GetAttribute, "browser.get_attribute"},
+    {Jido.Browser.Actions.IsVisible, "browser.is_visible"},
+    {Jido.Browser.Actions.ListTabs, "browser.tab_list"},
+    {Jido.Browser.Actions.NewTab, "browser.tab_new"},
+    {Jido.Browser.Actions.SwitchTab, "browser.tab_switch"},
+    {Jido.Browser.Actions.CloseTab, "browser.tab_close"},
+    {Jido.Browser.Actions.Snapshot, "browser.snapshot"},
+    {Jido.Browser.Actions.Screenshot, "browser.screenshot"},
+    {Jido.Browser.Actions.ExtractContent, "browser.extract"},
+    {Jido.Browser.Actions.Console, "browser.console"},
+    {Jido.Browser.Actions.Errors, "browser.errors"},
+    {Jido.Browser.Actions.Evaluate, "browser.evaluate"},
+    {Jido.Browser.Actions.ReadPage, "browser.read_page"},
+    {Jido.Browser.Actions.SnapshotUrl, "browser.snapshot_url"},
+    {Jido.Browser.Actions.SearchWeb, "browser.search_web"},
+    {Jido.Browser.Actions.WebFetch, "browser.web_fetch"},
+    {Jido.Browser.Actions.FetchRich, "browser.fetch_rich"}
+  ]
+
+  test "keeps registry actions, routes, and signal patterns in contract order" do
+    expected_actions = Enum.map(@action_registry_contract, &elem(&1, 0))
+    expected_routes = Enum.map(@action_registry_contract, fn {action, signal_name} -> {signal_name, action} end)
+    expected_patterns = Enum.map(@action_registry_contract, &elem(&1, 1))
+
+    assert Plugin.actions() == expected_actions
+    assert Plugin.signal_routes(%{}) == expected_routes
+    assert Plugin.signal_patterns() == expected_patterns
+  end
+
   describe "plugin metadata" do
     test "has correct name" do
       assert Plugin.name() == "browser"
