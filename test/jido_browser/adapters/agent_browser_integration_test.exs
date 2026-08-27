@@ -163,7 +163,8 @@ defmodule Jido.Browser.Adapters.AgentBrowserIntegrationTest do
       {:ok, session, _nav_result} =
         Browser.navigate(session, "#{base_url}/console-and-errors", timeout: @command_timeout)
 
-      Process.sleep(750)
+      {:ok, session, _wait_result} =
+        Browser.wait_for_selector(session, "#diagnostics-ready", state: :visible, timeout: 5_000)
 
       {:ok, _session, result} = Browser.console(session, timeout: @command_timeout)
       assert serialized(result) =~ "fixture-console-ready"
@@ -173,7 +174,8 @@ defmodule Jido.Browser.Adapters.AgentBrowserIntegrationTest do
       {:ok, session, _nav_result} =
         Browser.navigate(session, "#{base_url}/console-and-errors", timeout: @command_timeout)
 
-      Process.sleep(750)
+      {:ok, session, _wait_result} =
+        Browser.wait_for_selector(session, "#diagnostics-ready", state: :visible, timeout: 5_000)
 
       {:ok, _session, result} = Browser.errors(session, timeout: @command_timeout)
       serialized = serialized(result)

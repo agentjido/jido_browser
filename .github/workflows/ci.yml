@@ -23,3 +23,141 @@ jobs:
     with:
       docs_command: mix docs -f html
       test_command: mix coveralls
+
+  agent-browser-smoke:
+    name: AgentBrowser smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      MIX_ENV: test
+      JIDO_BROWSER_REQUIRE_AGENT_BROWSER: "true"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Prepare AgentBrowser runtime root
+        shell: bash
+        run: |
+          set -euo pipefail
+          job_root="$(mktemp -d "$RUNNER_TEMP/jido-ab.XXXXXX")"
+          mkdir -p "$job_root/socket" "$job_root/tmp" "$job_root/xdg-runtime"
+          chmod 700 "$job_root/xdg-runtime"
+          printf '%s\n' "$job_root" > "$job_root/.jido-browser-agent-browser-root"
+
+          {
+            echo "AGENT_BROWSER_JOB_ROOT=$job_root"
+            echo "AGENT_BROWSER_SOCKET_DIR=$job_root/socket"
+            echo "TMPDIR=$job_root/tmp"
+            echo "TMP=$job_root/tmp"
+            echo "TEMP=$job_root/tmp"
+            echo "XDG_RUNTIME_DIR=$job_root/xdg-runtime"
+          } >> "$GITHUB_ENV"
+
+      - name: Setup Beam
+        uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          otp-version: "27"
+          elixir-version: "1.18"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+          mix compile --warnings-as-errors
+
+      - name: Install supported AgentBrowser
+        id: agent_browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          mix jido_browser.install agent_browser --if-missing
+
+          binary_path="$(mix run --no-start -e 'IO.write(Jido.Browser.Installer.bin_path(:agent_browser) || "")')"
+          supported_version="$(mix run --no-start -e 'IO.write(Jido.Browser.AgentBrowser.Runtime.supported_version())')"
+
+          test -x "$binary_path"
+          detected_version="$("$binary_path" --version)"
+          test "$detected_version" = "agent-browser $supported_version"
+          echo "binary_path=$binary_path" >> "$GITHUB_OUTPUT"
+
+          chromium_launcher=""
+
+          for command_name in google-chrome-stable google-chrome chromium chromium-browser; do
+            candidate="$(command -v "$command_name" 2>/dev/null || true)"
+
+            if [[ -n "$candidate" && -x "$candidate" ]]; then
+              chromium_launcher="$(readlink -f -- "$candidate")"
+              break
+            fi
+          done
+
+          test -x "$chromium_launcher"
+          chromium_version="$("$chromium_launcher" --version)"
+
+          case "$chromium_version" in
+            *Chrome*|*Chromium*) ;;
+            *)
+              echo "The installed browser is not Chromium: $chromium_version" >&2
+              exit 1
+              ;;
+          esac
+
+          trusted_chromium_executables=()
+
+          add_trusted_chromium_executable() {
+            local executable_path="$1"
+            local canonical_path
+            local existing_path
+
+            [[ -x "$executable_path" ]] || return 0
+            canonical_path="$(readlink -f -- "$executable_path")"
+
+            for existing_path in "${trusted_chromium_executables[@]}"; do
+              [[ "$existing_path" == "$canonical_path" ]] && return 0
+            done
+
+            trusted_chromium_executables+=("$canonical_path")
+          }
+
+          add_trusted_chromium_executable "$chromium_launcher"
+          chromium_install_dir="$(dirname -- "$chromium_launcher")"
+
+          for sibling_name in chrome chrome_crashpad_handler chromium headless_shell; do
+            add_trusted_chromium_executable "$chromium_install_dir/$sibling_name"
+          done
+
+          trusted_chromium_list="$(IFS=:; echo "${trusted_chromium_executables[*]}")"
+
+          {
+            echo "AGENT_BROWSER_EXECUTABLE_PATH=$chromium_launcher"
+            echo "AGENT_BROWSER_CHROMIUM_BINARY=$chromium_launcher"
+            echo "AGENT_BROWSER_CHROMIUM_EXECUTABLES=$trusted_chromium_list"
+          } >> "$GITHUB_ENV"
+
+      - name: Prove forced AgentBrowser cleanup
+        shell: bash
+        env:
+          AGENT_BROWSER_BINARY: ${{ steps.agent_browser.outputs.binary_path }}
+        run: |
+          set -euo pipefail
+          bash .github/scripts/test-agent-browser-cleanup.sh
+
+      - name: Run required AgentBrowser smoke suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          mix test test/jido_browser/adapters/agent_browser_smoke_test.exs \
+            --include integration \
+            --only agent_browser_smoke \
+            --trace
+
+      - name: Clean up AgentBrowser processes
+        if: ${{ always() }}
+        shell: bash
+        env:
+          AGENT_BROWSER_BINARY: ${{ steps.agent_browser.outputs.binary_path }}
+        run: |
+          bash .github/scripts/cleanup-agent-browser.sh

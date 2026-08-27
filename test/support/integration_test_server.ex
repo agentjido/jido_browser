@@ -288,6 +288,7 @@ defmodule Jido.Browser.TestSupport.IntegrationTestServer do
        <body>
          <h1>Console And Errors Fixture</h1>
          <p>Used to validate browser diagnostics collection.</p>
+         <p id="diagnostics-ready" hidden>Diagnostics ready</p>
          <script>
            window.addEventListener("load", function () {
              console.log("fixture-console-ready");
@@ -300,6 +301,10 @@ defmodule Jido.Browser.TestSupport.IntegrationTestServer do
              window.setTimeout(function () {
                throw new Error("fixture-page-error");
              }, 100);
+
+             window.setTimeout(function () {
+               document.getElementById("diagnostics-ready").hidden = false;
+             }, 150);
            });
          </script>
        </body>
