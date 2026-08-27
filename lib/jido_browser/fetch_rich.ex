@@ -7,6 +7,11 @@ defmodule Jido.Browser.FetchRich do
   """
 
   alias Jido.Browser.Error
+  alias Jido.Browser.SessionOperations
+  alias Jido.Browser.WebFetch
+
+  @default_timeout 30_000
+  @supported_web_fetch_formats [:markdown, :html, :text]
 
   @http_option_keys [
     :allow_private_network,
@@ -69,7 +74,7 @@ defmodule Jido.Browser.FetchRich do
     web_opts = opts |> Keyword.take(@http_option_keys) |> put_backend(backend)
     retrieval_path = http_retrieval_path(backend, web_opts)
 
-    case Jido.Browser.web_fetch(url, web_opts) do
+    case web_fetch(url, web_opts) do
       {:ok, result} -> handle_http_success(result, retrieval_path, url, opts, rest)
       {:error, reason} -> handle_http_error(reason, last_result, url, opts, rest)
     end
@@ -121,10 +126,10 @@ defmodule Jido.Browser.FetchRich do
   end
 
   defp fetch_browser(url, opts, fallback_reason) do
-    case Jido.Browser.start_session(browser_start_opts(opts)) do
+    case SessionOperations.start_session(browser_start_opts(opts)) do
       {:ok, session} ->
         try do
-          with {:ok, session, nav_result} <- Jido.Browser.navigate(session, url, timeout: opts[:timeout]),
+          with {:ok, session, nav_result} <- SessionOperations.navigate(session, url, timeout: opts[:timeout]),
                {:ok, result} <- browser_result(session, nav_result, url, opts, fallback_reason) do
             {:ok, result}
           else
@@ -137,7 +142,7 @@ defmodule Jido.Browser.FetchRich do
                })}
           end
         after
-          _ = Jido.Browser.end_session(session)
+          _ = SessionOperations.end_session(session)
         end
 
       {:error, reason} ->
@@ -172,7 +177,7 @@ defmodule Jido.Browser.FetchRich do
       |> Keyword.put_new(:selector, "body")
       |> Keyword.put_new(:max_content_length, max_content_length(opts))
 
-    case Jido.Browser.snapshot(session, snapshot_opts) do
+    case SessionOperations.snapshot(session, snapshot_opts) do
       {:ok, _session, snapshot} when is_map(snapshot) ->
         content = snapshot_content(snapshot)
 
@@ -200,7 +205,7 @@ defmodule Jido.Browser.FetchRich do
       |> Keyword.put_new(:format, :markdown)
       |> Keyword.put_new(:selector, "body")
 
-    with {:ok, _session, result} <- Jido.Browser.extract_content(session, extract_opts) do
+    with {:ok, _session, result} <- SessionOperations.extract_content(session, extract_opts) do
       {:ok,
        %{
          content: result_value(result, :content) || "",
@@ -262,6 +267,24 @@ defmodule Jido.Browser.FetchRich do
 
   defp put_backend(opts, :default), do: Keyword.delete(opts, :backend)
   defp put_backend(opts, backend), do: Keyword.put(opts, :backend, backend)
+
+  defp web_fetch(url, _opts) when url in [nil, ""] do
+    {:error, Error.invalid_error("URL cannot be nil or empty", %{url: url})}
+  end
+
+  defp web_fetch(url, opts) do
+    format = opts[:format] || :markdown
+
+    if format in @supported_web_fetch_formats do
+      WebFetch.fetch(url, Keyword.put_new(opts, :timeout, @default_timeout))
+    else
+      {:error,
+       Error.invalid_error("Unsupported web fetch format: #{inspect(format)}", %{
+         format: format,
+         supported: @supported_web_fetch_formats
+       })}
+    end
+  end
 
   defp http_retrieval_path(:browsey, _opts), do: :browsey
   defp http_retrieval_path(Jido.Browser.WebFetch.Backends.Browsey, _opts), do: :browsey

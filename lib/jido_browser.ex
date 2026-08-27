@@ -11,15 +11,14 @@ defmodule Jido.Browser do
   alias Jido.Browser.FetchRich
   alias Jido.Browser.PoolAdapter
   alias Jido.Browser.Session
+  alias Jido.Browser.SessionOperations
   alias Jido.Browser.WarmPool.Manager
-  alias Jido.Browser.WarmPool.Names
   alias Jido.Browser.WarmPool.TreeSupervisor
   alias Jido.Browser.WebFetch
 
   @default_adapter Jido.Browser.Adapters.AgentBrowser
   @default_timeout 30_000
   @supported_screenshot_formats [:png]
-  @supported_extract_formats [:markdown, :html, :text]
   @supported_web_fetch_formats [:markdown, :html, :text]
 
   @doc """
@@ -54,42 +53,18 @@ defmodule Jido.Browser do
 
   @doc "Starts a browser session using the configured adapter or an explicit adapter override."
   @spec start_session(keyword()) :: {:ok, Session.t()} | {:error, term()}
-  def start_session(opts \\ []) do
-    with {:ok, adapter} <- resolve_session_adapter(opts),
-         :ok <- Deprecations.warn(adapter),
-         :ok <- validate_pool_capability(adapter, opts) do
-      case adapter.start_session(opts) do
-        {:ok, %Session{} = session} ->
-          {:ok, session}
-
-        %Session{} = session ->
-          {:ok, session}
-
-        {:error, _reason} = error ->
-          error
-
-        other ->
-          {:error, Error.adapter_error("Adapter returned invalid session result", %{adapter: adapter, result: other})}
-      end
-    end
-  end
+  def start_session(opts \\ []), do: SessionOperations.start_session(opts)
 
   @doc "Ends an active browser session."
   @spec end_session(Session.t()) :: :ok | {:error, term()}
-  def end_session(%Session{} = session), do: session.adapter.end_session(session)
+  def end_session(%Session{} = session), do: SessionOperations.end_session(session)
 
   @doc "Navigates the current session to a URL."
   @spec navigate(Session.t(), String.t(), keyword()) ::
           {:ok, Session.t(), map()} | {:error, term()}
   def navigate(session, url, opts \\ [])
 
-  def navigate(%Session{}, url, _opts) when url in [nil, ""] do
-    {:error, Error.invalid_error("URL cannot be nil or empty", %{url: url})}
-  end
-
-  def navigate(%Session{} = session, url, opts) do
-    session.adapter.navigate(session, url, normalize_timeout(opts))
-  end
+  def navigate(%Session{} = session, url, opts), do: SessionOperations.navigate(session, url, opts)
 
   @doc "Clicks an element identified by a selector or agent-browser ref."
   @spec click(Session.t(), String.t(), keyword()) ::
@@ -136,25 +111,7 @@ defmodule Jido.Browser do
   @doc "Extracts page content as markdown, HTML, or text."
   @spec extract_content(Session.t(), keyword()) ::
           {:ok, Session.t(), map()} | {:error, term()}
-  def extract_content(%Session{} = session, opts \\ []) do
-    format = opts[:format] || :markdown
-
-    if format in @supported_extract_formats do
-      opts =
-        opts
-        |> Keyword.put_new(:format, :markdown)
-        |> Keyword.put_new(:selector, "body")
-        |> normalize_timeout()
-
-      session.adapter.extract_content(session, opts)
-    else
-      {:error,
-       Error.invalid_error("Unsupported extract format: #{inspect(format)}", %{
-         format: format,
-         supported: @supported_extract_formats
-       })}
-    end
-  end
+  def extract_content(%Session{} = session, opts \\ []), do: SessionOperations.extract_content(session, opts)
 
   @doc """
   Fetches a URL over HTTP(S) without starting a browser session.
@@ -519,27 +476,7 @@ defmodule Jido.Browser do
 
   @doc "Returns an agent-oriented page snapshot with ref metadata when supported."
   @spec snapshot(Session.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, term()}
-  def snapshot(%Session{} = session, opts \\ []) do
-    command_or_fallback(session, :snapshot, opts, fn ->
-      selector = opts[:selector] || "body"
-      max_content_length = opts[:max_content_length] || 50_000
-
-      script = """
-      (function snapshot(selector, maxContentLength) {
-        const root = document.querySelector(selector) || document.body;
-        return {
-          url: window.location.href,
-          title: document.title,
-          origin: window.location.href,
-          snapshot: root.innerText.substring(0, maxContentLength),
-          refs: {}
-        };
-      })(#{Jason.encode!(selector)}, #{max_content_length})
-      """
-
-      evaluate(session, script, opts)
-    end)
-  end
+  def snapshot(%Session{} = session, opts \\ []), do: SessionOperations.snapshot(session, opts)
 
   @doc "Persists browser session state to disk."
   @spec save_state(Session.t(), String.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, term()}
@@ -774,66 +711,6 @@ defmodule Jido.Browser do
 
   defp configured_adapter do
     Application.get_env(:jido_browser, :adapter, @default_adapter)
-  end
-
-  defp adapter_for_pool(pool) do
-    case Names.resolve_manager(pool) do
-      {:ok, pid} ->
-        case GenServer.call(pid, :adapter) do
-          adapter when is_atom(adapter) ->
-            {:ok, adapter}
-
-          other ->
-            {:error, Error.adapter_error("Warm pool adapter could not be resolved", %{pool: pool, adapter: other})}
-        end
-
-      {:error, :pool_not_found} ->
-        {:error, Error.adapter_error("No warm pool available", %{pool: pool})}
-    end
-  catch
-    :exit, reason ->
-      {:error, Error.adapter_error("Failed to resolve warm pool adapter", %{pool: pool, reason: reason})}
-  end
-
-  defp resolve_session_adapter(opts) do
-    case opts[:pool] do
-      nil ->
-        {:ok, opts[:adapter] || configured_adapter()}
-
-      pool ->
-        maybe_resolve_pool_adapter(pool, opts[:adapter])
-    end
-  end
-
-  defp maybe_resolve_pool_adapter(pool, nil), do: adapter_for_pool(pool)
-
-  defp maybe_resolve_pool_adapter(pool, explicit_adapter) do
-    case adapter_for_pool(pool) do
-      {:ok, pool_adapter} when pool_adapter != explicit_adapter ->
-        {:error,
-         Error.invalid_error(
-           "Pool #{inspect(pool)} belongs to adapter #{inspect(pool_adapter)}, not #{inspect(explicit_adapter)}",
-           %{pool: pool, pool_adapter: pool_adapter, adapter: explicit_adapter}
-         )}
-
-      {:ok, _pool_adapter} ->
-        {:ok, explicit_adapter}
-
-      {:error, _reason} ->
-        {:ok, explicit_adapter}
-    end
-  end
-
-  defp validate_pool_capability(adapter, opts) do
-    if opts[:pool] && not PoolAdapter.supports_pools?(adapter) do
-      {:error,
-       Error.invalid_error(
-         "Adapter #{inspect(adapter)} does not support pooled sessions",
-         %{adapter: adapter}
-       )}
-    else
-      :ok
-    end
   end
 
   defp normalize_timeout(opts), do: Keyword.put_new(opts, :timeout, @default_timeout)
