@@ -150,6 +150,10 @@ defmodule Jido.Browser.Adapters.LightpandaTest do
           assert {:ok, session} = Browser.start_session(adapter: Lightpanda, pool: pool_name)
           assert session.adapter == Lightpanda
           assert session.runtime.pooled == true
+          assert session.runtime.pool == pool_name
+          assert session.runtime.manager_module == Jido.Browser.WarmPool.Lease
+          assert session.opts.checkout_timeout == 5_000
+          assert String.starts_with?(session.runtime.session_id, "lightpanda-pool-")
           assert session.connection.cdp_session == first_cdp_session
 
           assert {:ok, session, %{url: "https://example.com"}} =

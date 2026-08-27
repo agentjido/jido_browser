@@ -475,7 +475,8 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
           size: size,
           adapter: __MODULE__,
           worker_opts: session_opts,
-          pool_runtime_module: Keyword.get(opts, :pool_runtime_module, Jido.Browser.AgentBrowser.PoolRuntime)
+          pool_runtime_module: Keyword.get(opts, :pool_runtime_module, Jido.Browser.AgentBrowser.PoolRuntime),
+          pool_runtime_context: %{session_runtime_metadata: &Runtime.session_runtime_metadata/2}
         ] ++ pool_opts ++ extra_manager_opts
 
       startup_timeout =

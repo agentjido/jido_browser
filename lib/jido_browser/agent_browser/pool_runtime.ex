@@ -2,8 +2,8 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
   @moduledoc false
   @behaviour Jido.Browser.WarmPool.Runtime
 
-  alias Jido.Browser.AgentBrowser.Runtime
   alias Jido.Browser.AgentBrowser.SessionServer
+  alias Jido.Browser.WarmPool.Runtime, as: PoolRuntimeBoundary
 
   @type worker_state :: %{
           session_id: String.t(),
@@ -15,8 +15,10 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
 
   @doc false
   @spec start_worker(map()) :: {:ok, worker_state()} | {:error, term()}
-  def start_worker(%{worker_opts: session_opts, session_supervisor: session_supervisor}) do
+  def start_worker(%{worker_opts: session_opts, session_supervisor: session_supervisor} = pool_state) do
     session_id = Uniq.UUID.uuid4()
+    runtime_context = PoolRuntimeBoundary.context(pool_state)
+    session_runtime_metadata = Map.fetch!(runtime_context, :session_runtime_metadata)
 
     child_spec =
       {SessionServer,
@@ -32,7 +34,7 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
            binary: Keyword.fetch!(session_opts, :binary),
            manager: pid,
            health_check_timeout: Keyword.get(session_opts, :health_check_timeout, 2_000),
-           runtime: Runtime.session_runtime_metadata(session_id, pid)
+           runtime: session_runtime_metadata.(session_id, pid)
          }}
 
       {:error, {:already_started, pid}} ->
@@ -42,7 +44,7 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
            binary: Keyword.fetch!(session_opts, :binary),
            manager: pid,
            health_check_timeout: Keyword.get(session_opts, :health_check_timeout, 2_000),
-           runtime: Runtime.session_runtime_metadata(session_id, pid)
+           runtime: session_runtime_metadata.(session_id, pid)
          }}
 
       {:error, reason} ->

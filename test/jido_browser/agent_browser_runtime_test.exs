@@ -7,6 +7,7 @@ defmodule Jido.Browser.AgentBrowserRuntimeTest do
   alias Jido.Browser.AgentBrowser.SessionServer
   alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.TestSupport.FakeAgentBrowser
+  alias Jido.Browser.WarmPool.Names
 
   describe "application bootstrap" do
     test "ensure_started restarts the browser application after it has been stopped" do
@@ -132,6 +133,49 @@ defmodule Jido.Browser.AgentBrowserRuntimeTest do
   end
 
   describe "pool runtime" do
+    test "the AgentBrowser adapter wires the default pool runtime and keeps pool registration" do
+      FakeAgentBrowser.with_binary(:normal, fn binary, _socket_dir ->
+        with_agent_browser_config([binary_path: binary], fn ->
+          name = "agent-browser-runtime-#{System.unique_integer([:positive])}"
+
+          assert {:ok, pool} =
+                   Jido.Browser.start_pool(
+                     adapter: AgentBrowser,
+                     name: name,
+                     size: 1,
+                     timeout: 1_000,
+                     startup_timeout: 5_000
+                   )
+
+          try do
+            assert {:ok, ^pool} = Names.resolve_tree(name)
+            assert {:ok, manager} = Names.resolve_manager(name)
+            assert Process.alive?(manager)
+
+            assert {:ok, session} = Jido.Browser.start_session(adapter: AgentBrowser, pool: name)
+            assert session.adapter == AgentBrowser
+            assert session.runtime.pool == name
+            assert session.runtime.pooled == true
+            assert session.runtime.manager_module == Jido.Browser.WarmPool.Lease
+            assert session.opts.checkout_timeout == 5_000
+            assert :error = Runtime.lookup_session_server(session.runtime.session_id)
+
+            assert {:ok, ^session, %{"title" => "Ready", "url" => nil}} =
+                     Jido.Browser.get_title(session, timeout: 1_000)
+
+            assert :ok = Jido.Browser.end_session(session)
+          after
+            assert :ok = Jido.Browser.stop_pool(pool)
+          end
+
+          assert_eventually(fn ->
+            assert {:error, :pool_not_found} = Names.resolve_tree(name)
+            assert {:error, :pool_not_found} = Names.resolve_manager(name)
+          end)
+        end)
+      end)
+    end
+
     test "starts a pool-local worker, dispatches commands, and shuts it down" do
       FakeAgentBrowser.with_binary(:normal, fn binary, _socket_dir ->
         session_supervisor = start_supervised!({DynamicSupervisor, strategy: :one_for_one})
@@ -139,8 +183,21 @@ defmodule Jido.Browser.AgentBrowserRuntimeTest do
         assert {:ok, worker_state} =
                  PoolRuntime.start_worker(%{
                    worker_opts: [binary: binary, timeout: 1_000],
-                   session_supervisor: session_supervisor
+                   session_supervisor: session_supervisor,
+                   runtime_context: %{session_runtime_metadata: &Runtime.session_runtime_metadata/2}
                  })
+
+        assert worker_state.binary == binary
+        assert worker_state.health_check_timeout == 2_000
+        assert worker_state.runtime.transport == :agent_browser_ipc
+        assert worker_state.runtime.session_id == worker_state.session_id
+        assert worker_state.runtime.manager == worker_state.manager
+        assert :error = Runtime.lookup_session_server(worker_state.session_id)
+
+        assert Enum.any?(DynamicSupervisor.which_children(session_supervisor), fn
+                 {_id, pid, :worker, [SessionServer]} -> pid == worker_state.manager
+                 _child -> false
+               end)
 
         assert :ok = PoolRuntime.health_check(worker_state)
 
@@ -152,6 +209,7 @@ defmodule Jido.Browser.AgentBrowserRuntimeTest do
         assert :ok = PoolRuntime.shutdown_worker(worker_state)
         assert_receive {:DOWN, ^ref, :process, ^manager, :normal}, 1_000
         assert {:error, :session_unavailable} = PoolRuntime.health_check(worker_state)
+        assert DynamicSupervisor.which_children(session_supervisor) == []
       end)
     end
   end
@@ -261,5 +319,19 @@ defmodule Jido.Browser.AgentBrowserRuntimeTest do
     after
       Process.flag(:trap_exit, old)
     end
+  end
+
+  defp assert_eventually(fun, attempts \\ 100)
+
+  defp assert_eventually(fun, attempts) when attempts > 0 do
+    fun.()
+  rescue
+    error ->
+      if attempts == 1 do
+        reraise error, __STACKTRACE__
+      else
+        Process.sleep(10)
+        assert_eventually(fun, attempts - 1)
+      end
   end
 end

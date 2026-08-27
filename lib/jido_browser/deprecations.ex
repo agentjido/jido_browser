@@ -5,10 +5,12 @@ defmodule Jido.Browser.Deprecations do
 
   require Logger
 
-  @agent_browser Jido.Browser.Adapters.AgentBrowser
-  @browsey_backend Jido.Browser.WebFetch.Backends.Browsey
+  # Literal module atoms preserve exact selections without compile dependencies.
+  @agent_browser :"Elixir.Jido.Browser.Adapters.AgentBrowser"
+  @browsey_backend :"Elixir.Jido.Browser.WebFetch.Backends.Browsey"
+  @browsey_http :"Elixir.Jido.Browser.Vendor.BrowseyHttp"
   @state_key {__MODULE__, :boot_warning_state}
-  @web_adapter Jido.Browser.Adapters.Web
+  @web_adapter :"Elixir.Jido.Browser.Adapters.Web"
 
   @web_warning "#{inspect(@web_adapter)} (the Web adapter runtime) is deprecated and will be removed in " <>
                  "Jido Browser 3.0. Use #{inspect(@agent_browser)} instead."
@@ -78,7 +80,7 @@ defmodule Jido.Browser.Deprecations do
   defp deprecation(@web_adapter), do: {:web, @web_warning}
   defp deprecation(:web), do: {:web, @web_warning}
   defp deprecation(@browsey_backend), do: {:browsey, @browsey_warning}
-  defp deprecation(Jido.Browser.Vendor.BrowseyHttp), do: {:browsey, @browsey_warning}
+  defp deprecation(@browsey_http), do: {:browsey, @browsey_warning}
   defp deprecation(:browsey), do: {:browsey, @browsey_warning}
   defp deprecation(_selection), do: nil
 

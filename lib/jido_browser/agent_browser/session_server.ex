@@ -3,7 +3,7 @@ defmodule Jido.Browser.AgentBrowser.SessionServer do
 
   use GenServer
 
-  alias Jido.Browser.AgentBrowser.Runtime
+  alias Jido.Browser.AgentBrowser.Protocol
 
   @startup_attempts 50
   @startup_interval 100
@@ -79,7 +79,7 @@ defmodule Jido.Browser.AgentBrowser.SessionServer do
 
     session_id = Keyword.fetch!(opts, :session_id)
     binary = Keyword.fetch!(opts, :binary)
-    endpoint = Runtime.endpoint(session_id)
+    endpoint = Protocol.endpoint(session_id)
 
     state = %__MODULE__{
       session_id: session_id,
@@ -101,7 +101,7 @@ defmodule Jido.Browser.AgentBrowser.SessionServer do
 
   @impl true
   def handle_call(:metadata, _from, state) do
-    {:reply, Runtime.session_runtime_metadata(state.session_id, self()), state}
+    {:reply, Protocol.session_runtime_metadata(state.session_id, self()), state}
   end
 
   def handle_call({:command, payload, timeout}, _from, state) do
@@ -142,13 +142,13 @@ defmodule Jido.Browser.AgentBrowser.SessionServer do
   end
 
   defp ensure_socket_dir do
-    File.mkdir_p(Runtime.socket_dir())
+    File.mkdir_p(Protocol.socket_dir())
   end
 
   defp start_daemon(state) do
     env =
       state.session_id
-      |> Runtime.daemon_env(state.opts)
+      |> Protocol.daemon_env(state.opts)
       |> Enum.map(fn {key, value} ->
         {String.to_charlist(key), String.to_charlist(value)}
       end)
@@ -195,16 +195,16 @@ defmodule Jido.Browser.AgentBrowser.SessionServer do
   end
 
   defp ping(state) do
-    payload = %{"id" => Runtime.request_id(), "action" => "title"}
+    payload = %{"id" => Protocol.request_id(), "action" => "title"}
 
-    case do_dispatch(payload, Runtime.default_daemon_timeout(), state) do
+    case do_dispatch(payload, Protocol.default_daemon_timeout(), state) do
       {:ok, data} -> {:ok, data}
       {:error, _reason} -> {:error, :not_ready}
     end
   end
 
   defp dispatch(payload, timeout, state, attempts_left) do
-    payload = Map.put_new(payload, "id", Runtime.request_id())
+    payload = Map.put_new(payload, "id", Protocol.request_id())
 
     case do_dispatch(payload, timeout, state) do
       {:ok, _data} = ok ->
@@ -221,7 +221,7 @@ defmodule Jido.Browser.AgentBrowser.SessionServer do
   end
 
   defp do_dispatch(payload, timeout, state) do
-    case Runtime.connect(state.session_id, Runtime.default_daemon_timeout()) do
+    case Protocol.connect(state.session_id, Protocol.default_daemon_timeout()) do
       {:ok, socket} ->
         try do
           case send_payload(socket, payload, timeout) do
