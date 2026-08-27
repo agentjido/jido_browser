@@ -26,8 +26,12 @@ Local vendor patches:
 - Modules are namespaced under `Jido.Browser.Vendor.BrowseyHttp` to avoid
   collisions with applications that may depend on upstream BrowseyHttp.
 - Asset lookup points at the `:jido_browser` application priv directory.
-- Process execution uses a local port-based shell runner instead of `erlexec`,
-  because `erlexec` is retired and fails package audit checks.
-- Curl wrapper command arguments are shell-quoted before execution.
-- Runtime options are validated before shell command construction.
+- Process execution uses a structured executable and argument list instead of
+  `erlexec` or `sh -c`. Each curl profile replaces itself with its child, so the
+  port OS PID stays attached to the final native curl process.
+- Curl writes stderr to a request-scoped temporary file and streams stdout to
+  the port.
+- Response overflow and timeout paths send TERM to the exact port PID, wait,
+  send KILL if necessary, and wait for the port exit status before they return.
+- Runtime options are validated before process startup.
 - Cookie jars are request-scoped temporary files instead of a shared temp path.

@@ -8,7 +8,10 @@ defmodule Jido.Browser.TestSupport.WebFetchServer do
           required(:path) => String.t()
         }
   @type response :: %{
-          required(:body) => binary(),
+          optional(:body) => binary(),
+          optional(:chunks) => Enumerable.t(),
+          optional(:declared_content_length) => non_neg_integer(),
+          optional(:framing) => :content_length | :chunked | :close,
           optional(:headers) => [{String.t(), String.t()}],
           required(:status) => pos_integer()
         }
@@ -104,7 +107,7 @@ defmodule Jido.Browser.TestSupport.WebFetchServer do
       case responder.(request) do
         :close -> :ok
         :reset -> reset_socket(transport, socket)
-        response -> send_response(transport, socket, response)
+        response -> send_response(transport, socket, owner, response)
       end
     else
       {:error, reason} -> send(owner, {:web_fetch_server_error, reason})
@@ -171,26 +174,86 @@ defmodule Jido.Browser.TestSupport.WebFetchServer do
     end
   end
 
-  defp send_response(transport, socket, %{status: status, body: body} = response) do
+  defp send_response(transport, socket, owner, %{status: status} = response) do
+    framing = Map.get(response, :framing, :content_length)
+    chunks = Map.get(response, :chunks, [Map.get(response, :body, "")])
+
     headers =
       response
       |> Map.get(:headers, [])
       |> put_new_header("content-type", "text/plain")
-      |> put_header("content-length", Integer.to_string(byte_size(body)))
+      |> response_framing_headers(response, chunks, framing)
       |> put_header("connection", "close")
 
-    payload = [
+    head = [
       "HTTP/1.1 #{status} #{status_reason(status)}\r\n",
       Enum.map(headers, fn {name, value} -> "#{name}: #{value}\r\n" end),
-      "\r\n",
-      body
+      "\r\n"
     ]
 
-    case transport do
-      :tcp -> :gen_tcp.send(socket, payload)
-      :ssl -> :ssl.send(socket, payload)
+    case send_socket(transport, socket, head) do
+      :ok -> send_response_chunks(transport, socket, owner, chunks, framing, response)
+      {:error, _reason} = error -> error
     end
   end
+
+  defp response_framing_headers(headers, response, chunks, :content_length) do
+    declared_content_length =
+      Map.get_lazy(response, :declared_content_length, fn ->
+        chunks |> Enum.map(&IO.iodata_length/1) |> Enum.sum()
+      end)
+
+    headers
+    |> delete_header("transfer-encoding")
+    |> put_header("content-length", Integer.to_string(declared_content_length))
+  end
+
+  defp response_framing_headers(headers, _response, _chunks, :chunked) do
+    headers
+    |> delete_header("content-length")
+    |> put_header("transfer-encoding", "chunked")
+  end
+
+  defp response_framing_headers(headers, _response, _chunks, :close) do
+    headers
+    |> delete_header("content-length")
+    |> delete_header("transfer-encoding")
+  end
+
+  defp send_response_chunks(transport, socket, owner, chunks, framing, response) do
+    delay_ms = Map.get(response, :chunk_delay_ms, 0)
+
+    result =
+      chunks
+      |> Stream.with_index()
+      |> Enum.reduce_while(:ok, fn {chunk, index}, :ok ->
+        if delay_ms > 0, do: Process.sleep(delay_ms)
+
+        payload = encode_response_chunk(chunk, framing)
+        result = send_socket(transport, socket, payload)
+        send(owner, {:web_fetch_server_chunk, self(), index, IO.iodata_length(chunk), result})
+
+        case result do
+          :ok -> {:cont, :ok}
+          {:error, _reason} -> {:halt, result}
+        end
+      end)
+
+    if result == :ok and framing == :chunked do
+      send_socket(transport, socket, "0\r\n\r\n")
+    else
+      result
+    end
+  end
+
+  defp encode_response_chunk(chunk, :chunked) do
+    [Integer.to_string(IO.iodata_length(chunk), 16), "\r\n", chunk, "\r\n"]
+  end
+
+  defp encode_response_chunk(chunk, _framing), do: chunk
+
+  defp send_socket(:tcp, socket, payload), do: :gen_tcp.send(socket, payload)
+  defp send_socket(:ssl, socket, payload), do: :ssl.send(socket, payload)
 
   defp status_reason(200), do: "OK"
   defp status_reason(301), do: "Moved Permanently"
@@ -221,6 +284,8 @@ defmodule Jido.Browser.TestSupport.WebFetchServer do
   end
 
   defp put_header(headers, name, value), do: List.keystore(headers, name, 0, {name, value})
+
+  defp delete_header(headers, name), do: List.keydelete(headers, name, 0)
 
   defp fixture_path(filename) do
     __DIR__

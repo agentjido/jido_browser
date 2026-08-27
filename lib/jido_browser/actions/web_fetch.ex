@@ -26,6 +26,11 @@ defmodule Jido.Browser.Actions.WebFetch do
       focus_terms: [type: {:list, :string}, default: [], doc: "Terms used to filter the fetched document"],
       focus_window: [type: :integer, default: 0, doc: "Paragraph window around each focus match"],
       max_content_tokens: [type: :integer, doc: "Approximate token cap for returned content"],
+      max_response_bytes: [
+        type: :timeout,
+        default: 5 * 1024 * 1024,
+        doc: "Positive response byte cap, or infinity to disable the cap"
+      ],
       citations: [type: :boolean, default: false, doc: "Include citation-ready passage offsets"],
       cache: [type: :boolean, default: true, doc: "Reuse cached fetch results when available"],
       timeout: [type: :integer, doc: "Receive timeout in milliseconds"],
@@ -35,6 +40,13 @@ defmodule Jido.Browser.Actions.WebFetch do
     ]
 
   alias Jido.Browser.Error
+
+  @impl true
+  def on_before_validate_params(params) when is_map(params) do
+    params
+    |> normalize_infinity()
+    |> validate_response_limit()
+  end
 
   @impl true
   def run(params, context) do
@@ -63,6 +75,7 @@ defmodule Jido.Browser.Actions.WebFetch do
     |> maybe_put(:focus_terms, Map.get(params, :focus_terms, []))
     |> maybe_put(:focus_window, Map.get(params, :focus_window, 0))
     |> maybe_put(:max_content_tokens, params[:max_content_tokens])
+    |> maybe_put(:max_response_bytes, Map.get(params, :max_response_bytes, 5 * 1024 * 1024))
     |> maybe_put(:citations, Map.get(params, :citations, false))
     |> maybe_put(:cache, Map.get(params, :cache, true))
     |> maybe_put(:timeout, params[:timeout])
@@ -90,4 +103,21 @@ defmodule Jido.Browser.Actions.WebFetch do
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, _key, []), do: opts
   defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp normalize_infinity(%{max_response_bytes: "infinity"} = params) do
+    %{params | max_response_bytes: :infinity}
+  end
+
+  defp normalize_infinity(params), do: params
+
+  defp validate_response_limit(%{max_response_bytes: value}) when is_integer(value) and value <= 0 do
+    {:error,
+     Error.invalid_error("max_response_bytes must be a positive integer or :infinity", %{
+       error_code: :invalid_input,
+       option: :max_response_bytes,
+       value: value
+     })}
+  end
+
+  defp validate_response_limit(params), do: {:ok, params}
 end

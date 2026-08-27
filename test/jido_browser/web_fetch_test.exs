@@ -370,6 +370,7 @@ defmodule Jido.Browser.WebFetchTest do
 
       assert_receive {:test_backend_fetch, "https://example.com/backend-cache.txt", opts}
       assert opts[:test_pid] == self()
+      assert opts[:max_response_bytes] == 5 * 1024 * 1024
       assert first.content == "req backend content"
       assert second.content == "custom backend content"
     end
@@ -381,6 +382,7 @@ defmodule Jido.Browser.WebFetchTest do
         :jido_browser,
         :web_fetch,
         backend: TestBackend,
+        max_response_bytes: 12_345,
         resolver: Jido.Browser.TestSupport.WebFetchResolver
       )
 
@@ -403,6 +405,7 @@ defmodule Jido.Browser.WebFetchTest do
 
       assert_receive {:test_backend_fetch, "https://example.com/configured-backend.txt", opts}
       assert opts[:test_pid] == self()
+      assert opts[:max_response_bytes] == 12_345
       assert result.content == "custom backend content"
     end
 
@@ -413,9 +416,9 @@ defmodule Jido.Browser.WebFetchTest do
                  format: :markdown,
                  selector: "main",
                  backend: :browsey,
+                 max_response_bytes: 1_000_000,
                  browsey: [
                    browser: :safari,
-                   max_response_size_bytes: 1_000_000,
                    client: TestBrowseyClient,
                    test_pid: self()
                  ]
@@ -443,18 +446,17 @@ defmodule Jido.Browser.WebFetchTest do
       assert result.passages == []
     end
 
-    test "Browsey backend rejects unsafe option values before shell execution" do
-      assert {:error, %Error.AdapterError{} = error} =
+    test "WebFetch rejects unsafe response limit values before shell execution" do
+      assert {:error, %Error.InvalidError{} = error} =
                Jido.Browser.web_fetch(
                  "https://example.com/stealth",
                  backend: :browsey,
                  cache: false,
-                 browsey: [max_response_size_bytes: "1; touch /tmp/jido-browser-owned"]
+                 max_response_bytes: "1; touch /tmp/jido-browser-owned"
                )
 
-      assert error.details.error_code == :unavailable
-      assert %ArgumentError{} = error.details.reason
-      assert error.details.reason.message =~ "max_response_size_bytes"
+      assert error.details.error_code == :invalid_input
+      assert error.details.option == :max_response_bytes
     end
 
     test "vendored Browsey validates browser option aliases" do

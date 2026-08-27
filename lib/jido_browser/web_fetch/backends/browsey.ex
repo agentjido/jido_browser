@@ -12,8 +12,10 @@ defmodule Jido.Browser.WebFetch.Backends.Browsey do
   alias Jido.Browser.Deprecations
   alias Jido.Browser.Error
   alias Jido.Browser.Vendor.BrowseyHttp
+  alias Jido.Browser.Vendor.BrowseyHttp.TooLargeException
 
   @default_client BrowseyHttp
+  @default_max_response_bytes 5 * 1024 * 1024
   @default_timeout 30_000
   @impl true
   def fetch(url, opts) do
@@ -24,6 +26,7 @@ defmodule Jido.Browser.WebFetch.Backends.Browsey do
       |> Keyword.get(:browsey, [])
       |> Keyword.put_new(:timeout, opts[:timeout] || @default_timeout)
       |> Keyword.put(:follow_redirects?, false)
+      |> Keyword.put(:max_response_size_bytes, Keyword.get(opts, :max_response_bytes, @default_max_response_bytes))
       |> Keyword.put(:pinned_request?, Keyword.has_key?(opts, :destination_address))
       |> maybe_pin_destination(url, opts)
 
@@ -33,6 +36,9 @@ defmodule Jido.Browser.WebFetch.Backends.Browsey do
       case client.get(url, browsey_opts) do
         {:ok, response} ->
           normalize_response(response, url)
+
+        {:error, %TooLargeException{} = exception} ->
+          {:error, response_too_large_error(exception)}
 
         {:error, exception} ->
           {:error,
@@ -51,6 +57,20 @@ defmodule Jido.Browser.WebFetch.Backends.Browsey do
          backend: __MODULE__,
          reason: error
        })}
+  end
+
+  defp response_too_large_error(exception) do
+    Error.adapter_error(
+      "Web fetch response exceeds max_response_bytes",
+      %{
+        adapter: __MODULE__,
+        declared_response_bytes: exception.declared_bytes,
+        error_code: :response_too_large,
+        max_response_bytes: exception.max_bytes,
+        observed_response_bytes: exception.observed_bytes,
+        response_byte_semantics: :content_decoded
+      }
+    )
   end
 
   defp maybe_pin_destination(browsey_opts, url, opts) do

@@ -127,6 +127,26 @@ result.metadata # present when extraction returns document metadata
 
 Web fetches reject loopback, private, link-local, and cloud metadata addresses by default. Set `allow_private_network: true` only when a fetch must reach a trusted private service. Domain allow and block rules still apply when this option is enabled.
 
+Each HTTP response has a `max_response_bytes` limit. The default is 5 MiB. Set a
+positive byte count to change it, or set `:infinity` only when compatibility
+requires no Jido response limit. This limit is separate from
+`max_content_tokens`, which truncates normalized content after retrieval and
+extraction.
+
+The Req backend counts the authoritative Finch body events after HTTP transfer
+framing and before `Content-Encoding` decoding. It also counts each supported
+decoded content layer while it streams. Both counts use the same public limit,
+so a small gzip response cannot expand without a bound. Successful compressed
+responses stay decoded. The Browsey backend keeps curl's normal content decoding
+and counts its decoded stdout. Browsey also uses the declared content length for
+an early rejection when curl provides one. A missing or incorrect declared
+length never replaces these stream counters. On an overflow or timeout, Browsey
+terminates and reaps the exact curl process before it returns. For HTTP/1, a
+false low content length defines the protocol message boundary, so bytes after
+that boundary are not response body events. Because the two locked transports
+expose different stream layers, error metadata reports `:transfer_body` or
+`:content_decoded` in `response_byte_semantics`.
+
 `Req` is the default HTTP backend. `jido_browser` also includes a vendored
 BrowseyHttp-backed backend when you want a browser-imitating HTTP path for pages
 that do not require JavaScript execution. Select it globally or per request:
@@ -346,6 +366,7 @@ Optional web fetch settings:
 config :jido_browser, :web_fetch,
   backend: Jido.Browser.WebFetch.Backends.Req,
   cache_ttl_ms: 300_000,
+  max_response_bytes: 5 * 1024 * 1024,
   req: [
     connect_options: [
       timeout: 10_000
@@ -357,7 +378,7 @@ config :jido_browser, :web_fetch,
   ]
 ```
 
-Configured `req`, `browsey`, and `extractous` options are merged with any per-call options passed to `Jido.Browser.web_fetch/2`.
+Configured `req`, `browsey`, and `extractous` options are merged with any per-call options passed to `Jido.Browser.web_fetch/2`. The top-level `max_response_bytes` value is authoritative for both built-in backends.
 
 ## Backends
 

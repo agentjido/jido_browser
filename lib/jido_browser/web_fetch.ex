@@ -18,6 +18,7 @@ defmodule Jido.Browser.WebFetch do
   @default_timeout 15_000
   @default_req_max_redirects 10
   @default_browsey_max_redirects 19
+  @default_max_response_bytes 5 * 1024 * 1024
   @default_cache_ttl_ms 300_000
   @default_max_url_length 2_048
   @policy_error_code :url_not_allowed
@@ -166,6 +167,10 @@ defmodule Jido.Browser.WebFetch do
   - `:selector` - CSS selector for HTML pages
   - `:allowed_domains` / `:blocked_domains` - mutually exclusive host/path rules
   - `:allow_private_network` - allow private network destinations, defaults to `false`
+  - `:max_response_bytes` - response cap in bytes, defaults to 5 MiB; Req
+    applies it to both the transfer body and each decoded content layer, while
+    Browsey applies it to curl's decoded output; use `:infinity` only as an
+    explicit compatibility override
   - `:max_content_tokens` - approximate token cap
   - `:citations` - boolean, when true include passage spans
   - `:focus_terms` - list of terms used for focused filtering
@@ -801,6 +806,10 @@ defmodule Jido.Browser.WebFetch do
            ),
          {:ok, max_content_tokens} <-
            normalize_optional_integer_opt(:max_content_tokens, opts[:max_content_tokens], min: 1),
+         {:ok, max_response_bytes} <-
+           normalize_max_response_bytes(
+             Keyword.get(opts, :max_response_bytes, config(:max_response_bytes, @default_max_response_bytes))
+           ),
          {:ok, max_url_length} <- normalize_optional_integer_opt(:max_url_length, opts[:max_url_length], min: 1),
          {:ok, cache} <- normalize_boolean_opt(:cache, Keyword.get(opts, :cache, true)),
          {:ok, allow_private_network} <-
@@ -848,6 +857,7 @@ defmodule Jido.Browser.WebFetch do
             |> Keyword.put(:cache, cache)
             |> Keyword.put(:allow_private_network, allow_private_network)
             |> Keyword.put(:cache_ttl_ms, cache_ttl_ms)
+            |> Keyword.put(:max_response_bytes, max_response_bytes)
             |> Keyword.put(:require_known_url, require_known_url)
             |> Keyword.put(:extractous, merge_extractous_opts(configured_extractous_opts, request_extractous_opts))
             |> maybe_put(:max_content_tokens, max_content_tokens)
@@ -1514,8 +1524,8 @@ defmodule Jido.Browser.WebFetch do
 
   defp cache_key(url, opts) do
     {:jido_browser_web_fetch, url, opts[:format], opts[:selector], opts[:allowed_domains], opts[:blocked_domains],
-     opts[:focus_terms], opts[:focus_window], opts[:max_content_tokens], opts[:citations], opts[:extractous],
-     opts[:backend], opts[:req], opts[:browsey], opts[:allow_private_network]}
+     opts[:focus_terms], opts[:focus_window], opts[:max_content_tokens], opts[:max_response_bytes], opts[:citations],
+     opts[:extractous], opts[:backend], opts[:req], opts[:browsey], opts[:allow_private_network]}
   end
 
   defp response_content_type(response) do
@@ -1734,6 +1744,20 @@ defmodule Jido.Browser.WebFetch do
 
   defp normalize_optional_integer_opt(_name, nil, _opts), do: {:ok, nil}
   defp normalize_optional_integer_opt(name, value, opts), do: normalize_integer_opt(name, value, opts)
+
+  defp normalize_max_response_bytes(:infinity), do: {:ok, :infinity}
+
+  defp normalize_max_response_bytes(value) when is_integer(value) and value > 0,
+    do: {:ok, value}
+
+  defp normalize_max_response_bytes(value) do
+    {:error,
+     Error.invalid_error("max_response_bytes must be a positive integer or :infinity", %{
+       error_code: :invalid_input,
+       option: :max_response_bytes,
+       value: value
+     })}
+  end
 
   defp normalize_boolean_opt(_name, value) when is_boolean(value), do: {:ok, value}
 

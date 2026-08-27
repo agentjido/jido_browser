@@ -68,6 +68,7 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
   expensive third-party APIs when you encounter a site that really needs a headless browser.
   """
   alias Jido.Browser.Vendor.BrowseyHttp.ConnectionException
+  alias Jido.Browser.Vendor.BrowseyHttp.ProcessCleanupException
   alias Jido.Browser.Vendor.BrowseyHttp.SslException
   alias Jido.Browser.Vendor.BrowseyHttp.TimeoutException
   alias Jido.Browser.Vendor.BrowseyHttp.TooLargeException
@@ -120,10 +121,10 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
 
   ### Options
 
-  - `:max_response_size_bytes`: The maximum size of the response body, in bytes, or `:infinity`.
-     If the response body exceeds this size, we'll return a `TooLargeException`. This is important
-     so that unintentionally downloading, say, a huge video file doesn't run your server out
-     of memory. Defaults to 5,242,880 (5 MiB).
+  - `:max_response_size_bytes`: The maximum size of decoded response data written by curl, in
+     bytes, or `:infinity`. If the response body exceeds this size, we'll stop curl and return a
+     `TooLargeException`. A declared content length can reject a response earlier. Defaults to
+     5,242,880 (5 MiB).
   - `:follow_redirects?`: whether to follow redirects. Defaults to true, in which case the
      complete chain of redirects will be tracked in the `Jido.Browser.Vendor.BrowseyHttp.Response` struct's
      `:uri_sequence` field.
@@ -302,10 +303,7 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
     {cookie_file, cleanup_cookie?} = request_cookie_file(opts)
 
     args =
-      [
-        script
-      ] ++
-        pinned_request_args ++
+      pinned_request_args ++
         [
           "-v",
           to_string(uri)
@@ -320,38 +318,73 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
         resolve_args(opts[:resolve]) ++ max_filesize_args(max_bytes) ++ server_side_rendering_header_args(uri)
 
     try do
-      command = shell_join(args)
-
-      with {:ok, result} <- Util.Exec.exec(command, timeout + 5_000),
+      with {:ok, result} <- Util.Exec.exec(script, args, timeout + 5_000, max_bytes),
            metadata = Enum.join(result[:stderr] || []),
            {:ok, %Curl.Result{} = metadata} <- Curl.parse_metadata(metadata, uri) do
         body = Enum.join(result[:stdout] || [])
         {:ok, curl_output_to_response(body, metadata, prev_uris)}
       else
         {:error, error_kwlist} ->
-          metadata = Enum.join(error_kwlist[:stderr] || [])
-
-          status =
-            case Curl.parse_metadata(metadata, uri) do
-              {:error, %Curl.Error{code: code}} -> code
-              _ -> Access.fetch!(error_kwlist, :exit_status)
-            end
-
-          case status do
-            3 -> {:error, ConnectionException.invalid_url(uri)}
-            6 -> {:error, ConnectionException.could_not_resolve_host(uri)}
-            7 -> {:error, ConnectionException.could_not_connect(uri)}
-            28 -> {:error, TimeoutException.timed_out(uri, timeout)}
-            35 -> {:error, SslException.new(uri)}
-            47 -> {:error, TooManyRedirectsException.new(uri, @max_redirects)}
-            56 -> {:error, ConnectionException.failed_to_receive(uri)}
-            60 -> {:error, SslException.new(uri)}
-            63 -> {:error, TooLargeException.new(uri, max_bytes)}
-            _ -> {:error, ConnectionException.unknown_error(uri, status)}
-          end
+          exec_error_to_exception(error_kwlist, uri, max_bytes, timeout)
       end
     after
       if cleanup_cookie?, do: File.rm(cookie_file)
+    end
+  end
+
+  defp exec_error_to_exception(error_kwlist, uri, max_bytes, timeout) do
+    if cleanup_error = error_kwlist[:cleanup_error] do
+      {:error, ProcessCleanupException.new(uri, cleanup_error)}
+    else
+      metadata = Enum.join(error_kwlist[:stderr] || [])
+
+      status =
+        if error_kwlist[:response_too_large?] do
+          63
+        else
+          case Curl.parse_metadata(metadata, uri) do
+            {:error, %Curl.Error{code: code}} -> code
+            _other -> Access.fetch!(error_kwlist, :exit_status)
+          end
+        end
+
+      case status do
+        3 ->
+          {:error, ConnectionException.invalid_url(uri)}
+
+        6 ->
+          {:error, ConnectionException.could_not_resolve_host(uri)}
+
+        7 ->
+          {:error, ConnectionException.could_not_connect(uri)}
+
+        28 ->
+          {:error, TimeoutException.timed_out(uri, timeout)}
+
+        35 ->
+          {:error, SslException.new(uri)}
+
+        47 ->
+          {:error, TooManyRedirectsException.new(uri, @max_redirects)}
+
+        56 ->
+          {:error, ConnectionException.failed_to_receive(uri)}
+
+        60 ->
+          {:error, SslException.new(uri)}
+
+        63 ->
+          {:error,
+           TooLargeException.new(
+             uri,
+             max_bytes,
+             error_kwlist[:observed_bytes] || 0,
+             declared_response_bytes(metadata)
+           )}
+
+        _other ->
+          {:error, ConnectionException.unknown_error(uri, status)}
+      end
     end
   end
 
@@ -388,6 +421,18 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
 
   defp max_filesize_args(:infinity), do: []
   defp max_filesize_args(max_bytes), do: ["--max-filesize", Integer.to_string(max_bytes)]
+
+  defp declared_response_bytes(metadata) do
+    metadata
+    |> String.split(["\n", "\r\n"])
+    |> Enum.reverse()
+    |> Enum.find_value(fn line ->
+      case Regex.run(~r/^< content-length:\s*(\d+)\s*$/i, line) do
+        [_, value] -> String.to_integer(value)
+        _other -> nil
+      end
+    end)
+  end
 
   defp request_cookie_file(opts) do
     case Access.get(opts, :cookie_file) do
@@ -481,23 +526,12 @@ defmodule Jido.Browser.Vendor.BrowseyHttp do
     {:error, ArgumentError.exception("unsupported BrowseyHttp option #{inspect(key)}")}
   end
 
-  defp shell_join(args) do
-    args
-    |> Enum.reject(&is_nil/1)
-    |> Enum.map(&shell_quote/1)
-    |> Enum.join(" ")
-  end
-
   defp resolve_args(nil), do: []
 
   defp resolve_args({host, port, address}) do
     address = address |> :inet.ntoa() |> to_string()
     formatted_address = if String.contains?(address, ":"), do: "[#{address}]", else: address
     ["--resolve", "#{host}:#{port}:#{formatted_address}"]
-  end
-
-  defp shell_quote(value) do
-    "'" <> String.replace(to_string(value), "'", "'\\''") <> "'"
   end
 
   defp curl_output_to_response(curl_output, %Curl.Result{} = metadata, prev_uris) do

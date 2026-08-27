@@ -215,6 +215,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
         assert opts[:require_known_url] == true
         assert "https://example.com/guide" in opts[:known_urls]
         assert opts[:allowed_domains] == ["example.com"]
+        assert opts[:max_response_bytes] == 5 * 1024 * 1024
         refute Keyword.has_key?(opts, :backend)
 
         {:ok,
@@ -270,6 +271,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
     test "passes backend selection through to the fetch API" do
       expect(Jido.Browser, :web_fetch, fn "https://example.com/guide", opts ->
         assert opts[:backend] == :browsey
+        assert opts[:max_response_bytes] == :infinity
 
         {:ok,
          %{
@@ -294,7 +296,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
       assert {:ok, result} =
                WebFetch.run(
-                 %{url: "https://example.com/guide", backend: :browsey},
+                 %{url: "https://example.com/guide", backend: :browsey, max_response_bytes: :infinity},
                  %{skill_state: %{web_fetch_uses: 0}}
                )
 
@@ -308,6 +310,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
         assert opts[:pool] == "warm"
         assert opts[:browser_fallback] == true
         assert opts[:http_backends] == [:req, :browsey]
+        assert opts[:max_response_bytes] == 2_048
         assert "https://example.com/guide" in opts[:known_urls]
 
         {:ok,
@@ -336,7 +339,8 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
                  %{
                    url: "https://example.com/guide",
                    browser_fallback: true,
-                   http_backends: [:req, :browsey]
+                   http_backends: [:req, :browsey],
+                   max_response_bytes: 2_048
                  },
                  context
                )

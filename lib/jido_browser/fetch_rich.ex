@@ -23,6 +23,7 @@ defmodule Jido.Browser.FetchRich do
     :format,
     :known_urls,
     :max_content_tokens,
+    :max_response_bytes,
     :max_redirects,
     :max_url_length,
     :req,
