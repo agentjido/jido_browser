@@ -19,6 +19,7 @@ defmodule Jido.Browser.Adapters.Web do
   alias Jido.Browser.Adapters.Web.CLI
   alias Jido.Browser.Adapters.Web.PoolRuntime
   alias Jido.Browser.Application, as: BrowserApplication
+  alias Jido.Browser.Deprecations
   alias Jido.Browser.Error
   alias Jido.Browser.Session
   alias Jido.Browser.WarmPool.Lease
@@ -32,6 +33,8 @@ defmodule Jido.Browser.Adapters.Web do
   @impl true
   @spec start_pool(keyword()) :: {:ok, pid()} | {:error, term()}
   def start_pool(opts) do
+    :ok = Deprecations.warn(__MODULE__)
+
     with {:ok, manager_opts, startup_timeout} <- build_pool_start_opts(opts) do
       case TreeSupervisor.start_pool(manager_opts) do
         {:ok, pid} ->
@@ -50,6 +53,7 @@ defmodule Jido.Browser.Adapters.Web do
   @spec start_supervised_pool(keyword()) :: GenServer.on_start()
   def start_supervised_pool(opts) do
     with :ok <- BrowserApplication.ensure_started(),
+         :ok <- Deprecations.warn(__MODULE__),
          {:ok, manager_opts, startup_timeout} <- build_pool_start_opts(opts) do
       case TreeSupervisor.start_link(manager_opts) do
         {:ok, pid} ->
@@ -70,6 +74,8 @@ defmodule Jido.Browser.Adapters.Web do
 
   @impl true
   def start_session(opts \\ []) do
+    :ok = Deprecations.warn(__MODULE__)
+
     if pool = opts[:pool] do
       start_pooled_session(pool, opts)
     else

@@ -9,6 +9,7 @@ defmodule Jido.Browser.WebFetch.Backends.Browsey do
 
   @behaviour Jido.Browser.WebFetch.Backend
 
+  alias Jido.Browser.Deprecations
   alias Jido.Browser.Error
   alias Jido.Browser.Vendor.BrowseyHttp
 
@@ -16,6 +17,8 @@ defmodule Jido.Browser.WebFetch.Backends.Browsey do
   @default_timeout 30_000
   @impl true
   def fetch(url, opts) do
+    :ok = Deprecations.warn(__MODULE__)
+
     browsey_opts =
       opts
       |> Keyword.get(:browsey, [])

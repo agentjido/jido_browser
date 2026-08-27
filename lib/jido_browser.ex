@@ -6,6 +6,7 @@ defmodule Jido.Browser do
   In 2.0, the default adapter is `Jido.Browser.Adapters.AgentBrowser`.
   """
 
+  alias Jido.Browser.Deprecations
   alias Jido.Browser.Error
   alias Jido.Browser.FetchRich
   alias Jido.Browser.PoolAdapter
@@ -30,6 +31,7 @@ defmodule Jido.Browser do
   @spec start_pool(keyword()) :: {:ok, pid()} | {:error, term()}
   def start_pool(opts) do
     adapter = opts[:adapter] || configured_adapter()
+    :ok = Deprecations.warn(adapter)
 
     if PoolAdapter.supports_pools?(adapter) do
       adapter.start_pool(opts)
@@ -54,6 +56,7 @@ defmodule Jido.Browser do
   @spec start_session(keyword()) :: {:ok, Session.t()} | {:error, term()}
   def start_session(opts \\ []) do
     with {:ok, adapter} <- resolve_session_adapter(opts),
+         :ok <- Deprecations.warn(adapter),
          :ok <- validate_pool_capability(adapter, opts) do
       case adapter.start_session(opts) do
         {:ok, %Session{} = session} ->

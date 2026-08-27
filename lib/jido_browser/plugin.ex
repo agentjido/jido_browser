@@ -32,6 +32,8 @@ defmodule Jido.Browser.Plugin do
   * `Evaluate` - Execute JavaScript in the browser
   """
 
+  alias Jido.Browser.Deprecations
+
   @action_registry [
     # Session lifecycle
     {Jido.Browser.Actions.StartSession, "browser.start_session"},
@@ -105,11 +107,14 @@ defmodule Jido.Browser.Plugin do
 
   @impl Jido.Plugin
   def mount(_agent, config) do
+    adapter = Map.get(config, :adapter, Jido.Browser.Adapters.AgentBrowser)
+    :ok = Deprecations.warn(adapter)
+
     initial_state = %{
       session: nil,
       headless: Map.get(config, :headless, true),
       timeout: Map.get(config, :timeout, 30_000),
-      adapter: Map.get(config, :adapter, Jido.Browser.Adapters.AgentBrowser),
+      adapter: adapter,
       pool: Map.get(config, :pool),
       checkout_timeout: Map.get(config, :checkout_timeout, 5_000),
       viewport: Map.get(config, :viewport, %{width: 1280, height: 720}),

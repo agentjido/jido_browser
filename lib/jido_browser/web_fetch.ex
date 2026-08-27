@@ -8,6 +8,7 @@ defmodule Jido.Browser.WebFetch do
   browser session would be unnecessary or too expensive.
   """
 
+  alias Jido.Browser.Deprecations
   alias Jido.Browser.Error
 
   import Bitwise, only: [bsl: 2, bsr: 2]
@@ -1583,10 +1584,15 @@ defmodule Jido.Browser.WebFetch do
   end
 
   defp normalize_backend(:req), do: normalize_backend(Jido.Browser.WebFetch.Backends.Req)
-  defp normalize_backend(:browsey), do: normalize_backend(Jido.Browser.WebFetch.Backends.Browsey)
+
+  defp normalize_backend(:browsey) do
+    :ok = Deprecations.warn(:browsey)
+    normalize_backend(Jido.Browser.WebFetch.Backends.Browsey)
+  end
 
   defp normalize_backend(backend) when is_atom(backend) and not is_nil(backend) do
     if Code.ensure_loaded?(backend) and function_exported?(backend, :fetch, 2) do
+      :ok = Deprecations.warn(backend)
       {:ok, backend}
     else
       {:error,

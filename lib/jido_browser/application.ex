@@ -3,13 +3,16 @@ defmodule Jido.Browser.Application do
 
   use Application
 
+  alias Jido.Browser.Deprecations
+
   @required_processes [
     Jido.Browser.AgentBrowser.SessionTreeSupervisor,
     Jido.Browser.AgentBrowser.Registry,
     Jido.Browser.AgentBrowser.SessionSupervisor,
     Jido.Browser.WarmPool.RootSupervisor,
     Jido.Browser.WarmPool.Registry,
-    Jido.Browser.WarmPool.Supervisor
+    Jido.Browser.WarmPool.Supervisor,
+    Deprecations
   ]
 
   @boot_poll_interval 10
@@ -17,9 +20,12 @@ defmodule Jido.Browser.Application do
 
   @impl true
   def start(_type, _args) do
+    :ok = Deprecations.reset_boot_state()
+
     children = [
       Jido.Browser.AgentBrowser.SessionTreeSupervisor,
-      Jido.Browser.WarmPool.RootSupervisor
+      Jido.Browser.WarmPool.RootSupervisor,
+      Deprecations
     ]
 
     Supervisor.start_link(children,
