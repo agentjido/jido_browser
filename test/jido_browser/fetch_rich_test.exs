@@ -56,10 +56,12 @@ defmodule Jido.Browser.FetchRichTest do
              Jido.Browser.fetch_rich(
                "https://example.com/browsey",
                backend: :browsey,
+               max_response_bytes: 2_048,
                browsey: [client: TestBrowseyClient, test_pid: self()]
              )
 
-    assert_receive {:browsey_get, "https://example.com/browsey", _opts}
+    assert_receive {:browsey_get, "https://example.com/browsey", opts}
+    assert opts[:max_response_size_bytes] == 2_048
     assert result.retrieval_path == :browsey
     assert result.content =~ "Browsey body"
   end

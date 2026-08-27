@@ -115,6 +115,11 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           type: :integer,
           doc: "Approximate token cap for returned content"
         },
+        max_response_bytes: %{
+          type: :timeout,
+          default: 5 * 1024 * 1024,
+          doc: "Positive response byte cap, or infinity to disable the cap"
+        },
         citations: %{
           type: :boolean,
           default: false,
@@ -191,6 +196,11 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
         max_content_tokens: %{
           type: :integer,
           doc: "Approximate token cap for returned content"
+        },
+        max_response_bytes: %{
+          type: :timeout,
+          default: 5 * 1024 * 1024,
+          doc: "Positive response byte cap, or infinity to disable the cap"
         },
         citations: %{
           type: :boolean,
@@ -345,6 +355,32 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
     assert length(contract_modules) == 40
     assert length(Enum.uniq(contract_modules)) == 40
     assert MapSet.new(contract_modules) == MapSet.new(production_modules)
+  end
+
+  test "web retrieval actions convert the tool infinity value before validation" do
+    for action <- [Actions.WebFetch, Actions.FetchRich] do
+      assert {:ok, params} =
+               action.validate_params(%{
+                 url: "https://example.com",
+                 max_response_bytes: "infinity"
+               })
+
+      assert params.max_response_bytes == :infinity
+    end
+  end
+
+  test "web retrieval actions reject non-positive response limits" do
+    for action <- [Actions.WebFetch, Actions.FetchRich], value <- [0, -1] do
+      assert {:error, %Jido.Browser.Error.InvalidError{} = error} =
+               action.validate_params(%{
+                 url: "https://example.com",
+                 max_response_bytes: value
+               })
+
+      assert error.details.error_code == :invalid_input
+      assert error.details.option == :max_response_bytes
+      assert error.details.value == value
+    end
   end
 
   @tag capture_log: true

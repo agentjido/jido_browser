@@ -8,19 +8,27 @@ defmodule Jido.Browser.WebFetch.Backends.Req do
   alias Jido.Browser.Error
 
   @destination_address_key :jido_browser_destination_address
+  @default_max_response_bytes 5 * 1024 * 1024
+  @response_limit_key :jido_browser_max_response_bytes
   @pinned_adapter Jido.Browser.WebFetch.Backends.Req.PinnedFinch
 
   @impl true
   def fetch(url, opts) do
     case Req.run(request_options(url, opts)) do
       {%Req.Request{} = request, %Req.Response{} = response} ->
-        {:ok,
-         %{
-           status: response.status,
-           headers: response.headers,
-           body: response.body,
-           final_url: final_url(request)
-         }}
+        case @pinned_adapter.response_limit_error(response) do
+          {:ok, details} ->
+            {:error, response_too_large_error(details)}
+
+          :error ->
+            {:ok,
+             %{
+               status: response.status,
+               headers: response.headers,
+               body: response.body,
+               final_url: final_url(request)
+             }}
+        end
 
       {_request, %Req.TransportError{} = exception} ->
         {:error, Error.adapter_error("Web fetch request failed", %{error_code: :url_not_accessible, reason: exception})}
@@ -49,6 +57,34 @@ defmodule Jido.Browser.WebFetch.Backends.Req do
     |> Keyword.put(:decode_body, false)
     |> Keyword.put(:redirect, false)
     |> maybe_pin_destination(url, opts)
+    |> maybe_limit_response(opts)
+  end
+
+  defp response_too_large_error(details) do
+    Error.adapter_error(
+      "Web fetch response exceeds max_response_bytes",
+      Map.merge(details, %{adapter: __MODULE__, error_code: :response_too_large})
+    )
+  end
+
+  defp maybe_limit_response(request_opts, opts) do
+    max_response_bytes = Keyword.get(opts, :max_response_bytes, @default_max_response_bytes)
+
+    if max_response_bytes == :infinity do
+      request_opts
+    else
+      finch_private =
+        request_opts
+        |> Keyword.get(:finch_private, %{})
+        |> Map.new()
+        |> Map.put(@response_limit_key, max_response_bytes)
+
+      request_opts
+      |> Keyword.delete(:finch)
+      |> Keyword.delete(:finch_request)
+      |> Keyword.put(:adapter, @pinned_adapter)
+      |> Keyword.put(:finch_private, finch_private)
+    end
   end
 
   defp maybe_pin_destination(request_opts, url, opts) do

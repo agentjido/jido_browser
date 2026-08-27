@@ -130,6 +130,16 @@ defmodule Jido.Browser.ActionContractAssertions do
   defp json_type(:number), do: %{"type" => "number"}
   defp json_type(:non_neg_integer), do: %{"minimum" => 0, "type" => "integer"}
   defp json_type(:pos_integer), do: %{"minimum" => 1, "type" => "integer"}
+
+  defp json_type(:timeout) do
+    %{
+      "oneOf" => [
+        %{"minimum" => 0, "type" => "integer"},
+        %{"enum" => ["infinity"], "type" => "string"}
+      ]
+    }
+  end
+
   defp json_type(:atom), do: %{"type" => "string"}
   defp json_type(:any), do: %{"type" => "string"}
 
@@ -179,6 +189,7 @@ defmodule Jido.Browser.ActionContractAssertions do
   defp sample_value(:number, _key), do: 2
   defp sample_value(:non_neg_integer, _key), do: 0
   defp sample_value(:pos_integer, _key), do: 1
+  defp sample_value(:timeout, _key), do: 1
   defp sample_value(:atom, _key), do: :contract_sample
   defp sample_value(:any, _key), do: {:contract, :sample}
   defp sample_value({:list, subtype}, key), do: [sample_value(subtype, key)]
@@ -191,6 +202,7 @@ defmodule Jido.Browser.ActionContractAssertions do
   defp alternate_sample_value(:number, _key), do: 3
   defp alternate_sample_value(:non_neg_integer, _key), do: 2
   defp alternate_sample_value(:pos_integer, _key), do: 2
+  defp alternate_sample_value(:timeout, _key), do: 2
   defp alternate_sample_value(:atom, _key), do: :contract_alternate
   defp alternate_sample_value(:any, _key), do: {:contract, :alternate}
   defp alternate_sample_value({:list, subtype}, key), do: [alternate_sample_value(subtype, key)]
