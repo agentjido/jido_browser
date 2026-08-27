@@ -35,9 +35,9 @@ defmodule Jido.Browser.PoolDependencyDirectionTest do
     refute dependency_path?(graph, @lightpanda_pool_runtime, @lightpanda_adapter)
   end
 
-  test "the Browser and FetchRich cycle stays assigned to issue 92", %{graph: graph} do
+  test "Browser and FetchRich keep one-way dependency direction", %{graph: graph} do
     assert dependency_path?(graph, "lib/jido_browser.ex", "lib/jido_browser/fetch_rich.ex")
-    assert dependency_path?(graph, "lib/jido_browser/fetch_rich.ex", "lib/jido_browser.ex")
+    refute dependency_path?(graph, "lib/jido_browser/fetch_rich.ex", "lib/jido_browser.ex")
   end
 
   defp xref_graph do
