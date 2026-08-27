@@ -1,0 +1,575 @@
+defmodule Jido.Browser.WebFetchDestinationPolicyTest do
+  use ExUnit.Case, async: false
+
+  alias Jido.Browser.Error.{AdapterError, InvalidError}
+  alias Jido.Browser.TestSupport.WebFetchServer
+  alias Jido.Browser.Vendor.BrowseyHttp
+  alias Jido.Browser.WebFetch
+  alias Jido.Browser.WebFetch.Backends.Req, as: ReqBackend
+  alias Jido.Browser.WebFetch.Backends.Req.PinnedFinch
+
+  defmodule MultiAddressBrowseyClient do
+    alias Jido.Browser.Vendor.BrowseyHttp.ConnectionException
+
+    def get(url, opts) do
+      resolve = Keyword.fetch!(opts, :resolve)
+      send(opts[:test_pid], {:browsey_address_attempt, resolve})
+
+      case resolve do
+        {"public.test", 80, {93, 184, 216, 34}} ->
+          {:error, ConnectionException.could_not_connect(URI.parse(url))}
+
+        {"public.test", 80, {1, 1, 1, 1}} ->
+          {:ok,
+           %{
+             status: 200,
+             headers: %{"content-type" => ["text/plain"]},
+             body: "second address response",
+             final_url: url
+           }}
+      end
+    end
+  end
+
+  defmodule AmbiguousBrowseyClient do
+    alias Jido.Browser.Vendor.BrowseyHttp.{ConnectionException, SslException, TimeoutException}
+
+    def get(url, opts) do
+      resolve = Keyword.fetch!(opts, :resolve)
+      send(opts[:test_pid], {:ambiguous_browsey_attempt, opts[:failure], resolve})
+      uri = URI.parse(url)
+
+      case opts[:failure] do
+        :timeout -> {:error, TimeoutException.timed_out(uri, 10)}
+        :receive -> {:error, ConnectionException.failed_to_receive(uri)}
+        :tls -> {:error, SslException.new(uri)}
+      end
+    end
+  end
+
+  @blocked_urls [
+    "http://0.0.0.0",
+    "http://127.0.0.1",
+    "http://10.0.0.1",
+    "http://172.16.0.1",
+    "http://192.168.0.1",
+    "http://169.254.169.254",
+    "http://100.100.100.200",
+    "http://[::]",
+    "http://[::1]",
+    "http://[fc00::1]",
+    "http://[fe80::1]",
+    "http://[fd00:ec2::254]"
+  ]
+  @special_address_boundaries [
+    {"0.0.0.0", :this_network},
+    {"0.255.255.255", :this_network},
+    {"10.0.0.0", :private},
+    {"10.255.255.255", :private},
+    {"100.64.0.0", :shared_address_space},
+    {"100.127.255.255", :shared_address_space},
+    {"127.0.0.0", :loopback},
+    {"127.255.255.255", :loopback},
+    {"169.254.0.0", :link_local},
+    {"169.254.255.255", :link_local},
+    {"172.16.0.0", :private},
+    {"172.31.255.255", :private},
+    {"192.0.0.0", :special_use},
+    {"192.0.0.255", :special_use},
+    {"192.0.2.0", :documentation},
+    {"192.0.2.255", :documentation},
+    {"192.31.196.0", :special_use},
+    {"192.31.196.255", :special_use},
+    {"192.52.193.0", :special_use},
+    {"192.52.193.255", :special_use},
+    {"192.88.99.0", :special_use},
+    {"192.88.99.255", :special_use},
+    {"192.168.0.0", :private},
+    {"192.168.255.255", :private},
+    {"192.175.48.0", :special_use},
+    {"192.175.48.255", :special_use},
+    {"198.18.0.0", :benchmarking},
+    {"198.19.255.255", :benchmarking},
+    {"198.51.100.0", :documentation},
+    {"198.51.100.255", :documentation},
+    {"203.0.113.0", :documentation},
+    {"203.0.113.255", :documentation},
+    {"224.0.0.0", :multicast},
+    {"239.255.255.255", :multicast},
+    {"240.0.0.0", :reserved},
+    {"255.255.255.255", :reserved},
+    {"::", :unspecified},
+    {"::1", :loopback},
+    {"::ffff:0.0.0.0", :ipv4_mapped},
+    {"::ffff:255.255.255.255", :ipv4_mapped},
+    {"64:ff9b::", :translation},
+    {"64:ff9b::ffff:ffff", :translation},
+    {"64:ff9b:1::", :translation},
+    {"64:ff9b:1:ffff:ffff:ffff:ffff:ffff", :translation},
+    {"100::", :discard_only},
+    {"100::ffff:ffff:ffff:ffff", :discard_only},
+    {"100:0:0:1::", :special_use},
+    {"100:0:0:1:ffff:ffff:ffff:ffff", :special_use},
+    {"2001::", :special_use},
+    {"2001:1ff:ffff:ffff:ffff:ffff:ffff:ffff", :special_use},
+    {"2001:db8::", :documentation},
+    {"2001:db8:ffff:ffff:ffff:ffff:ffff:ffff", :documentation},
+    {"2002::", :special_use},
+    {"2002:ffff:ffff:ffff:ffff:ffff:ffff:ffff", :special_use},
+    {"2620:4f:8000::", :special_use},
+    {"2620:4f:8000:ffff:ffff:ffff:ffff:ffff", :special_use},
+    {"3fff::", :documentation},
+    {"3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff", :documentation},
+    {"5f00::", :special_use},
+    {"5f00:ffff:ffff:ffff:ffff:ffff:ffff:ffff", :special_use},
+    {"fc00::", :private},
+    {"fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", :private},
+    {"fe80::", :link_local},
+    {"febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff", :link_local},
+    {"ff00::", :multicast},
+    {"ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", :multicast},
+    {"4000::", :non_global},
+    {"7fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", :non_global}
+  ]
+
+  setup do
+    WebFetch.clear_cache()
+    :ok
+  end
+
+  test "blocks direct IPv4, IPv6, and cloud metadata destinations with one policy code" do
+    for url <- @blocked_urls do
+      assert {:error, %InvalidError{details: details}} =
+               Jido.Browser.web_fetch(url, cache: false)
+
+      assert details.error_code == :url_not_allowed
+      assert is_atom(details.policy_reason)
+    end
+  end
+
+  test "blocks every IANA and global-routability classification boundary" do
+    for {address_text, reason} <- @special_address_boundaries do
+      {:ok, address} = :inet.parse_address(String.to_charlist(address_text))
+      resolver = fn "boundary.test" -> {:ok, [address]} end
+
+      assert {:error, %InvalidError{details: details}} =
+               Jido.Browser.web_fetch("http://boundary.test", cache: false, resolver: resolver)
+
+      assert details.error_code == :url_not_allowed
+      assert details.policy_reason == reason
+    end
+  end
+
+  test "blocks unsafe hostname answers, mapped addresses, and mixed multi-address answers" do
+    cases = [
+      {{:ok, [{127, 0, 0, 1}]}, :loopback},
+      {{:ok, [{0, 0, 0, 0, 0, 0xFFFF, 0x7F00, 1}]}, :ipv4_mapped},
+      {{:ok, [{93, 184, 216, 34}, {10, 0, 0, 8}]}, :private}
+    ]
+
+    for {resolver_result, reason} <- cases do
+      resolver = fn "public.test" -> resolver_result end
+
+      assert {:error, %InvalidError{details: details}} =
+               Jido.Browser.web_fetch("http://public.test", cache: false, resolver: resolver)
+
+      assert details.error_code == :url_not_allowed
+      assert details.policy_reason == reason
+    end
+  end
+
+  test "blocks alternate IPv4 literal encodings after resolution" do
+    resolver = fn host ->
+      assert host in ["2130706433", "0177.0.0.1", "0x7f000001"]
+      {:ok, [{127, 0, 0, 1}]}
+    end
+
+    for host <- ["2130706433", "0177.0.0.1", "0x7f000001"] do
+      assert {:error, %InvalidError{details: %{error_code: :url_not_allowed, policy_reason: :loopback}}} =
+               Jido.Browser.web_fetch("http://#{host}", cache: false, resolver: resolver)
+    end
+  end
+
+  test "returns the stable policy code when resolution fails" do
+    resolver = fn "missing.test" -> {:error, :nxdomain} end
+
+    assert {:error, %InvalidError{details: details}} =
+             Jido.Browser.web_fetch("https://missing.test", cache: false, resolver: resolver)
+
+    assert details.error_code == :url_not_allowed
+    assert details.reason == :nxdomain
+  end
+
+  test "uses the explicit opt-in and pins an HTTP hostname to the resolved address" do
+    attach_connect_observer()
+    server = WebFetchServer.start_http(self(), &ok_response/1)
+    on_exit(fn -> WebFetchServer.stop(server) end)
+
+    assert {:ok, result} = fetch_local(server)
+    assert result.content == "fixture response"
+    assert result.final_url == "http://fixture.test:#{server.port}/content"
+
+    assert_receive {:web_fetch_server_request, server_pid, request}
+    assert server_pid == server.pid
+    assert request.path == "/content"
+    assert request.headers["host"] == "fixture.test:#{server.port}"
+    assert_receive {:web_fetch_connect, %{host: {127, 0, 0, 1}, port: port}}
+    assert port == server.port
+  end
+
+  test "pins HTTPS while Mint verifies the original hostname" do
+    attach_connect_observer()
+    server = WebFetchServer.start_https(self(), &ok_response/1)
+    on_exit(fn -> WebFetchServer.stop(server) end)
+
+    req_opts = [
+      retry: false,
+      connect_options: [transport_opts: [cacertfile: WebFetchServer.ca_certificate_path()]]
+    ]
+
+    assert {:ok, result} = fetch_local(server, req: req_opts)
+    assert result.content == "fixture response"
+    assert result.final_url == "https://fixture.test:#{server.port}/content"
+
+    assert_receive {:web_fetch_server_request, server_pid, request}
+    assert server_pid == server.pid
+    assert request.headers["host"] == "fixture.test:#{server.port}"
+    assert_receive {:web_fetch_connect, %{host: {127, 0, 0, 1}, port: port}}
+    assert port == server.port
+  end
+
+  test "tries each validated address in resolver order without resolving again" do
+    Process.put(:destination_resolver_calls, 0)
+
+    resolver = fn "public.test" ->
+      Process.put(:destination_resolver_calls, Process.get(:destination_resolver_calls, 0) + 1)
+      {:ok, [{93, 184, 216, 34}, {1, 1, 1, 1}]}
+    end
+
+    assert {:ok, result} =
+             Jido.Browser.web_fetch("http://public.test/content",
+               backend: :browsey,
+               browsey: [client: MultiAddressBrowseyClient, test_pid: self()],
+               cache: false,
+               format: :text,
+               resolver: resolver
+             )
+
+    assert result.content == "second address response"
+    assert Process.get(:destination_resolver_calls) == 1
+
+    assert_receive {:browsey_address_attempt, {"public.test", 80, {93, 184, 216, 34}}}
+    assert_receive {:browsey_address_attempt, {"public.test", 80, {1, 1, 1, 1}}}
+    refute_receive {:browsey_address_attempt, _resolve}
+  end
+
+  test "Req tries the next saved address after connection refusal" do
+    attach_connect_observer()
+    server = WebFetchServer.start_http(self(), &ok_response/1)
+    on_exit(fn -> WebFetchServer.stop(server) end)
+    Process.put(:refused_resolver_calls, 0)
+
+    resolver = fn "fixture.test" ->
+      Process.put(:refused_resolver_calls, Process.get(:refused_resolver_calls, 0) + 1)
+      {:ok, [{0, 0, 0, 0, 0, 0, 0, 1}, {127, 0, 0, 1}]}
+    end
+
+    assert {:ok, result} =
+             Jido.Browser.web_fetch("http://fixture.test:#{server.port}/content",
+               allow_private_network: true,
+               cache: false,
+               format: :text,
+               req: [retry: false],
+               resolver: resolver
+             )
+
+    assert result.content == "fixture response"
+    assert Process.get(:refused_resolver_calls) == 1
+    assert_receive {:web_fetch_server_request, server_pid, request}
+    assert server_pid == server.pid
+    assert request.method == "GET"
+    assert request.headers["host"] == "fixture.test:#{server.port}"
+
+    assert_receive {:web_fetch_connect, %{host: {0, 0, 0, 0, 0, 0, 0, 1}}}
+    assert_receive {:web_fetch_connect, %{host: {127, 0, 0, 1}}}
+  end
+
+  test "Req stops saved-address attempts after any HTTP response" do
+    {first_server, second_server} =
+      start_address_pair(fn _request -> %{status: 503, body: "service unavailable"} end)
+
+    resolver = fn "fixture.test" -> {:ok, [first_server.ip, second_server.ip]} end
+
+    assert {:error, %AdapterError{}} =
+             Jido.Browser.web_fetch("http://fixture.test:#{first_server.port}/content",
+               allow_private_network: true,
+               cache: false,
+               format: :text,
+               req: [retry: false],
+               resolver: resolver
+             )
+
+    assert_receive {:web_fetch_server_request, first_pid, %{method: "GET"}}
+    assert first_pid == first_server.pid
+    second_pid = second_server.pid
+    refute_receive {:web_fetch_server_request, ^second_pid, _request}
+  end
+
+  test "Req does not retry a delivered POST after receive timeout" do
+    {first_server, second_server} =
+      start_address_pair(fn _request ->
+        Process.sleep(150)
+        ok_response(nil)
+      end)
+
+    Process.put(:timeout_resolver_calls, 0)
+
+    resolver = fn "fixture.test" ->
+      Process.put(:timeout_resolver_calls, Process.get(:timeout_resolver_calls, 0) + 1)
+      {:ok, [first_server.ip, second_server.ip]}
+    end
+
+    assert {:error, %AdapterError{details: %{reason: %Req.TransportError{reason: :timeout}}}} =
+             Jido.Browser.web_fetch("http://fixture.test:#{first_server.port}/charge",
+               allow_private_network: true,
+               cache: false,
+               format: :text,
+               req: [
+                 retry: false,
+                 method: :post,
+                 body: "charge=once",
+                 headers: [{"content-type", "application/x-www-form-urlencoded"}]
+               ],
+               resolver: resolver,
+               timeout: 40
+             )
+
+    assert Process.get(:timeout_resolver_calls) == 1
+    assert_receive {:web_fetch_server_request, first_pid, first_request}
+    assert first_pid == first_server.pid
+    assert first_request.method == "POST"
+    assert first_request.body == "charge=once"
+    second_pid = second_server.pid
+    refute_receive {:web_fetch_server_request, ^second_pid, _request}
+  end
+
+  test "Req does not retry closed or reset connections after request delivery" do
+    for action <- [:close, :reset] do
+      {first_server, second_server} = start_address_pair(fn _request -> action end)
+      resolver = fn "fixture.test" -> {:ok, [first_server.ip, second_server.ip]} end
+
+      assert {:error, %AdapterError{details: %{reason: %Req.TransportError{reason: reason}}}} =
+               Jido.Browser.web_fetch("http://fixture.test:#{first_server.port}/charge",
+                 allow_private_network: true,
+                 cache: false,
+                 format: :text,
+                 req: [retry: false, method: :post, body: "charge=#{action}"],
+                 resolver: resolver
+               )
+
+      assert reason in [:closed, :econnreset]
+      assert_receive {:web_fetch_server_request, first_pid, first_request}
+      assert first_pid == first_server.pid
+      assert first_request.method == "POST"
+      assert first_request.body == "charge=#{action}"
+      second_pid = second_server.pid
+      refute_receive {:web_fetch_server_request, ^second_pid, _request}
+
+      WebFetchServer.stop(first_server)
+      WebFetchServer.stop(second_server)
+    end
+  end
+
+  test "Browsey retries only curl connect failure code 7" do
+    resolver = fn "public.test" -> {:ok, [{93, 184, 216, 34}, {1, 1, 1, 1}]} end
+
+    for failure <- [:timeout, :receive, :tls] do
+      assert {:error, %AdapterError{}} =
+               Jido.Browser.web_fetch("http://public.test/content",
+                 backend: :browsey,
+                 browsey: [client: AmbiguousBrowseyClient, failure: failure, test_pid: self()],
+                 cache: false,
+                 format: :text,
+                 resolver: resolver
+               )
+
+      assert_receive {:ambiguous_browsey_attempt, ^failure, {"public.test", 80, {93, 184, 216, 34}}}
+
+      refute_receive {:ambiguous_browsey_attempt, ^failure, {"public.test", 80, {1, 1, 1, 1}}}
+    end
+  end
+
+  test "pinned Browsey ignores proxy variables and curl configuration" do
+    target_server = WebFetchServer.start_http(self(), &ok_response/1)
+    proxy_server = WebFetchServer.start_http(self(), fn _request -> %{status: 200, body: "proxy response"} end)
+    on_exit(fn -> WebFetchServer.stop(target_server) end)
+    on_exit(fn -> WebFetchServer.stop(proxy_server) end)
+
+    curl_home = Path.join(System.tmp_dir!(), "browsey_curl_home_#{System.unique_integer([:positive])}")
+    curl_output = Path.join(curl_home, "curl-config-output")
+    File.mkdir_p!(curl_home)
+    File.write!(Path.join(curl_home, ".curlrc"), "output = \"#{curl_output}\"\n")
+    on_exit(fn -> File.rm_rf(curl_home) end)
+
+    proxy_url = "http://127.0.0.1:#{proxy_server.port}"
+
+    set_temporary_environment(%{
+      "ALL_PROXY" => proxy_url,
+      "HTTP_PROXY" => proxy_url,
+      "HTTPS_PROXY" => proxy_url,
+      "NO_PROXY" => "",
+      "all_proxy" => proxy_url,
+      "http_proxy" => proxy_url,
+      "https_proxy" => proxy_url,
+      "no_proxy" => "",
+      "CURL_HOME" => curl_home
+    })
+
+    resolver = fn "fixture.test" -> {:ok, [{127, 0, 0, 1}]} end
+
+    assert {:ok, result} =
+             Jido.Browser.web_fetch("http://fixture.test:#{target_server.port}/content",
+               allow_private_network: true,
+               backend: :browsey,
+               cache: false,
+               format: :text,
+               resolver: resolver
+             )
+
+    assert result.content == "fixture response"
+    assert_receive {:web_fetch_server_request, target_pid, request}
+    assert target_pid == target_server.pid
+    assert request.headers["host"] == "fixture.test:#{target_server.port}"
+    proxy_pid = proxy_server.pid
+    refute_receive {:web_fetch_server_request, ^proxy_pid, _request}
+    refute File.exists?(curl_output)
+  end
+
+  test "pinned Browsey does not let curl configuration enable redirects" do
+    server =
+      WebFetchServer.start_http(self(), fn
+        %{path: "/start"} ->
+          %{status: 302, headers: [{"location", "/follow"}], body: ""}
+
+        %{path: "/follow"} ->
+          ok_response(nil)
+      end)
+
+    on_exit(fn -> WebFetchServer.stop(server) end)
+
+    curl_home = Path.join(System.tmp_dir!(), "browsey_redirect_curl_home_#{System.unique_integer([:positive])}")
+    File.mkdir_p!(curl_home)
+    File.write!(Path.join(curl_home, ".curlrc"), "location\n")
+    on_exit(fn -> File.rm_rf(curl_home) end)
+    set_temporary_environment(%{"CURL_HOME" => curl_home})
+
+    assert {:ok, response} =
+             BrowseyHttp.get("http://fixture.test:#{server.port}/start",
+               follow_redirects?: false,
+               pinned_request?: true,
+               resolve: {"fixture.test", server.port, {127, 0, 0, 1}},
+               timeout: 2_000
+             )
+
+    assert response.status == 302
+    assert_receive {:web_fetch_server_request, server_pid, %{path: "/start"}}
+    assert server_pid == server.pid
+    refute_receive {:web_fetch_server_request, ^server_pid, %{path: "/follow"}}
+  end
+
+  test "keeps a bracketed authority for a direct public IPv6 literal" do
+    address = {0x2606, 0x4700, 0x4700, 0, 0, 0, 0, 0x1111}
+    url = "https://[2606:4700:4700::1111]:8443/content"
+
+    request_opts =
+      ReqBackend.request_options(url,
+        timeout: 1_000,
+        req: [connect_options: [protocols: [:http2]]],
+        destination_address: address
+      )
+
+    assert request_opts[:connect_options][:hostname] == "2606:4700:4700::1111"
+    assert request_opts[:connect_options][:protocols] == [:http1]
+
+    finch_request = request_opts |> Req.new() |> PinnedFinch.build_finch_request()
+
+    assert finch_request.host == address
+    assert {"host", "[2606:4700:4700::1111]:8443"} in finch_request.headers
+
+    assert PinnedFinch.origin_authority(URI.parse("https://[2606:4700:4700::1111]/")) ==
+             "[2606:4700:4700::1111]"
+  end
+
+  test "keeps domain rules active when private network access is enabled" do
+    server = WebFetchServer.start_http(self(), &ok_response/1)
+    on_exit(fn -> WebFetchServer.stop(server) end)
+
+    assert {:error, %InvalidError{details: %{error_code: :url_not_allowed}}} =
+             fetch_local(server, blocked_domains: ["fixture.test"])
+
+    refute_receive {:web_fetch_server_request, _server_pid, _request}
+  end
+
+  defp fetch_local(server, opts \\ []) do
+    resolver = fn "fixture.test" -> {:ok, [{127, 0, 0, 1}]} end
+    url = "#{server.scheme}://fixture.test:#{server.port}/content"
+
+    request_opts =
+      Keyword.merge(
+        [
+          allow_private_network: true,
+          cache: false,
+          format: :text,
+          req: [retry: false],
+          resolver: resolver
+        ],
+        opts
+      )
+
+    Jido.Browser.web_fetch(url, request_opts)
+  end
+
+  defp ok_response(_request) do
+    %{status: 200, body: "fixture response"}
+  end
+
+  defp start_address_pair(first_responder) do
+    first_server = WebFetchServer.start_http(self(), first_responder, ip: {0, 0, 0, 0, 0, 0, 0, 1})
+    second_server = WebFetchServer.start_http(self(), &ok_response/1, ip: {127, 0, 0, 1}, port: first_server.port)
+
+    on_exit(fn ->
+      WebFetchServer.stop(first_server)
+      WebFetchServer.stop(second_server)
+    end)
+
+    {first_server, second_server}
+  end
+
+  defp attach_connect_observer do
+    handler_id = {__MODULE__, self(), make_ref()}
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:finch, :connect, :start],
+        fn _event, _measurements, metadata, owner ->
+          send(owner, {:web_fetch_connect, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+  end
+
+  defp set_temporary_environment(values) do
+    previous = Map.new(values, fn {name, _value} -> {name, System.get_env(name)} end)
+    Enum.each(values, fn {name, value} -> System.put_env(name, value) end)
+
+    on_exit(fn ->
+      Enum.each(previous, fn
+        {name, nil} -> System.delete_env(name)
+        {name, value} -> System.put_env(name, value)
+      end)
+    end)
+  end
+end

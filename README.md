@@ -121,6 +121,8 @@ result.metadata # present when extraction returns document metadata
 
 `web_fetch/2` keeps HTML handling native for selector extraction and markdown conversion, and uses `extractous_ex` for fetched binary documents such as PDFs, Word, Excel, PowerPoint, OpenDocument, EPUB, and common email formats. Binary document responses may also include `result.metadata` when extraction returns document metadata.
 
+Web fetches reject loopback, private, link-local, and cloud metadata addresses by default. Set `allow_private_network: true` only when a fetch must reach a trusted private service. Domain allow and block rules still apply when this option is enabled.
+
 `Req` is the default HTTP backend. `jido_browser` also includes a vendored
 BrowseyHttp-backed backend when you want a browser-imitating HTTP path for pages
 that do not require JavaScript execution. Select it globally or per request:

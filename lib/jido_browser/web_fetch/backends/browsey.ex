@@ -14,15 +14,15 @@ defmodule Jido.Browser.WebFetch.Backends.Browsey do
 
   @default_client BrowseyHttp
   @default_timeout 30_000
-  @default_max_redirects 5
-
   @impl true
   def fetch(url, opts) do
     browsey_opts =
       opts
       |> Keyword.get(:browsey, [])
       |> Keyword.put_new(:timeout, opts[:timeout] || @default_timeout)
-      |> Keyword.put_new(:follow_redirects?, Keyword.get(opts, :max_redirects, @default_max_redirects) > 0)
+      |> Keyword.put(:follow_redirects?, false)
+      |> Keyword.put(:pinned_request?, Keyword.has_key?(opts, :destination_address))
+      |> maybe_pin_destination(url, opts)
 
     {client, browsey_opts} = Keyword.pop(browsey_opts, :client, @default_client)
 
@@ -48,6 +48,23 @@ defmodule Jido.Browser.WebFetch.Backends.Browsey do
          backend: __MODULE__,
          reason: error
        })}
+  end
+
+  defp maybe_pin_destination(browsey_opts, url, opts) do
+    if Keyword.has_key?(opts, :destination_address) do
+      pin_destination(browsey_opts, url, opts)
+    else
+      browsey_opts
+    end
+  end
+
+  defp pin_destination(browsey_opts, url, opts) do
+    uri = URI.parse(url)
+
+    case :inet.parse_address(String.to_charlist(uri.host)) do
+      {:ok, _literal_address} -> browsey_opts
+      {:error, :einval} -> Keyword.put(browsey_opts, :resolve, {uri.host, uri.port, opts[:destination_address]})
+    end
   end
 
   defp ensure_client(client) when is_atom(client) do
