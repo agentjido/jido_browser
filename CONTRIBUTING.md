@@ -51,6 +51,10 @@ Pull requests are squash merged. The Conventional Commit title of the pull reque
 - Ensure existing tests pass
 - Use Mimic for mocking external dependencies
 
+`mix coveralls` enforces the coverage floor in
+`coveralls.json` at `coverage_options.minimum_coverage`. When a feature or bug fix
+raises the coverage baseline, raise this floor in the same pull request.
+
 ## Commit Messages
 
 Use Conventional Commits:

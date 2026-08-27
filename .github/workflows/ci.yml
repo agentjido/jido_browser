@@ -22,4 +22,4 @@ jobs:
     secrets: inherit
     with:
       docs_command: mix docs -f html
-      test_command: mix test
+      test_command: mix coveralls
