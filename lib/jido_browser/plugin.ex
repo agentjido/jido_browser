@@ -1,45 +1,3 @@
-# Ensure actions are compiled before the plugin
-require Jido.Browser.Actions.Back
-require Jido.Browser.Actions.Click
-require Jido.Browser.Actions.CloseTab
-require Jido.Browser.Actions.Console
-require Jido.Browser.Actions.EndSession
-require Jido.Browser.Actions.Evaluate
-require Jido.Browser.Actions.Errors
-require Jido.Browser.Actions.ExtractContent
-require Jido.Browser.Actions.FetchRich
-require Jido.Browser.Actions.Focus
-require Jido.Browser.Actions.Forward
-require Jido.Browser.Actions.GetAttribute
-require Jido.Browser.Actions.GetStatus
-require Jido.Browser.Actions.GetText
-require Jido.Browser.Actions.GetTitle
-require Jido.Browser.Actions.GetUrl
-require Jido.Browser.Actions.Hover
-require Jido.Browser.Actions.IsVisible
-require Jido.Browser.Actions.ListTabs
-require Jido.Browser.Actions.LoadState
-require Jido.Browser.Actions.Navigate
-require Jido.Browser.Actions.NewTab
-require Jido.Browser.Actions.PoolStatus
-require Jido.Browser.Actions.Query
-require Jido.Browser.Actions.Reload
-require Jido.Browser.Actions.SaveState
-require Jido.Browser.Actions.Screenshot
-require Jido.Browser.Actions.Scroll
-require Jido.Browser.Actions.SelectOption
-require Jido.Browser.Actions.Snapshot
-require Jido.Browser.Actions.StartSession
-require Jido.Browser.Actions.SwitchTab
-require Jido.Browser.Actions.Type
-require Jido.Browser.Actions.Wait
-require Jido.Browser.Actions.WaitForNavigation
-require Jido.Browser.Actions.WaitForSelector
-require Jido.Browser.Actions.ReadPage
-require Jido.Browser.Actions.SnapshotUrl
-require Jido.Browser.Actions.SearchWeb
-require Jido.Browser.Actions.WebFetch
-
 defmodule Jido.Browser.Plugin do
   @moduledoc """
   A Jido.Plugin providing browser automation capabilities for AI agents.
@@ -74,61 +32,72 @@ defmodule Jido.Browser.Plugin do
   * `Evaluate` - Execute JavaScript in the browser
   """
 
+  @action_registry [
+    # Session lifecycle
+    {Jido.Browser.Actions.StartSession, "browser.start_session"},
+    {Jido.Browser.Actions.EndSession, "browser.end_session"},
+    {Jido.Browser.Actions.GetStatus, "browser.get_status"},
+    {Jido.Browser.Actions.PoolStatus, "browser.pool_status"},
+    {Jido.Browser.Actions.SaveState, "browser.save_state"},
+    {Jido.Browser.Actions.LoadState, "browser.load_state"},
+    # Navigation
+    {Jido.Browser.Actions.Navigate, "browser.navigate"},
+    {Jido.Browser.Actions.Back, "browser.back"},
+    {Jido.Browser.Actions.Forward, "browser.forward"},
+    {Jido.Browser.Actions.Reload, "browser.reload"},
+    {Jido.Browser.Actions.GetUrl, "browser.get_url"},
+    {Jido.Browser.Actions.GetTitle, "browser.get_title"},
+    # Interaction
+    {Jido.Browser.Actions.Click, "browser.click"},
+    {Jido.Browser.Actions.Type, "browser.type"},
+    {Jido.Browser.Actions.Hover, "browser.hover"},
+    {Jido.Browser.Actions.Focus, "browser.focus"},
+    {Jido.Browser.Actions.Scroll, "browser.scroll"},
+    {Jido.Browser.Actions.SelectOption, "browser.select_option"},
+    # Waiting/synchronization
+    {Jido.Browser.Actions.Wait, "browser.wait"},
+    {Jido.Browser.Actions.WaitForSelector, "browser.wait_for_selector"},
+    {Jido.Browser.Actions.WaitForNavigation, "browser.wait_for_navigation"},
+    # Element queries
+    {Jido.Browser.Actions.Query, "browser.query"},
+    {Jido.Browser.Actions.GetText, "browser.get_text"},
+    {Jido.Browser.Actions.GetAttribute, "browser.get_attribute"},
+    {Jido.Browser.Actions.IsVisible, "browser.is_visible"},
+    # Tabs
+    {Jido.Browser.Actions.ListTabs, "browser.tab_list"},
+    {Jido.Browser.Actions.NewTab, "browser.tab_new"},
+    {Jido.Browser.Actions.SwitchTab, "browser.tab_switch"},
+    {Jido.Browser.Actions.CloseTab, "browser.tab_close"},
+    # Content extraction
+    {Jido.Browser.Actions.Snapshot, "browser.snapshot"},
+    {Jido.Browser.Actions.Screenshot, "browser.screenshot"},
+    {Jido.Browser.Actions.ExtractContent, "browser.extract"},
+    # Diagnostics
+    {Jido.Browser.Actions.Console, "browser.console"},
+    {Jido.Browser.Actions.Errors, "browser.errors"},
+    # Advanced
+    {Jido.Browser.Actions.Evaluate, "browser.evaluate"},
+    # Self-contained composite actions (manage own session)
+    {Jido.Browser.Actions.ReadPage, "browser.read_page"},
+    {Jido.Browser.Actions.SnapshotUrl, "browser.snapshot_url"},
+    {Jido.Browser.Actions.SearchWeb, "browser.search_web"},
+    {Jido.Browser.Actions.WebFetch, "browser.web_fetch"},
+    {Jido.Browser.Actions.FetchRich, "browser.fetch_rich"}
+  ]
+
+  for {action, _signal_name} <- @action_registry do
+    Code.ensure_compiled!(action)
+  end
+
+  @action_modules Enum.map(@action_registry, &elem(&1, 0))
+  @signal_routes Enum.map(@action_registry, fn {action, signal_name} -> {signal_name, action} end)
+  @signal_patterns Enum.map(@action_registry, &elem(&1, 1))
+
   use Jido.Plugin,
     name: "browser",
     state_key: :browser,
-    actions: [
-      # Session lifecycle
-      Jido.Browser.Actions.StartSession,
-      Jido.Browser.Actions.EndSession,
-      Jido.Browser.Actions.GetStatus,
-      Jido.Browser.Actions.PoolStatus,
-      Jido.Browser.Actions.SaveState,
-      Jido.Browser.Actions.LoadState,
-      # Navigation
-      Jido.Browser.Actions.Navigate,
-      Jido.Browser.Actions.Back,
-      Jido.Browser.Actions.Forward,
-      Jido.Browser.Actions.Reload,
-      Jido.Browser.Actions.GetUrl,
-      Jido.Browser.Actions.GetTitle,
-      # Interaction
-      Jido.Browser.Actions.Click,
-      Jido.Browser.Actions.Type,
-      Jido.Browser.Actions.Hover,
-      Jido.Browser.Actions.Focus,
-      Jido.Browser.Actions.Scroll,
-      Jido.Browser.Actions.SelectOption,
-      # Waiting/synchronization
-      Jido.Browser.Actions.Wait,
-      Jido.Browser.Actions.WaitForSelector,
-      Jido.Browser.Actions.WaitForNavigation,
-      # Element queries
-      Jido.Browser.Actions.Query,
-      Jido.Browser.Actions.GetText,
-      Jido.Browser.Actions.GetAttribute,
-      Jido.Browser.Actions.IsVisible,
-      # Tabs
-      Jido.Browser.Actions.ListTabs,
-      Jido.Browser.Actions.NewTab,
-      Jido.Browser.Actions.SwitchTab,
-      Jido.Browser.Actions.CloseTab,
-      # Content extraction
-      Jido.Browser.Actions.Snapshot,
-      Jido.Browser.Actions.Screenshot,
-      Jido.Browser.Actions.ExtractContent,
-      # Diagnostics
-      Jido.Browser.Actions.Console,
-      Jido.Browser.Actions.Errors,
-      # Advanced
-      Jido.Browser.Actions.Evaluate,
-      # Self-contained composite actions (manage own session)
-      Jido.Browser.Actions.ReadPage,
-      Jido.Browser.Actions.SnapshotUrl,
-      Jido.Browser.Actions.SearchWeb,
-      Jido.Browser.Actions.WebFetch,
-      Jido.Browser.Actions.FetchRich
-    ],
+    actions: @action_modules,
+    signal_patterns: @signal_patterns,
     description: "Browser automation for web navigation, interaction, and content extraction",
     category: "browser",
     tags: ["browser", "web", "automation", "scraping"],
@@ -174,60 +143,7 @@ defmodule Jido.Browser.Plugin do
   end
 
   @impl Jido.Plugin
-  def signal_routes(_config) do
-    [
-      # Session lifecycle
-      {"browser.start_session", Jido.Browser.Actions.StartSession},
-      {"browser.end_session", Jido.Browser.Actions.EndSession},
-      {"browser.get_status", Jido.Browser.Actions.GetStatus},
-      {"browser.pool_status", Jido.Browser.Actions.PoolStatus},
-      {"browser.save_state", Jido.Browser.Actions.SaveState},
-      {"browser.load_state", Jido.Browser.Actions.LoadState},
-      # Navigation
-      {"browser.navigate", Jido.Browser.Actions.Navigate},
-      {"browser.back", Jido.Browser.Actions.Back},
-      {"browser.forward", Jido.Browser.Actions.Forward},
-      {"browser.reload", Jido.Browser.Actions.Reload},
-      {"browser.get_url", Jido.Browser.Actions.GetUrl},
-      {"browser.get_title", Jido.Browser.Actions.GetTitle},
-      # Interaction
-      {"browser.click", Jido.Browser.Actions.Click},
-      {"browser.type", Jido.Browser.Actions.Type},
-      {"browser.hover", Jido.Browser.Actions.Hover},
-      {"browser.focus", Jido.Browser.Actions.Focus},
-      {"browser.scroll", Jido.Browser.Actions.Scroll},
-      {"browser.select_option", Jido.Browser.Actions.SelectOption},
-      # Waiting/synchronization
-      {"browser.wait", Jido.Browser.Actions.Wait},
-      {"browser.wait_for_selector", Jido.Browser.Actions.WaitForSelector},
-      {"browser.wait_for_navigation", Jido.Browser.Actions.WaitForNavigation},
-      # Element queries
-      {"browser.query", Jido.Browser.Actions.Query},
-      {"browser.get_text", Jido.Browser.Actions.GetText},
-      {"browser.get_attribute", Jido.Browser.Actions.GetAttribute},
-      {"browser.is_visible", Jido.Browser.Actions.IsVisible},
-      # Tabs
-      {"browser.tab_list", Jido.Browser.Actions.ListTabs},
-      {"browser.tab_new", Jido.Browser.Actions.NewTab},
-      {"browser.tab_switch", Jido.Browser.Actions.SwitchTab},
-      {"browser.tab_close", Jido.Browser.Actions.CloseTab},
-      # Content extraction
-      {"browser.snapshot", Jido.Browser.Actions.Snapshot},
-      {"browser.screenshot", Jido.Browser.Actions.Screenshot},
-      {"browser.extract", Jido.Browser.Actions.ExtractContent},
-      # Diagnostics
-      {"browser.console", Jido.Browser.Actions.Console},
-      {"browser.errors", Jido.Browser.Actions.Errors},
-      # Advanced
-      {"browser.evaluate", Jido.Browser.Actions.Evaluate},
-      # Self-contained composite actions
-      {"browser.read_page", Jido.Browser.Actions.ReadPage},
-      {"browser.snapshot_url", Jido.Browser.Actions.SnapshotUrl},
-      {"browser.search_web", Jido.Browser.Actions.SearchWeb},
-      {"browser.web_fetch", Jido.Browser.Actions.WebFetch},
-      {"browser.fetch_rich", Jido.Browser.Actions.FetchRich}
-    ]
-  end
+  def signal_routes(_config), do: @signal_routes
 
   @impl Jido.Plugin
   def handle_signal(_signal, _context) do
@@ -343,59 +259,4 @@ defmodule Jido.Browser.Plugin do
   defp nil_or_empty?(nil), do: true
   defp nil_or_empty?(""), do: true
   defp nil_or_empty?(_value), do: false
-
-  def signal_patterns do
-    [
-      # Session lifecycle
-      "browser.start_session",
-      "browser.end_session",
-      "browser.get_status",
-      "browser.pool_status",
-      "browser.save_state",
-      "browser.load_state",
-      # Navigation
-      "browser.navigate",
-      "browser.back",
-      "browser.forward",
-      "browser.reload",
-      "browser.get_url",
-      "browser.get_title",
-      # Interaction
-      "browser.click",
-      "browser.type",
-      "browser.hover",
-      "browser.focus",
-      "browser.scroll",
-      "browser.select_option",
-      # Waiting/synchronization
-      "browser.wait",
-      "browser.wait_for_selector",
-      "browser.wait_for_navigation",
-      # Element queries
-      "browser.query",
-      "browser.get_text",
-      "browser.get_attribute",
-      "browser.is_visible",
-      # Tabs
-      "browser.tab_list",
-      "browser.tab_new",
-      "browser.tab_switch",
-      "browser.tab_close",
-      # Content extraction
-      "browser.snapshot",
-      "browser.screenshot",
-      "browser.extract",
-      # Diagnostics
-      "browser.console",
-      "browser.errors",
-      # Advanced
-      "browser.evaluate",
-      # Self-contained composite actions
-      "browser.read_page",
-      "browser.snapshot_url",
-      "browser.search_web",
-      "browser.web_fetch",
-      "browser.fetch_rich"
-    ]
-  end
 end
