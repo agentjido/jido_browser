@@ -132,6 +132,7 @@ defmodule Jido.Browser.WarmPool.Manager do
     session_supervisor = Keyword.fetch!(opts, :session_supervisor)
     lease_supervisor = Keyword.fetch!(opts, :lease_supervisor)
     cleanup_supervisor = Keyword.fetch!(opts, :cleanup_supervisor)
+    runtime_context = Keyword.get(opts, :pool_runtime_context)
     lifecycle = Keyword.get(opts, :lifecycle, :ephemeral)
     max_uses = Keyword.get(opts, :max_uses)
     max_age_ms = Keyword.get(opts, :max_age_ms)
@@ -147,6 +148,7 @@ defmodule Jido.Browser.WarmPool.Manager do
              session_supervisor: session_supervisor,
              cleanup_supervisor: cleanup_supervisor,
              runtime_module: runtime_module,
+             runtime_context: runtime_context,
              lifecycle: lifecycle,
              max_uses: max_uses,
              max_age_ms: max_age_ms

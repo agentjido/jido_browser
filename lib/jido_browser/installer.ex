@@ -32,6 +32,7 @@ defmodule Jido.Browser.Installer do
   require Logger
 
   alias Jido.Browser.AgentBrowser.Binary
+  alias Jido.Browser.Installer.Paths
 
   @vibium_version "26.3.11"
   @web_version "main"
@@ -41,6 +42,13 @@ defmodule Jido.Browser.Installer do
     web: ["--help"],
     lightpanda: ["version"]
   }
+  # Literal module atoms preserve exact selections without an xref edge to adapters.
+  @adapter_binaries %{
+    :"Elixir.Jido.Browser.Adapters.AgentBrowser" => :agent_browser,
+    :"Elixir.Jido.Browser.Adapters.Lightpanda" => :lightpanda,
+    :"Elixir.Jido.Browser.Adapters.Vibium" => :vibium,
+    :"Elixir.Jido.Browser.Adapters.Web" => :web
+  }
 
   @type platform :: :darwin_arm64 | :darwin_amd64 | :linux_amd64 | :linux_arm64 | :windows_amd64
 
@@ -48,11 +56,7 @@ defmodule Jido.Browser.Installer do
   Returns the detected platform for the current system.
   """
   @spec target() :: platform()
-  def target do
-    os = detect_os()
-    arch = detect_arch()
-    :"#{os}_#{arch}"
-  end
+  defdelegate target(), to: Paths
 
   @doc """
   Returns whether a given binary is installed and available.
@@ -144,19 +148,11 @@ defmodule Jido.Browser.Installer do
   same pattern as Phoenix's Tailwind installer.
   """
   @spec default_install_path() :: String.t()
-  def default_install_path do
-    if path = Application.get_env(:jido_browser, :path) do
-      Path.expand(path)
-    else
-      Path.join(Path.dirname(Mix.Project.build_path()), "jido_browser-#{target()}")
-    end
-  end
+  defdelegate default_install_path(), to: Paths
 
   @doc false
   @spec agent_browser_package_path() :: String.t()
-  def agent_browser_package_path do
-    Path.join(default_install_path(), agent_browser_binary_name())
-  end
+  defdelegate agent_browser_package_path(), to: Paths
 
   @doc """
   Returns the configured version for a binary.
@@ -171,16 +167,12 @@ defmodule Jido.Browser.Installer do
   # Private implementation
 
   defp configured_adapter_binary do
-    adapter = Application.get_env(:jido_browser, :adapter, Jido.Browser.Adapters.AgentBrowser)
-
-    case adapter do
-      Jido.Browser.Adapters.AgentBrowser -> :agent_browser
-      Jido.Browser.Adapters.Vibium -> :vibium
-      Jido.Browser.Adapters.Web -> :web
-      Jido.Browser.Adapters.Lightpanda -> :lightpanda
-      _ -> :agent_browser
-    end
+    :jido_browser
+    |> Application.get_env(:adapter, :"Elixir.Jido.Browser.Adapters.AgentBrowser")
+    |> adapter_binary()
   end
+
+  defp adapter_binary(adapter), do: Map.get(@adapter_binaries, adapter, :agent_browser)
 
   defp agent_browser_installed? do
     match?({:ok, _path}, resolve_agent_browser())
@@ -517,15 +509,7 @@ defmodule Jido.Browser.Installer do
     end
   end
 
-  defp agent_browser_binary_name do
-    case target() do
-      :darwin_arm64 -> "agent-browser-darwin-arm64"
-      :darwin_amd64 -> "agent-browser-darwin-x64"
-      :linux_amd64 -> "agent-browser-linux-x64"
-      :linux_arm64 -> "agent-browser-linux-arm64"
-      :windows_amd64 -> "agent-browser-win32-x64.exe"
-    end
-  end
+  defp agent_browser_binary_name, do: Paths.agent_browser_binary_name()
 
   defp agent_browser_download_url do
     version = configured_version(:agent_browser)
@@ -770,28 +754,4 @@ defmodule Jido.Browser.Installer do
         {:error, inspect(reason)}
     end
   end
-
-  # Platform detection
-
-  defp detect_os do
-    case :os.type() do
-      {:unix, :darwin} -> :darwin
-      {:unix, :linux} -> :linux
-      {:win32, _} -> :windows
-      other -> other
-    end
-  end
-
-  defp detect_arch do
-    :erlang.system_info(:system_architecture)
-    |> to_string()
-    |> parse_arch()
-  end
-
-  defp parse_arch("aarch64" <> _), do: :arm64
-  defp parse_arch("arm64" <> _), do: :arm64
-  defp parse_arch("x86_64" <> _), do: :amd64
-  defp parse_arch("amd64" <> _), do: :amd64
-  defp parse_arch("win32" <> _), do: :amd64
-  defp parse_arch(_other), do: :amd64
 end

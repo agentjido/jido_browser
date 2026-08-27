@@ -314,7 +314,11 @@ defmodule Jido.Browser.Adapters.Lightpanda do
           size: size,
           adapter: __MODULE__,
           worker_opts: Keyword.put(worker_opts, :pool_name, name),
-          pool_runtime_module: Keyword.get(opts, :pool_runtime_module, PoolRuntime)
+          pool_runtime_module: Keyword.get(opts, :pool_runtime_module, PoolRuntime),
+          pool_runtime_context: %{
+            start_connection: &start_connection/1,
+            stop_connection: &stop_connection/1
+          }
         ] ++ pool_opts
 
       startup_timeout =
