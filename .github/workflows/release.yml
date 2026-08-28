@@ -67,7 +67,7 @@ jobs:
       skip_tests: ${{ inputs.skip_tests || false }}
       version_override: ${{ inputs.version_override || '' }}
       release_command: mix jido_browser.release --yes
-      staged_prepare: ${{ inputs.staged_prepare }}
+      staged_prepare: ${{ inputs.staged_prepare || false }}
       validation_workflow: ci.yml
       required_checks: '["AgentBrowser smoke","CI / Summary"]'
       release_changed_files: '["CHANGELOG.md","mix.exs"]'
