@@ -1,6 +1,13 @@
 name: CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      release_validation:
+        description: Trusted metadata from the checked release workflow
+        required: false
+        type: string
+        default: ""
   pull_request:
   merge_group:
   push:
@@ -18,11 +25,12 @@ permissions:
 jobs:
   ci:
     name: CI
-    uses: agentjido/github-actions/.github/workflows/jido-ci.yml@v5
-    secrets: inherit
+    uses: agentjido/github-actions/.github/workflows/jido-ci.yml@v5.2.1
     with:
       docs_command: mix docs -f html
       test_command: mix coveralls
+      release_validation: ${{ inputs.release_validation || '' }}
+      generated_release_command: .github/scripts/validate-generated-release.sh
 
   agent-browser-smoke:
     name: AgentBrowser smoke
