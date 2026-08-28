@@ -7,9 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/agentjido/jido_browser/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/agentjido/jido_browser/compare/v2.4.0...HEAD
 
 <!-- changelog -->
+
+## [v2.4.0](https://github.com/agentjido/jido_browser/compare/v2.3.0...v2.4.0) (2026-08-28)
+
+
+
+
+### Refactoring:
+
+* fetch_rich: remove the public facade cycle by mikehostetler
+
+* pool: remove adapter runtime dependency cycles by mikehostetler
+
+* web_fetch: split retrieval into focused modules by mikehostetler
 
 ## [v2.3.0](https://github.com/agentjido/jido_browser/compare/v2.2.0...v2.3.0) (2026-08-27)
 
