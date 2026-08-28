@@ -40,6 +40,16 @@ on:
         required: false
         type: string
         default: ""
+      staged_prepare:
+        description: "Validate the generated commit before protected-main promotion"
+        required: false
+        type: boolean
+        default: true
+      staging_branch_prefix:
+        description: "Owned checked-release branch prefix"
+        required: false
+        type: string
+        default: "release/gitops/"
 
 permissions:
   actions: write
@@ -48,7 +58,7 @@ permissions:
 jobs:
   release:
     name: Release
-    uses: agentjido/github-actions/.github/workflows/jido-release.yml@v5
+    uses: agentjido/github-actions/.github/workflows/jido-release.yml@v5.2.1
     with:
       operation: ${{ inputs.operation || 'auto' }}
       tag_name: ${{ inputs.tag_name || '' }}
@@ -57,5 +67,12 @@ jobs:
       skip_tests: ${{ inputs.skip_tests || false }}
       version_override: ${{ inputs.version_override || '' }}
       release_command: mix jido_browser.release --yes
+      staged_prepare: ${{ inputs.staged_prepare }}
+      validation_workflow: ci.yml
+      required_checks: '["AgentBrowser smoke","CI / Summary"]'
+      release_changed_files: '["CHANGELOG.md","mix.exs"]'
+      generated_release_command: .github/scripts/validate-generated-release.sh
+      staging_branch_prefix: ${{ inputs.staging_branch_prefix || 'release/gitops/' }}
+      validation_timeout_seconds: 2700
     secrets:
       HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
