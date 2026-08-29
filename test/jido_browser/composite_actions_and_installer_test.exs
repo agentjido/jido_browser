@@ -31,7 +31,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
   describe "ReadPage.run/2" do
     test "returns content and closes session on success", %{session: session} do
       expect(Jido.Browser, :start_session, fn opts ->
-        assert opts[:adapter] == Jido.Browser.Adapters.Web
+        assert opts[:adapter] == Jido.Browser.Adapters.Test
         assert opts[:headless] == false
         assert opts[:timeout] == 45_000
         assert opts[:pool] == "warm"
@@ -56,7 +56,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
                  %{url: "https://example.com", selector: "article", format: :text},
                  %{
                    skill_state: %{
-                     adapter: Jido.Browser.Adapters.Web,
+                     adapter: Jido.Browser.Adapters.Test,
                      headless: false,
                      timeout: 45_000,
                      pool: "warm",
@@ -88,7 +88,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
   describe "SnapshotUrl.run/2" do
     test "returns rich snapshot when evaluate returns structured data", %{session: session} do
       expect(Jido.Browser, :start_session, fn opts ->
-        assert opts[:adapter] == Jido.Browser.Adapters.Web
+        assert opts[:adapter] == Jido.Browser.Adapters.Test
         assert opts[:headless] == false
         assert opts[:timeout] == 45_000
         assert opts[:pool] == "warm"
@@ -112,7 +112,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
       assert {:ok, result} =
                SnapshotUrl.run(%{url: "https://example.com"}, %{
                  skill_state: %{
-                   adapter: Jido.Browser.Adapters.Web,
+                   adapter: Jido.Browser.Adapters.Test,
                    headless: false,
                    timeout: 45_000,
                    pool: "warm",
@@ -409,14 +409,6 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
         assert Installer.configured_version(:agent_browser) == "0.35.1"
       end)
 
-      with_app_env(:jido_browser, :web_version, nil, fn ->
-        assert Installer.configured_version(:web) == "main"
-      end)
-
-      with_app_env(:jido_browser, :web_version, "stable", fn ->
-        assert Installer.configured_version(:web) == "stable"
-      end)
-
       with_app_env(:jido_browser, :lightpanda_version, nil, fn ->
         assert Installer.configured_version(:lightpanda) == "0.3.0"
       end)
@@ -431,21 +423,6 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
 
       refute dep?(deps, :light_cdp)
       refute dep?(deps, :lightpanda_ex)
-    end
-
-    test "bin_path/installed? use configured web path when present" do
-      path = Path.join(System.tmp_dir!(), "jido_browser_test_web_#{System.unique_integer([:positive])}")
-      File.write!(path, "#!/bin/sh\nexit 0\n")
-      File.chmod!(path, 0o755)
-
-      try do
-        with_app_env(:jido_browser, :web, [binary_path: path], fn ->
-          assert Installer.bin_path(:web) == path
-          assert Installer.installed?(:web)
-        end)
-      after
-        File.rm(path)
-      end
     end
 
     test "bin_path/installed? use configured lightpanda path when present" do

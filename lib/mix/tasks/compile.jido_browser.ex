@@ -38,7 +38,6 @@ defmodule Mix.Tasks.Compile.JidoBrowser do
       case adapter do
         Jido.Browser.Adapters.AgentBrowser -> :agent_browser
         Jido.Browser.Adapters.Vibium -> :vibium
-        Jido.Browser.Adapters.Web -> :web
         Jido.Browser.Adapters.Lightpanda -> :lightpanda
         _ -> :agent_browser
       end

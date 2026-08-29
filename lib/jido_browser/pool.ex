@@ -15,7 +15,6 @@ defmodule Jido.Browser.Pool do
   `Jido.Browser.start_pool/1` for scripts, tests, or ad hoc startup.
   """
 
-  alias Jido.Browser.Deprecations
   alias Jido.Browser.Error
   alias Jido.Browser.PoolAdapter
 
@@ -67,7 +66,6 @@ defmodule Jido.Browser.Pool do
   def start_link(opts) do
     opts = Keyword.put_new(opts, :name, @default_name)
     adapter = Keyword.get(opts, :adapter, configured_adapter())
-    :ok = Deprecations.warn(adapter)
 
     if PoolAdapter.supports_pools?(adapter) do
       adapter.start_supervised_pool(opts)

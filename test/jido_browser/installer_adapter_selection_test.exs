@@ -4,10 +4,9 @@ defmodule Jido.Browser.InstallerAdapterSelectionTest do
   alias Jido.Browser.Adapters.AgentBrowser
   alias Jido.Browser.Adapters.Lightpanda
   alias Jido.Browser.Adapters.Vibium
-  alias Jido.Browser.Adapters.Web
   alias Jido.Browser.Installer
 
-  @config_keys [:adapter, :agent_browser, :lightpanda, :vibium, :web]
+  @config_keys [:adapter, :agent_browser, :lightpanda, :vibium]
 
   setup do
     previous = Map.new(@config_keys, &{&1, Application.get_env(:jido_browser, &1, :__missing__)})
@@ -29,8 +28,7 @@ defmodule Jido.Browser.InstallerAdapterSelectionTest do
     cases = [
       {AgentBrowser, :agent_browser},
       {Lightpanda, :lightpanda},
-      {Vibium, :vibium},
-      {Web, :web}
+      {Vibium, :vibium}
     ]
 
     Enum.each(cases, fn {adapter, config_key} ->
@@ -53,7 +51,7 @@ defmodule Jido.Browser.InstallerAdapterSelectionTest do
   defp set_missing_adapter_paths do
     missing = Path.join(System.tmp_dir!(), "jido_browser_missing_#{System.unique_integer([:positive])}")
 
-    for key <- [:agent_browser, :lightpanda, :vibium, :web] do
+    for key <- [:agent_browser, :lightpanda, :vibium] do
       Application.put_env(:jido_browser, key, binary_path: missing)
     end
   end

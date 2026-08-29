@@ -8,7 +8,7 @@ defmodule Jido.Browser.Actions.SnapshotUrl do
 
   When the adapter supports JavaScript evaluation (e.g. Vibium), returns
   a rich snapshot with structured links, forms, and headings. When using
-  a text-only adapter (e.g. Web), falls back to content extraction via
+  a text-only adapter, falls back to content extraction via
   ReadPage-style markdown output.
 
   ## Usage with Jido Agent

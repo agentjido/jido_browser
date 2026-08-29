@@ -33,7 +33,6 @@ defmodule Jido.Browser.Plugin do
   """
 
   alias Jido.Browser.ActionRegistry
-  alias Jido.Browser.Deprecations
 
   @action_modules ActionRegistry.actions()
   @signal_routes ActionRegistry.signal_routes()
@@ -52,7 +51,6 @@ defmodule Jido.Browser.Plugin do
   @impl Jido.Plugin
   def mount(_agent, config) do
     adapter = Map.get(config, :adapter, Jido.Browser.Adapters.AgentBrowser)
-    :ok = Deprecations.warn(adapter)
 
     initial_state = %{
       session: nil,

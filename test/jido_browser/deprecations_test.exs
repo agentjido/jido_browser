@@ -6,9 +6,7 @@ defmodule Jido.Browser.DeprecationsTest do
   alias Jido.Browser.Adapters.AgentBrowser
   alias Jido.Browser.Adapters.Lightpanda
   alias Jido.Browser.Adapters.Vibium
-  alias Jido.Browser.Adapters.Web
   alias Jido.Browser.Deprecations
-  alias Jido.Browser.TestSupport.FakeWebBinary
   alias Jido.Browser.Vendor.BrowseyHttp
   alias Jido.Browser.WebFetch.Backends.Browsey
   alias Jido.Browser.WebFetch.Backends.Req
@@ -42,20 +40,6 @@ defmodule Jido.Browser.DeprecationsTest do
     :ok
   end
 
-  test "warns once for the Web adapter module and alias" do
-    log =
-      capture_log(fn ->
-        assert :ok = Deprecations.warn(Web)
-        assert :ok = Deprecations.warn(:web)
-        assert :ok = Deprecations.warn(Web)
-      end)
-
-    assert warning_count(log, "Web adapter runtime") == 1
-    assert log =~ inspect(Web)
-    assert log =~ "removed in Jido Browser 3.0"
-    assert log =~ inspect(AgentBrowser)
-  end
-
   test "warns once for each BrowseyHttp backend name and alias" do
     log =
       capture_log(fn ->
@@ -77,7 +61,7 @@ defmodule Jido.Browser.DeprecationsTest do
         1..100
         |> Task.async_stream(
           fn index ->
-            selection = if rem(index, 2) == 0, do: Web, else: :web
+            selection = if rem(index, 2) == 0, do: Browsey, else: :browsey
             Deprecations.warn(selection)
           end,
           max_concurrency: 20,
@@ -86,7 +70,7 @@ defmodule Jido.Browser.DeprecationsTest do
         |> Enum.each(fn result -> assert result == {:ok, :ok} end)
       end)
 
-    assert warning_count(log, "Web adapter runtime") == 1
+    assert warning_count(log, "BrowseyHttp") == 1
   end
 
   test "does not warn for supported adapters and the Req backend" do
@@ -102,17 +86,14 @@ defmodule Jido.Browser.DeprecationsTest do
 
   test "warns for configured deprecated runtimes during application boot" do
     :ok = Application.stop(:jido_browser)
-    Application.put_env(:jido_browser, :adapter, Web)
     Application.put_env(:jido_browser, :web_fetch, backend: :browsey)
 
     log = capture_log(&start_application!/0)
 
-    assert warning_count(log, "Web adapter runtime") == 1
     assert warning_count(log, "BrowseyHttp") == 1
 
     repeated_log =
       capture_log(fn ->
-        assert :ok = Deprecations.warn(Web)
         assert :ok = Deprecations.warn(:browsey)
       end)
 
@@ -128,8 +109,8 @@ defmodule Jido.Browser.DeprecationsTest do
     assert is_pid(warm_pool_supervisor)
     assert is_pid(deprecations)
 
-    Application.put_env(:jido_browser, :adapter, Web)
-    first_log = capture_log(fn -> assert :ok = Deprecations.warn(Web) end)
+    Application.put_env(:jido_browser, :web_fetch, backend: :browsey)
+    first_log = capture_log(fn -> assert :ok = Deprecations.warn(:browsey) end)
 
     restart_log =
       capture_log(fn ->
@@ -140,43 +121,20 @@ defmodule Jido.Browser.DeprecationsTest do
       end)
 
     restarted_deprecations = Process.whereis(Deprecations)
-    repeated_log = capture_log(fn -> assert :ok = Deprecations.warn(Web) end)
+    repeated_log = capture_log(fn -> assert :ok = Deprecations.warn(:browsey) end)
 
     assert Process.whereis(Jido.Browser.AgentBrowser.SessionTreeSupervisor) == agent_browser_supervisor
     assert Process.whereis(Jido.Browser.WarmPool.RootSupervisor) == warm_pool_supervisor
     assert restarted_deprecations != deprecations
-    assert warning_count(restart_log, "Web adapter runtime") == 0
+    assert warning_count(restart_log, "BrowseyHttp") == 0
     assert repeated_log == ""
 
     application_restart_log = capture_log(&restart_application!/0)
-    after_application_restart_log = capture_log(fn -> assert :ok = Deprecations.warn(Web) end)
+    after_application_restart_log = capture_log(fn -> assert :ok = Deprecations.warn(:browsey) end)
 
-    assert warning_count(first_log, "Web adapter runtime") == 1
-    assert warning_count(application_restart_log, "Web adapter runtime") == 1
+    assert warning_count(first_log, "BrowseyHttp") == 1
+    assert warning_count(application_restart_log, "BrowseyHttp") == 1
     assert after_application_restart_log == ""
-  end
-
-  test "keeps Web session behavior and warns once across repeated sessions" do
-    FakeWebBinary.with_binary(:normal, fn binary, _profile_root ->
-      log =
-        capture_log(fn ->
-          assert {:ok, first_session} =
-                   Jido.Browser.start_session(adapter: Web, binary: binary, profile: "deprecated-first")
-
-          assert {:ok, _session, first_result} =
-                   Jido.Browser.navigate(first_session, "https://example.com/first")
-
-          assert first_result == %{content: "ok:https://example.com/first", url: "https://example.com/first"}
-          assert :ok = Jido.Browser.end_session(first_session)
-
-          assert {:ok, second_session} =
-                   Jido.Browser.start_session(adapter: Web, binary: binary, profile: "deprecated-second")
-
-          assert :ok = Jido.Browser.end_session(second_session)
-        end)
-
-      assert warning_count(log, "Web adapter runtime") == 1
-    end)
   end
 
   test "keeps BrowseyHttp behavior and warns once for alias and module requests" do

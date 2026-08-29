@@ -19,11 +19,10 @@ Browser automation for Jido AI agents.
 - `start_session/1` and `end_session/1` for browser-backed workflows
 - `Jido.Browser.Pool` plus `start_session(pool: ...)` as an optional acceleration layer
 
-`agent-browser` remains the default adapter. `Web` also supports warm pools when
-you want browser-backed sessions with lower cold-start overhead. `Vibium`
-remains available without warm-pool support. `Lightpanda` is available as an
-optional limited adapter for lightweight DOM and JavaScript automation, with
-warm-pool support for prestarted CDP sessions.
+`agent-browser` is the default adapter and supports warm pools. `Vibium` remains
+available without warm-pool support. `Lightpanda` is available as an optional
+limited adapter for lightweight DOM and JavaScript automation, with warm-pool
+support for prestarted CDP sessions.
 
 The [browser adapter support policy](guides/browser_adapter_support.md) is the
 canonical source for support levels, tested versions, CI coverage, and 3.0
@@ -67,7 +66,6 @@ end
 ```bash
 mix jido_browser.install agent_browser
 mix jido_browser.install vibium
-mix jido_browser.install web
 mix jido_browser.install lightpanda
 ```
 
@@ -284,12 +282,11 @@ Use `start_pool/1` for scripts, tests, or ad hoc startup:
 :ok = Jido.Browser.end_session(session)
 ```
 
-Warm pools are currently supported by `Jido.Browser.Adapters.AgentBrowser`,
-`Jido.Browser.Adapters.Lightpanda`, and `Jido.Browser.Adapters.Web`.
+Warm pools are currently supported by `Jido.Browser.Adapters.AgentBrowser` and
+`Jido.Browser.Adapters.Lightpanda`.
 
 - AgentBrowser pools keep full warm daemon-backed sessions ready for checkout.
 - Lightpanda pools keep prestarted Lightpanda/CDP sessions ready for checkout.
-- Web pools keep reserved warmed profiles ready for checkout.
 - `lifecycle: :ephemeral` is the default: `end_session/1` recycles the checked-out
   worker and warms a replacement in the background.
 - `lifecycle: :persistent` returns healthy workers to the pool after normal
@@ -305,10 +302,6 @@ status.ready
 status.leased
 status.lifecycle
 ```
-
-For the `Web` adapter, pooled sessions are still browser sessions, not HTTP
-fetches. Use `web_fetch/2` when you want the simplest request/response API
-without browser state.
 
 Persistent pools can preserve browser profile continuity, cookies, storage, and
 session history for application-managed workflows. They do not guarantee access
@@ -350,10 +343,6 @@ Other adapters can still be configured explicitly:
 ```elixir
 config :jido_browser, :vibium,
   binary_path: "/path/to/vibium"
-
-config :jido_browser, :web,
-  binary_path: "/usr/local/bin/web",
-  profile: "default"
 
 config :jido_browser, :lightpanda,
   binary_path: "/usr/local/bin/lightpanda",
@@ -404,10 +393,15 @@ Configured `req`, `browsey`, and `extractous` options are merged with any per-ca
 - CLI-backed browser sessions without warm-pool support
 - navigation, click, type, PNG screenshots, content extraction, and JavaScript evaluation
 
-### Web
+### Migrating from the removed Web adapter
 
-- Firefox-backed browser sessions through the `web` CLI
-- optional warm session pools with persistent profiles
+Jido Browser 3.0 removes `Jido.Browser.Adapters.Web`, its `:web`
+configuration, and the `mix jido_browser.install web` target.
+
+- Use `Jido.Browser.Adapters.AgentBrowser` for stateful sessions, rendered
+  pages, JavaScript, and warm pools.
+- Use `Jido.Browser.web_fetch/2` with the default
+  `Jido.Browser.WebFetch.Backends.Req` backend for stateless HTTP retrieval.
 
 ## Public API
 

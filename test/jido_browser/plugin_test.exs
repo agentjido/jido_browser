@@ -206,8 +206,8 @@ defmodule Jido.Browser.PluginTest do
     end
 
     test "accepts adapter config" do
-      {:ok, state} = Plugin.mount(%{}, %{adapter: Jido.Browser.Adapters.Web})
-      assert state.adapter == Jido.Browser.Adapters.Web
+      {:ok, state} = Plugin.mount(%{}, %{adapter: Jido.Browser.Adapters.Test})
+      assert state.adapter == Jido.Browser.Adapters.Test
     end
 
     test "accepts pool config overrides" do
