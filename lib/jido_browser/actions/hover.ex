@@ -20,6 +20,13 @@ defmodule Jido.Browser.Actions.Hover do
       Zoi.object(%{
         selector: Zoi.string(description: "CSS selector for the element to hover"),
         timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        selector: Zoi.string(),
+        result: Zoi.map(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

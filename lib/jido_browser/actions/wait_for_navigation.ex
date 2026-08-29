@@ -24,6 +24,13 @@ defmodule Jido.Browser.Actions.WaitForNavigation do
           Zoi.integer(description: "Maximum wait time in milliseconds")
           |> Zoi.default(30_000)
           |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        url: Zoi.string() |> Zoi.nullable(),
+        elapsed_ms: Zoi.integer(gte: 0),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

@@ -16,7 +16,13 @@ defmodule Jido.Browser.Actions.IsVisible do
   use Jido.Browser.Action,
     name: "browser_is_visible",
     description: "Check if an element is visible",
-    schema: Zoi.object(%{selector: Zoi.string(description: "CSS selector for the element")})
+    schema: Zoi.object(%{selector: Zoi.string(description: "CSS selector for the element")}),
+    output_schema:
+      Zoi.object(%{
+        exists: Zoi.boolean(),
+        visible: Zoi.boolean(),
+        session: Zoi.any()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

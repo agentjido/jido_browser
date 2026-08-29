@@ -16,7 +16,12 @@ defmodule Jido.Browser.Actions.Wait do
   use Jido.Browser.Action,
     name: "browser_wait",
     description: "Wait for a specified number of milliseconds",
-    schema: Zoi.object(%{ms: Zoi.integer(description: "Milliseconds to wait")})
+    schema: Zoi.object(%{ms: Zoi.integer(description: "Milliseconds to wait")}),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        waited_ms: Zoi.integer()
+      })
 
   @impl true
   def run(%{ms: ms}, _context) do

@@ -23,6 +23,14 @@ defmodule Jido.Browser.Actions.GetText do
           Zoi.boolean(description: "Get text from all matching elements")
           |> Zoi.default(false)
           |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        selector: Zoi.string(),
+        text: Zoi.string() |> Zoi.optional(),
+        texts: Zoi.list(Zoi.string()) |> Zoi.optional(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

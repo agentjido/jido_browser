@@ -20,6 +20,14 @@ defmodule Jido.Browser.Actions.GetAttribute do
       Zoi.object(%{
         selector: Zoi.string(description: "CSS selector for the element"),
         attribute: Zoi.string(description: "Attribute name to get")
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        selector: Zoi.string(),
+        attribute: Zoi.string(),
+        value: Zoi.string(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

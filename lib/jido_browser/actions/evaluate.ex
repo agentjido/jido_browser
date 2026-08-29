@@ -20,6 +20,12 @@ defmodule Jido.Browser.Actions.Evaluate do
       Zoi.object(%{
         script: Zoi.string(description: "JavaScript code to execute"),
         timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        result: Zoi.any(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

@@ -23,6 +23,13 @@ defmodule Jido.Browser.Actions.SelectOption do
         value: Zoi.string(description: "Option value to select") |> Zoi.optional(),
         label: Zoi.string(description: "Option label/text to select") |> Zoi.optional(),
         index: Zoi.integer(description: "Option index to select (0-based)") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        selector: Zoi.string(),
+        result: Zoi.map(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

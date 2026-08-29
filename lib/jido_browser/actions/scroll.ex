@@ -26,6 +26,12 @@ defmodule Jido.Browser.Actions.Scroll do
           Zoi.enum([:up, :down, :top, :bottom], description: "Preset scroll direction")
           |> Zoi.optional(),
         selector: Zoi.string(description: "CSS selector to scroll element into view") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        result: Zoi.map(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers
