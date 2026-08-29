@@ -70,7 +70,7 @@ defmodule Jido.Browser.MixProject do
       {:jason, "~> 1.4"},
       {:floki, "~> 0.38"},
       {:html2markdown, "~> 0.3"},
-      {:extractous_ex, "~> 0.2"},
+      {:extractous_ex, "~> 0.2", optional: true},
       {:nimble_pool, "~> 1.1"},
 
       # Dev/Test

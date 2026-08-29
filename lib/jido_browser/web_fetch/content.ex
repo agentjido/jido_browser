@@ -273,6 +273,9 @@ defmodule Jido.Browser.WebFetch.Content do
       {:ok, %{content: content, metadata: metadata}} when is_binary(content) ->
         {:ok, String.trim(content), normalize_metadata(metadata)}
 
+      {:error, :dependency_unavailable} ->
+        {:error, document_extraction_unavailable(final_url, content_type, document_type)}
+
       {:error, reason} ->
         {:error,
          Error.adapter_error("ExtractousEx failed while extracting document content", %{
@@ -293,6 +296,17 @@ defmodule Jido.Browser.WebFetch.Content do
          document_type: document_type,
          reason: error
        })}
+  end
+
+  defp document_extraction_unavailable(final_url, content_type, document_type) do
+    Error.adapter_error("Document extraction support is not installed", %{
+      error_code: :unsupported_feature,
+      feature: :document_extraction,
+      dependency: :extractous_ex,
+      url: final_url,
+      content_type: content_type,
+      document_type: document_type
+    })
   end
 
   defp response_content_type(response) do

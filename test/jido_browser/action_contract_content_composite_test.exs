@@ -123,7 +123,7 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
       module: Actions.WebFetch,
       name: "web_fetch",
       description:
-        "Fetch a URL over HTTP(S) with domain policy controls, Extractous-backed document extraction, " <>
+        "Fetch a URL over HTTP(S) with domain policy controls, optional Extractous-backed document extraction, " <>
           "optional focused filtering, approximate token caps, and citation-ready passages.",
       schema: %{
         url: %{type: :string, required: true, doc: "The URL to fetch"},

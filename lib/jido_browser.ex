@@ -115,9 +115,10 @@ defmodule Jido.Browser do
   @doc """
   Fetches a URL over HTTP(S) without starting a browser session.
 
-  HTML responses keep native selector extraction and format conversion, while
-  fetched binary documents such as PDFs and office files are extracted through
-  `ExtractousEx`.
+  HTML responses keep native selector extraction and format conversion. Fetched
+  PDFs and office files use the optional `ExtractousEx` dependency. When that
+  dependency is not installed, document requests return an unsupported-feature
+  error without affecting HTML, text, or browser use.
   """
   @spec web_fetch(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def web_fetch(url, opts \\ [])

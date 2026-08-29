@@ -10,7 +10,7 @@ defmodule Jido.Browser.Actions.WebFetch do
   use Jido.Browser.Action,
     name: "web_fetch",
     description:
-      "Fetch a URL over HTTP(S) with domain policy controls, Extractous-backed document extraction, " <>
+      "Fetch a URL over HTTP(S) with domain policy controls, optional Extractous-backed document extraction, " <>
         "optional focused filtering, approximate token caps, and citation-ready passages.",
     schema:
       Zoi.object(%{
