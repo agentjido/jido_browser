@@ -17,9 +17,6 @@ defmodule Jido.Browser.Actions.WaitForNavigation do
   use Jido.Browser.Action,
     name: "browser_wait_for_navigation",
     description: "Wait for page navigation to complete",
-    category: "Browser",
-    tags: ["browser", "wait", "navigation", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         url: Zoi.string(description: "URL pattern to match (substring match)") |> Zoi.optional(),

@@ -32,68 +32,12 @@ defmodule Jido.Browser.Plugin do
   * `Evaluate` - Execute JavaScript in the browser
   """
 
+  alias Jido.Browser.ActionRegistry
   alias Jido.Browser.Deprecations
 
-  @action_registry [
-    # Session lifecycle
-    {Jido.Browser.Actions.StartSession, "browser.start_session"},
-    {Jido.Browser.Actions.EndSession, "browser.end_session"},
-    {Jido.Browser.Actions.GetStatus, "browser.get_status"},
-    {Jido.Browser.Actions.PoolStatus, "browser.pool_status"},
-    {Jido.Browser.Actions.SaveState, "browser.save_state"},
-    {Jido.Browser.Actions.LoadState, "browser.load_state"},
-    # Navigation
-    {Jido.Browser.Actions.Navigate, "browser.navigate"},
-    {Jido.Browser.Actions.Back, "browser.back"},
-    {Jido.Browser.Actions.Forward, "browser.forward"},
-    {Jido.Browser.Actions.Reload, "browser.reload"},
-    {Jido.Browser.Actions.GetUrl, "browser.get_url"},
-    {Jido.Browser.Actions.GetTitle, "browser.get_title"},
-    # Interaction
-    {Jido.Browser.Actions.Click, "browser.click"},
-    {Jido.Browser.Actions.Type, "browser.type"},
-    {Jido.Browser.Actions.Hover, "browser.hover"},
-    {Jido.Browser.Actions.Focus, "browser.focus"},
-    {Jido.Browser.Actions.Scroll, "browser.scroll"},
-    {Jido.Browser.Actions.SelectOption, "browser.select_option"},
-    # Waiting/synchronization
-    {Jido.Browser.Actions.Wait, "browser.wait"},
-    {Jido.Browser.Actions.WaitForSelector, "browser.wait_for_selector"},
-    {Jido.Browser.Actions.WaitForNavigation, "browser.wait_for_navigation"},
-    # Element queries
-    {Jido.Browser.Actions.Query, "browser.query"},
-    {Jido.Browser.Actions.GetText, "browser.get_text"},
-    {Jido.Browser.Actions.GetAttribute, "browser.get_attribute"},
-    {Jido.Browser.Actions.IsVisible, "browser.is_visible"},
-    # Tabs
-    {Jido.Browser.Actions.ListTabs, "browser.tab_list"},
-    {Jido.Browser.Actions.NewTab, "browser.tab_new"},
-    {Jido.Browser.Actions.SwitchTab, "browser.tab_switch"},
-    {Jido.Browser.Actions.CloseTab, "browser.tab_close"},
-    # Content extraction
-    {Jido.Browser.Actions.Snapshot, "browser.snapshot"},
-    {Jido.Browser.Actions.Screenshot, "browser.screenshot"},
-    {Jido.Browser.Actions.ExtractContent, "browser.extract"},
-    # Diagnostics
-    {Jido.Browser.Actions.Console, "browser.console"},
-    {Jido.Browser.Actions.Errors, "browser.errors"},
-    # Advanced
-    {Jido.Browser.Actions.Evaluate, "browser.evaluate"},
-    # Self-contained composite actions (manage own session)
-    {Jido.Browser.Actions.ReadPage, "browser.read_page"},
-    {Jido.Browser.Actions.SnapshotUrl, "browser.snapshot_url"},
-    {Jido.Browser.Actions.SearchWeb, "browser.search_web"},
-    {Jido.Browser.Actions.WebFetch, "browser.web_fetch"},
-    {Jido.Browser.Actions.FetchRich, "browser.fetch_rich"}
-  ]
-
-  for {action, _signal_name} <- @action_registry do
-    Code.ensure_compiled!(action)
-  end
-
-  @action_modules Enum.map(@action_registry, &elem(&1, 0))
-  @signal_routes Enum.map(@action_registry, fn {action, signal_name} -> {signal_name, action} end)
-  @signal_patterns Enum.map(@action_registry, &elem(&1, 1))
+  @action_modules ActionRegistry.actions()
+  @signal_routes ActionRegistry.signal_routes()
+  @signal_patterns ActionRegistry.signal_patterns()
 
   use Jido.Plugin,
     name: "browser",

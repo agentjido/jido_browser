@@ -6,9 +6,6 @@ defmodule Jido.Browser.Actions.CloseTab do
   use Jido.Browser.Action,
     name: "browser_close_tab",
     description: "Close a browser tab",
-    category: "Browser",
-    tags: ["browser", "tabs", "session"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         index: Zoi.integer(description: "Optional tab index to close") |> Zoi.optional(),

@@ -17,9 +17,6 @@ defmodule Jido.Browser.Actions.WaitForSelector do
   use Jido.Browser.Action,
     name: "browser_wait_for_selector",
     description: "Wait for an element to appear, disappear, or change visibility state",
-    category: "Browser",
-    tags: ["browser", "wait", "sync", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         selector: Zoi.string(description: "CSS selector to wait for"),

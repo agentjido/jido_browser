@@ -15,9 +15,6 @@ defmodule Jido.Browser.Actions.Type do
   use Jido.Browser.Action,
     name: "browser_type",
     description: "Type text into an element in the browser",
-    category: "Browser",
-    tags: ["browser", "interaction", "input", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         selector: Zoi.string(description: "CSS selector for the input element"),

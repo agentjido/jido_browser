@@ -12,9 +12,6 @@ defmodule Jido.Browser.Actions.WebFetch do
     description:
       "Fetch a URL over HTTP(S) with domain policy controls, Extractous-backed document extraction, " <>
         "optional focused filtering, approximate token caps, and citation-ready passages.",
-    category: "Browser",
-    tags: ["browser", "web", "fetch", "http", "retrieval"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         url: Zoi.string(description: "The URL to fetch"),

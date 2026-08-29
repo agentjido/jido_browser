@@ -18,9 +18,6 @@ defmodule Jido.Browser.Actions.Scroll do
   use Jido.Browser.Action,
     name: "browser_scroll",
     description: "Scroll the page by pixels, to preset positions, or to an element",
-    category: "Browser",
-    tags: ["browser", "interaction", "scroll", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         x: Zoi.integer(description: "Horizontal scroll pixels") |> Zoi.optional(),

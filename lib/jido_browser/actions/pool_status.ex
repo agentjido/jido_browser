@@ -6,9 +6,6 @@ defmodule Jido.Browser.Actions.PoolStatus do
   use Jido.Browser.Action,
     name: "browser_pool_status",
     description: "Return readiness and lifecycle status for a warm browser pool.",
-    category: "Browser",
-    tags: ["browser", "pool", "status", "diagnostics"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         pool:

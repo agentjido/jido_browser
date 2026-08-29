@@ -16,9 +16,6 @@ defmodule Jido.Browser.Actions.EndSession do
   use Jido.Browser.Action,
     name: "browser_end_session",
     description: "End the current browser session",
-    category: "Browser",
-    tags: ["browser", "session", "lifecycle"],
-    vsn: "2.0.0",
     schema: Zoi.object(%{})
 
   alias Jido.Browser.ActionHelpers

@@ -17,9 +17,6 @@ defmodule Jido.Browser.Actions.SelectOption do
   use Jido.Browser.Action,
     name: "browser_select_option",
     description: "Select an option from a dropdown element",
-    category: "Browser",
-    tags: ["browser", "interaction", "select", "form", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         selector: Zoi.string(description: "CSS selector for the select element"),

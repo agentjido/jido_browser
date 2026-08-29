@@ -6,9 +6,6 @@ defmodule Jido.Browser.Actions.LoadState do
   use Jido.Browser.Action,
     name: "browser_load_state",
     description: "Load browser session state from a file",
-    category: "Browser",
-    tags: ["browser", "state", "session"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         path: Zoi.string(description: "Filesystem path of the saved session state"),

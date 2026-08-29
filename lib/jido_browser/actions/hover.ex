@@ -16,9 +16,6 @@ defmodule Jido.Browser.Actions.Hover do
   use Jido.Browser.Action,
     name: "browser_hover",
     description: "Hover over an element in the browser",
-    category: "Browser",
-    tags: ["browser", "interaction", "hover", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         selector: Zoi.string(description: "CSS selector for the element to hover"),

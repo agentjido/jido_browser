@@ -20,9 +20,6 @@ defmodule Jido.Browser.Actions.ReadPage do
     description:
       "Read a web page and return its content as markdown, text, or HTML. " <>
         "Manages browser session automatically.",
-    category: "Browser",
-    tags: ["browser", "web", "read", "content", "markdown"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         url: Zoi.string(description: "The URL to read"),

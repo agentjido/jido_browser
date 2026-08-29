@@ -6,9 +6,6 @@ defmodule Jido.Browser.Actions.SwitchTab do
   use Jido.Browser.Action,
     name: "browser_switch_tab",
     description: "Switch to another browser tab",
-    category: "Browser",
-    tags: ["browser", "tabs", "navigation"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         index: Zoi.integer(description: "Tab index to activate"),

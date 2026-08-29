@@ -16,9 +16,6 @@ defmodule Jido.Browser.Actions.Evaluate do
   use Jido.Browser.Action,
     name: "browser_evaluate",
     description: "Execute JavaScript in the browser and return the result",
-    category: "Browser",
-    tags: ["browser", "javascript", "evaluate", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         script: Zoi.string(description: "JavaScript code to execute"),

@@ -16,9 +16,6 @@ defmodule Jido.Browser.Actions.StartSession do
   use Jido.Browser.Action,
     name: "browser_start_session",
     description: "Start a new browser session",
-    category: "Browser",
-    tags: ["browser", "session", "lifecycle"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         headless: Zoi.boolean(description: "Run in headless mode") |> Zoi.optional(),
