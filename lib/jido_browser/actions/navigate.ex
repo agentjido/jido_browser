@@ -15,9 +15,6 @@ defmodule Jido.Browser.Actions.Navigate do
   use Jido.Browser.Action,
     name: "browser_navigate",
     description: "Navigate the browser to a URL",
-    category: "Browser",
-    tags: ["browser", "navigation", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         url: Zoi.string(description: "The URL to navigate to"),

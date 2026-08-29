@@ -7,9 +7,6 @@ defmodule Jido.Browser.Actions.FetchRich do
     name: "fetch_rich",
     description:
       "Fetch a URL with normalized rich content, using fast HTTP retrieval first and optional browser fallback.",
-    category: "Browser",
-    tags: ["browser", "web", "fetch", "retrieval", "agent"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         url: Zoi.string(description: "The URL to fetch"),

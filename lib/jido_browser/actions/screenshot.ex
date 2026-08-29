@@ -16,9 +16,6 @@ defmodule Jido.Browser.Actions.Screenshot do
   use Jido.Browser.Action,
     name: "browser_screenshot",
     description: "Take a screenshot of the current page",
-    category: "Browser",
-    tags: ["browser", "screenshot", "capture", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         full_page:

@@ -21,9 +21,6 @@ defmodule Jido.Browser.Actions.ExtractContent do
   use Jido.Browser.Action,
     name: "browser_extract_content",
     description: "Extract content from the current page as markdown, HTML, or text",
-    category: "Browser",
-    tags: ["browser", "content", "extract", "markdown", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         selector:

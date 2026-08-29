@@ -6,9 +6,6 @@ defmodule Jido.Browser.Actions.SaveState do
   use Jido.Browser.Action,
     name: "browser_save_state",
     description: "Save browser session state to a file",
-    category: "Browser",
-    tags: ["browser", "state", "session"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         path: Zoi.string(description: "Filesystem path where session state will be stored"),

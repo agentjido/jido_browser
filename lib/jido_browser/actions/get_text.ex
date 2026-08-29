@@ -16,9 +16,6 @@ defmodule Jido.Browser.Actions.GetText do
   use Jido.Browser.Action,
     name: "browser_get_text",
     description: "Get text content of an element",
-    category: "Browser",
-    tags: ["browser", "query", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         selector: Zoi.string(description: "CSS selector for the element"),

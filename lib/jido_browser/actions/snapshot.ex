@@ -21,9 +21,6 @@ defmodule Jido.Browser.Actions.Snapshot do
   use Jido.Browser.Action,
     name: "browser_snapshot",
     description: "Get comprehensive LLM-friendly snapshot of the current page state",
-    category: "Browser",
-    tags: ["browser", "snapshot", "observe", "page", "web", "ai"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         include_links: Zoi.boolean(description: "Include extracted links") |> Zoi.default(true) |> Zoi.optional(),

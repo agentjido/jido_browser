@@ -26,9 +26,6 @@ defmodule Jido.Browser.Actions.SnapshotUrl do
     description:
       "Navigate to a URL and return a comprehensive LLM-friendly snapshot " <>
         "including content, links, forms, and heading structure. Manages browser session automatically.",
-    category: "Browser",
-    tags: ["browser", "web", "snapshot", "observe", "ai"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         url: Zoi.string(description: "The URL to snapshot"),

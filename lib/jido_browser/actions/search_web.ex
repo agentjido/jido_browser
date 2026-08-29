@@ -23,9 +23,6 @@ defmodule Jido.Browser.Actions.SearchWeb do
     description:
       "Search the web using Brave Search API and return structured results " <>
         "with titles, URLs, and snippets.",
-    category: "Browser",
-    tags: ["browser", "web", "search", "brave"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         query: Zoi.string(description: "Search query"),

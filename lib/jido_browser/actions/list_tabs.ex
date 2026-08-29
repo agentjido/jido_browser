@@ -6,9 +6,6 @@ defmodule Jido.Browser.Actions.ListTabs do
   use Jido.Browser.Action,
     name: "browser_list_tabs",
     description: "List open browser tabs",
-    category: "Browser",
-    tags: ["browser", "tabs", "session"],
-    vsn: "2.0.0",
     schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()})
 
   alias Jido.Browser.ActionHelpers

@@ -17,9 +17,6 @@ defmodule Jido.Browser.Actions.GetStatus do
   use Jido.Browser.Action,
     name: "browser_get_status",
     description: "Get current session status (url, title, is_alive)",
-    category: "Browser",
-    tags: ["browser", "session", "status"],
-    vsn: "2.0.0",
     schema: Zoi.object(%{})
 
   alias Jido.Browser.ActionHelpers

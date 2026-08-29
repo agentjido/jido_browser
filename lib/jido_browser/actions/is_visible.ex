@@ -16,9 +16,6 @@ defmodule Jido.Browser.Actions.IsVisible do
   use Jido.Browser.Action,
     name: "browser_is_visible",
     description: "Check if an element is visible",
-    category: "Browser",
-    tags: ["browser", "query", "web"],
-    vsn: "2.0.0",
     schema: Zoi.object(%{selector: Zoi.string(description: "CSS selector for the element")})
 
   alias Jido.Browser.ActionHelpers

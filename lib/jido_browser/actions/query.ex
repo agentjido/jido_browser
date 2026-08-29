@@ -16,9 +16,6 @@ defmodule Jido.Browser.Actions.Query do
   use Jido.Browser.Action,
     name: "browser_query",
     description: "Query for elements matching a CSS selector",
-    category: "Browser",
-    tags: ["browser", "query", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         selector: Zoi.string(description: "CSS selector to query"),

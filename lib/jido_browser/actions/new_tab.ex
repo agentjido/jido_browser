@@ -6,9 +6,6 @@ defmodule Jido.Browser.Actions.NewTab do
   use Jido.Browser.Action,
     name: "browser_new_tab",
     description: "Open a new browser tab",
-    category: "Browser",
-    tags: ["browser", "tabs", "navigation"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         url: Zoi.string(description: "Optional URL to open in the new tab") |> Zoi.optional(),

@@ -16,9 +16,6 @@ defmodule Jido.Browser.Actions.Click do
   use Jido.Browser.Action,
     name: "browser_click",
     description: "Click an element in the browser",
-    category: "Browser",
-    tags: ["browser", "interaction", "web"],
-    vsn: "2.0.0",
     schema:
       Zoi.object(%{
         selector: Zoi.string(description: "CSS selector for the element to click"),
