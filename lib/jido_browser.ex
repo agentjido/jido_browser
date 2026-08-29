@@ -9,6 +9,7 @@ defmodule Jido.Browser do
   alias Jido.Browser.Error
   alias Jido.Browser.FetchRich
   alias Jido.Browser.PoolAdapter
+  alias Jido.Browser.Result
   alias Jido.Browser.Session
   alias Jido.Browser.SessionOperations
   alias Jido.Browser.WarmPool.Manager
@@ -462,8 +463,8 @@ defmodule Jido.Browser do
       {:ok, session,
        %{
          alive: true,
-         url: url_result[:url] || url_result["url"],
-         title: title_result[:title] || title_result["title"],
+         url: url_result[:url],
+         title: title_result[:title],
          adapter: session.adapter |> to_string()
        }}
     else
@@ -662,8 +663,8 @@ defmodule Jido.Browser do
 
     case evaluate(session, script, opts) do
       {:ok, session, result} when is_map(result) ->
-        case result[:result] || result["result"] do
-          elements when is_list(elements) -> {:ok, session, elements}
+        case result[:result] do
+          elements when is_list(elements) -> {:ok, session, normalize_result_list(elements)}
           _ -> {:error, Error.adapter_error("Query script did not return an element list", %{result: result})}
         end
 
@@ -675,7 +676,7 @@ defmodule Jido.Browser do
   defp query_count(session, selector, opts) do
     if command_supported?(session) do
       with {:ok, session, result} <- command(session, :count, selector: selector, timeout: opts[:timeout]),
-           count when is_integer(count) <- result[:count] || result["count"] do
+           count when is_integer(count) <- result[:count] do
         {:ok, session, count}
       else
         _ -> {:error, :count_unavailable}
@@ -689,8 +690,21 @@ defmodule Jido.Browser do
     if command_supported?(session) do
       command(session, action, opts)
     else
-      fallback_fun.()
+      fallback_fun.() |> normalize_fallback_result()
     end
+  end
+
+  defp normalize_fallback_result({:ok, session, %{result: result}}) when is_map(result) do
+    {:ok, session, Result.normalize(result)}
+  end
+
+  defp normalize_fallback_result(other), do: other
+
+  defp normalize_result_list(results) do
+    Enum.map(results, fn
+      result when is_map(result) -> Result.normalize(result)
+      result -> result
+    end)
   end
 
   defp command(%Session{adapter: adapter} = session, action, opts) do

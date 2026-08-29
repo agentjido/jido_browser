@@ -3,6 +3,7 @@ defmodule Jido.Browser.SessionOperations do
 
   alias Jido.Browser.Error
   alias Jido.Browser.PoolAdapter
+  alias Jido.Browser.Result
   alias Jido.Browser.Session
   alias Jido.Browser.WarmPool.Names
 
@@ -89,7 +90,10 @@ defmodule Jido.Browser.SessionOperations do
       })(#{Jason.encode!(selector)}, #{max_content_length})
       """
 
-      evaluate(session, script, opts)
+      case evaluate(session, script, opts) do
+        {:ok, session, %{result: result}} when is_map(result) -> {:ok, session, Result.normalize(result)}
+        other -> other
+      end
     end)
   end
 

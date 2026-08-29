@@ -28,16 +28,16 @@ defmodule Jido.Browser.AgentBrowserRuntimeTest do
           assert {:ok, session} = Jido.Browser.start_session(adapter: AgentBrowser, timeout: 1_000)
 
           try do
-            assert {:ok, ^session, %{"tabId" => "t2"}} =
+            assert {:ok, ^session, %{tab_id: "t2"}} =
                      Jido.Browser.switch_tab(session, 1, timeout: 1_000)
 
-            assert {:ok, ^session, %{"tabId" => "t1"}} =
+            assert {:ok, ^session, %{tab_id: "t1"}} =
                      Jido.Browser.close_tab(session, 0, timeout: 1_000)
 
-            assert {:ok, ^session, %{"tabId" => "t2"}} =
+            assert {:ok, ^session, %{tab_id: "t2"}} =
                      Jido.Browser.switch_tab(session, 0, timeout: 1_000)
 
-            assert {:ok, ^session, %{"tabId" => "t3"}} =
+            assert {:ok, ^session, %{tab_id: "t3"}} =
                      Jido.Browser.close_tab(session, 1, timeout: 1_000)
           after
             Jido.Browser.end_session(session)
@@ -160,7 +160,7 @@ defmodule Jido.Browser.AgentBrowserRuntimeTest do
             assert session.opts.checkout_timeout == 5_000
             assert :error = Runtime.lookup_session_server(session.runtime.session_id)
 
-            assert {:ok, ^session, %{"title" => "Ready", "url" => nil}} =
+            assert {:ok, ^session, %{title: "Ready", url: nil}} =
                      Jido.Browser.get_title(session, timeout: 1_000)
 
             assert :ok = Jido.Browser.end_session(session)

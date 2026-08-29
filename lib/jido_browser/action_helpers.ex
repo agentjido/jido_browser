@@ -7,6 +7,7 @@ defmodule Jido.Browser.ActionHelpers do
   """
 
   alias Jido.Browser.Error
+  alias Jido.Browser.Result
 
   @doc """
   Extracts the browser session from the action context.
@@ -36,23 +37,18 @@ defmodule Jido.Browser.ActionHelpers do
   end
 
   @doc """
-  Fetches a value from a result map by atom or string key.
+  Fetches a value from a normalized result map.
   """
   @spec get_value(map(), atom()) :: term()
-  def get_value(map, key) when is_map(map) and is_atom(key) do
-    case Map.fetch(map, key) do
-      {:ok, value} -> value
-      :error -> Map.get(map, Atom.to_string(key))
-    end
-  end
+  def get_value(map, key) when is_map(map) and is_atom(key), do: Map.get(map, key)
 
   @doc """
-  Unwraps adapter results that may be nested under a `:result` or `"result"` key.
+  Unwraps a normalized adapter result nested under an atom `:result` key.
   """
   @spec unwrap_result(map()) :: map()
   def unwrap_result(map) when is_map(map) do
-    case get_value(map, :result) do
-      nested when is_map(nested) -> nested
+    case Map.get(map, :result) do
+      nested when is_map(nested) -> Result.normalize(nested)
       _ -> map
     end
   end

@@ -104,7 +104,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
         assert opts[:selector] == "body"
         assert opts[:max_content_length] == 50_000
 
-        {:ok, session, %{"url" => "https://example.com", "title" => "Example Domain", "snapshot" => "Hello"}}
+        {:ok, session, %{url: "https://example.com", title: "Example Domain", snapshot: "Hello"}}
       end)
 
       expect(Jido.Browser, :end_session, fn ^session -> :ok end)
@@ -121,7 +121,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
                })
 
       assert result[:status] == "success"
-      assert result["title"] == "Example Domain"
+      assert result.title == "Example Domain"
     end
 
     test "falls back to extract_content when evaluate does not return JSON", %{session: session} do

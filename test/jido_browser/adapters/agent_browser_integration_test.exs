@@ -194,8 +194,8 @@ defmodule Jido.Browser.Adapters.AgentBrowserIntegrationTest do
 
       assert [
                %{
-                 "tag" => "a",
-                 "text" => "Next Page"
+                 tag: "a",
+                 text: "Next Page"
                }
              ] = fetch_value(result, :elements)
     end
@@ -267,12 +267,7 @@ defmodule Jido.Browser.Adapters.AgentBrowserIntegrationTest do
       []
   end
 
-  defp fetch_value(map, key) when is_map(map) and is_atom(key) do
-    case Map.fetch(map, key) do
-      {:ok, value} -> value
-      :error -> Map.get(map, Atom.to_string(key))
-    end
-  end
+  defp fetch_value(map, key) when is_map(map) and is_atom(key), do: Map.get(map, key)
 
   defp serialized(result), do: inspect(result, pretty: true, limit: :infinity)
 end

@@ -7,6 +7,7 @@ defmodule Jido.Browser.FetchRich do
   """
 
   alias Jido.Browser.Error
+  alias Jido.Browser.Result
   alias Jido.Browser.SessionOperations
   alias Jido.Browser.WebFetch
 
@@ -57,9 +58,12 @@ defmodule Jido.Browser.FetchRich do
   """
   @spec fetch(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def fetch(url, opts) when is_binary(url) and is_list(opts) do
-    url
-    |> fetch_http(opts)
-    |> handle_fetch_result(url, opts)
+    result =
+      url
+      |> fetch_http(opts)
+      |> handle_fetch_result(url, opts)
+
+    normalize_fetch_result(result)
   end
 
   defp fetch_http(url, opts) do
@@ -325,10 +329,13 @@ defmodule Jido.Browser.FetchRich do
   end
 
   defp result_value(map, key) when is_map(map) and is_atom(key) do
-    Map.get(map, key) || Map.get(map, Atom.to_string(key))
+    Map.get(map, key)
   end
 
   defp result_value(_map, _key), do: nil
+
+  defp normalize_fetch_result({:ok, result}) when is_map(result), do: {:ok, Result.normalize(result)}
+  defp normalize_fetch_result(other), do: other
 
   defp max_content_length(opts) do
     case opts[:max_content_tokens] do
