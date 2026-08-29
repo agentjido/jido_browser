@@ -106,6 +106,7 @@ defmodule Jido.Browser.MixProject do
       source_url: @source_url,
       extras: [
         "README.md": [title: "Overview"],
+        "guides/migration_3_0.md": [title: "2.x to 3.0 Migration"],
         "guides/browser_adapter_support.md": [title: "Browser Adapter Support"],
         "guides/agent_browser_compatibility.md": [title: "AgentBrowser Compatibility"],
         "CHANGELOG.md": [title: "Changelog"],
