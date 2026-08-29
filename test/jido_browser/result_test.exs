@@ -2,6 +2,30 @@ defmodule Jido.Browser.ResultTest do
   use ExUnit.Case, async: true
 
   alias Jido.Browser.Result
+  alias Jido.Browser.Session
+
+  defmodule FallbackAdapter do
+    def evaluate(session, script, _opts) do
+      result =
+        cond do
+          String.contains?(script, "querySelectorAll") ->
+            [%{"index" => 0, "tag" => "a", "text" => "Example"}]
+
+          String.contains?(script, "snapshot") ->
+            %{
+              "url" => "https://example.com",
+              "title" => "Example",
+              "snapshot" => "Example content",
+              "refs" => %{"@e1" => %{"role" => "link", "text" => "Example"}}
+            }
+
+          true ->
+            %{"hovered" => true, "selector" => "#target"}
+        end
+
+      {:ok, session, %{result: result}}
+    end
+  end
 
   test "normalizes known public fields without creating runtime atoms" do
     assert Result.normalize(%{
@@ -44,5 +68,19 @@ defmodule Jido.Browser.ResultTest do
              url: "https://example.com",
              selector: "main"
            }
+  end
+
+  test "normalizes generated JavaScript fallback and composite results" do
+    session = %Session{id: "result-contract", adapter: FallbackAdapter, started_at: DateTime.utc_now()}
+
+    assert {:ok, ^session, snapshot} = Jido.Browser.snapshot(session)
+    assert snapshot.url == "https://example.com"
+    assert snapshot.refs["@e1"] == %{role: "link", text: "Example"}
+
+    assert {:ok, ^session, %{hovered: true, selector: "#target"}} =
+             Jido.Browser.hover(session, "#target")
+
+    assert {:ok, ^session, %{count: 1, elements: [%{index: 0, tag: "a", text: "Example"}]}} =
+             Jido.Browser.query(session, "a", limit: 1)
   end
 end

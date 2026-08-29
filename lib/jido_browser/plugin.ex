@@ -144,8 +144,8 @@ defmodule Jido.Browser.Plugin do
   defp maybe_put_session_state(acc, result) do
     case Map.get(result, :session) do
       %Jido.Browser.Session{} = session ->
-        current_url = Map.get(result, :url) || Map.get(result, "url") || get_in(session, [:connection, :current_url])
-        current_title = Map.get(result, :title) || Map.get(result, "title") || get_in(session, [:connection, :title])
+        current_url = Map.get(result, :url) || get_in(session, [:connection, :current_url])
+        current_title = Map.get(result, :title) || get_in(session, [:connection, :title])
 
         Map.merge(acc, %{
           session: session,
@@ -188,15 +188,15 @@ defmodule Jido.Browser.Plugin do
 
   defp extract_urls(result) do
     direct_urls =
-      [Map.get(result, :url), Map.get(result, "url"), Map.get(result, :final_url), Map.get(result, "final_url")]
+      [Map.get(result, :url), Map.get(result, :final_url)]
       |> Enum.reject(&nil_or_empty?/1)
 
     search_urls =
       result
-      |> Map.get(:results, Map.get(result, "results", []))
+      |> Map.get(:results, [])
       |> List.wrap()
       |> Enum.map(fn item ->
-        if is_map(item), do: Map.get(item, :url) || Map.get(item, "url")
+        if is_map(item), do: Map.get(item, :url)
       end)
       |> Enum.reject(&nil_or_empty?/1)
 

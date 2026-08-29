@@ -9,6 +9,7 @@ defmodule Jido.Browser.WebFetch do
   """
 
   alias Jido.Browser.Error
+  alias Jido.Browser.Result, as: BrowserResult
   alias Jido.Browser.WebFetch.Cache
   alias Jido.Browser.WebFetch.Content
   alias Jido.Browser.WebFetch.DestinationPolicy
@@ -80,7 +81,7 @@ defmodule Jido.Browser.WebFetch do
          :ok <- URLRules.validate_domain_filters(uri, opts) do
       case Cache.fetch(normalized_url, opts) do
         {:ok, result} ->
-          {:ok, result}
+          {:ok, BrowserResult.normalize(result)}
 
         :miss ->
           do_fetch(normalized_url, opts)
@@ -101,8 +102,9 @@ defmodule Jido.Browser.WebFetch do
          :ok <- validate_http_status(response, url),
          {:ok, content} <- Content.extract(final_url, response, opts),
          {:ok, result} <- Result.build(url, final_url, content, opts) do
-      Cache.store(url, opts, result)
-      {:ok, result}
+      normalized_result = BrowserResult.normalize(result)
+      Cache.store(url, opts, normalized_result)
+      {:ok, normalized_result}
     end
   end
 
