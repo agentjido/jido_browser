@@ -32,6 +32,7 @@ defmodule Jido.Browser.Adapters.Vibium do
   @behaviour Jido.Browser.Adapter
 
   alias Jido.Browser.Error
+  alias Jido.Browser.ID
   alias Jido.Browser.Installer
   alias Jido.Browser.Result
   alias Jido.Browser.Session
@@ -385,7 +386,7 @@ defmodule Jido.Browser.Adapters.Vibium do
 
   # Execute function with a temp file, ensuring cleanup even on errors
   defp with_tmp_file(prefix, suffix, fun) do
-    path = Path.join(System.tmp_dir!(), "#{prefix}_#{System.unique_integer()}#{suffix}")
+    path = Path.join(System.tmp_dir!(), "#{prefix}_#{ID.generate()}#{suffix}")
 
     try do
       fun.(path)

@@ -3,6 +3,8 @@ defmodule Jido.Browser.WarmPool.Lease do
 
   use GenServer
 
+  alias Jido.Browser.ID
+
   defstruct [
     :owner,
     :owner_ref,
@@ -47,7 +49,7 @@ defmodule Jido.Browser.WarmPool.Lease do
   @spec child_spec(keyword()) :: Supervisor.child_spec()
   def child_spec(opts) do
     %{
-      id: {__MODULE__, System.unique_integer([:positive])},
+      id: {__MODULE__, ID.generate()},
       start: {__MODULE__, :start_link, [opts]},
       restart: :temporary
     }

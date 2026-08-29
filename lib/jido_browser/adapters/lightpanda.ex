@@ -37,6 +37,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   alias Jido.Browser.Adapters.Lightpanda.PoolRuntime
   alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.Error
+  alias Jido.Browser.ID
   alias Jido.Browser.Installer
   alias Jido.Browser.Result
   alias Jido.Browser.Session
@@ -265,7 +266,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
 
   defp build_pooled_session(pool, opts, lease_pid, worker_state) do
     Session.new(%{
-      id: opts[:session_id] || Uniq.UUID.uuid4(),
+      id: opts[:session_id] || ID.generate(),
       adapter: __MODULE__,
       connection:
         worker_state

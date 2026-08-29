@@ -3,6 +3,7 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
   @behaviour Jido.Browser.WarmPool.Runtime
 
   alias Jido.Browser.AgentBrowser.SessionServer
+  alias Jido.Browser.ID
   alias Jido.Browser.WarmPool.Runtime, as: PoolRuntimeBoundary
 
   @type worker_state :: %{
@@ -16,7 +17,7 @@ defmodule Jido.Browser.AgentBrowser.PoolRuntime do
   @doc false
   @spec start_worker(map()) :: {:ok, worker_state()} | {:error, term()}
   def start_worker(%{worker_opts: session_opts, session_supervisor: session_supervisor} = pool_state) do
-    session_id = Uniq.UUID.uuid4()
+    session_id = ID.generate()
     runtime_context = PoolRuntimeBoundary.context(pool_state)
     session_runtime_metadata = Map.fetch!(runtime_context, :session_runtime_metadata)
 

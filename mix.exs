@@ -68,7 +68,6 @@ defmodule Jido.Browser.MixProject do
       {:zoi, "~> 0.18"},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
-      {:uniq, "~> 0.6"},
       {:floki, "~> 0.38"},
       {:html2markdown, "~> 0.3"},
       {:extractous_ex, "~> 0.2"},

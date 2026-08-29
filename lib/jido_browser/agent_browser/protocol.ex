@@ -3,6 +3,8 @@ defmodule Jido.Browser.AgentBrowser.Protocol do
 
   import Bitwise
 
+  alias Jido.Browser.ID
+
   @daemon_timeout 5_000
 
   @type session_opts :: keyword()
@@ -94,7 +96,7 @@ defmodule Jido.Browser.AgentBrowser.Protocol do
 
   @doc false
   @spec request_id() :: String.t()
-  def request_id, do: Uniq.UUID.uuid4()
+  def request_id, do: ID.generate()
 
   @doc false
   @spec connect(String.t(), pos_integer()) :: {:ok, port()} | {:error, term()}
