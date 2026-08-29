@@ -3,15 +3,18 @@ defmodule Jido.Browser.Actions.PoolStatus do
   Jido Action for inspecting a warm browser pool.
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_pool_status",
     description: "Return readiness and lifecycle status for a warm browser pool.",
     category: "Browser",
     tags: ["browser", "pool", "status", "diagnostics"],
     vsn: "2.0.0",
-    schema: [
-      pool: [type: :any, doc: "Warm pool name or pid. Defaults to plugin pool state."]
-    ]
+    schema:
+      Zoi.object(%{
+        pool:
+          Zoi.any(description: "Warm pool name or pid. Defaults to plugin pool state.")
+          |> Zoi.optional()
+      })
 
   alias Jido.Browser.Error
 

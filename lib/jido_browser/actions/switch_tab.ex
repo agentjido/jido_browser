@@ -3,16 +3,17 @@ defmodule Jido.Browser.Actions.SwitchTab do
   Jido Action for switching to a specific browser tab.
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_switch_tab",
     description: "Switch to another browser tab",
     category: "Browser",
     tags: ["browser", "tabs", "navigation"],
     vsn: "2.0.0",
-    schema: [
-      index: [type: :integer, required: true, doc: "Tab index to activate"],
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema:
+      Zoi.object(%{
+        index: Zoi.integer(description: "Tab index to activate"),
+        timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

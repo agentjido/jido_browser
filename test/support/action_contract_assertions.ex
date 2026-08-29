@@ -3,13 +3,14 @@ defmodule Jido.Browser.ActionContractAssertions do
 
   import ExUnit.Assertions
 
+  alias Jido.Action.Schema
   alias Jido.Action.Tool
 
   @unknown_atom :contract_unknown_atom
   @unknown_string "contract_unknown_string"
 
   def assert_contract(%{module: action, name: name, description: description, schema: schema}) do
-    assert normalized_schema(action.schema()) == normalized_schema(schema)
+    assert Schema.schema_type(action.schema()) == :zoi
 
     assert_validation_contract(action, schema)
     assert_tool_input_contract(action, schema)
@@ -104,6 +105,7 @@ defmodule Jido.Browser.ActionContractAssertions do
           options.type
           |> json_type()
           |> Map.put("description", options.doc)
+          |> maybe_put_default(options)
 
         {Atom.to_string(key), property}
       end)
@@ -115,6 +117,7 @@ defmodule Jido.Browser.ActionContractAssertions do
       |> Enum.sort()
 
     %{
+      "$schema" => "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties" => false,
       "properties" => properties,
       "required" => required,
@@ -133,15 +136,15 @@ defmodule Jido.Browser.ActionContractAssertions do
 
   defp json_type(:timeout) do
     %{
-      "oneOf" => [
+      "anyOf" => [
         %{"minimum" => 0, "type" => "integer"},
-        %{"enum" => ["infinity"], "type" => "string"}
+        %{"const" => "infinity"}
       ]
     }
   end
 
   defp json_type(:atom), do: %{"type" => "string"}
-  defp json_type(:any), do: %{"type" => "string"}
+  defp json_type(:any), do: %{}
 
   defp json_type({:list, subtype}) do
     %{"items" => json_type(subtype), "type" => "array"}
@@ -165,6 +168,9 @@ defmodule Jido.Browser.ActionContractAssertions do
 
   defp enum_json_value(value) when is_atom(value), do: Atom.to_string(value)
   defp enum_json_value(value), do: value
+
+  defp maybe_put_default(property, %{default: default}), do: Map.put(property, "default", default)
+  defp maybe_put_default(property, _options), do: property
 
   defp sample_params(schema) do
     Map.new(schema, fn {key, options} -> {key, sample_value(options.type, key)} end)
@@ -208,28 +214,21 @@ defmodule Jido.Browser.ActionContractAssertions do
   defp alternate_sample_value({:list, subtype}, key), do: [alternate_sample_value(subtype, key)]
   defp alternate_sample_value({:in, values}, _key), do: List.last(values)
 
-  defp normalized_schema(schema) do
-    Map.new(schema, fn {key, options} ->
-      normalized_options =
-        options
-        |> Map.new()
-        |> Map.update(:type, nil, &normalize_type/1)
-
-      {key, normalized_options}
-    end)
+  defp normalize_json_schema(schema) do
+    schema
+    |> Jason.encode!()
+    |> Jason.decode!()
+    |> sort_json_schema()
   end
 
-  defp normalize_type({:in, values}), do: {:in, Enum.sort(values)}
-  defp normalize_type(type), do: type
-
-  defp normalize_json_schema(schema) when is_map(schema) do
+  defp sort_json_schema(schema) when is_map(schema) do
     Map.new(schema, fn
       {"enum", values} -> {"enum", Enum.sort(values)}
       {"required", values} -> {"required", Enum.sort(values)}
-      {key, value} -> {key, normalize_json_schema(value)}
+      {key, value} -> {key, sort_json_schema(value)}
     end)
   end
 
-  defp normalize_json_schema(values) when is_list(values), do: Enum.map(values, &normalize_json_schema/1)
-  defp normalize_json_schema(value), do: value
+  defp sort_json_schema(values) when is_list(values), do: Enum.map(values, &sort_json_schema/1)
+  defp sort_json_schema(value), do: value
 end

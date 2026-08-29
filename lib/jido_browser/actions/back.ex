@@ -12,15 +12,13 @@ defmodule Jido.Browser.Actions.Back do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_back",
     description: "Navigate back in browser history",
     category: "Browser",
     tags: ["browser", "navigation", "history", "web"],
     vsn: "2.0.0",
-    schema: [
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()})
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

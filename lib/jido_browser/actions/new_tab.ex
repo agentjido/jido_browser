@@ -3,16 +3,17 @@ defmodule Jido.Browser.Actions.NewTab do
   Jido Action for opening a new browser tab.
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_new_tab",
     description: "Open a new browser tab",
     category: "Browser",
     tags: ["browser", "tabs", "navigation"],
     vsn: "2.0.0",
-    schema: [
-      url: [type: :string, doc: "Optional URL to open in the new tab"],
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema:
+      Zoi.object(%{
+        url: Zoi.string(description: "Optional URL to open in the new tab") |> Zoi.optional(),
+        timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

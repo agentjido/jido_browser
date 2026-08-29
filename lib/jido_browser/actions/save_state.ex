@@ -3,16 +3,17 @@ defmodule Jido.Browser.Actions.SaveState do
   Jido Action for persisting the current browser session state to disk.
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_save_state",
     description: "Save browser session state to a file",
     category: "Browser",
     tags: ["browser", "state", "session"],
     vsn: "2.0.0",
-    schema: [
-      path: [type: :string, required: true, doc: "Filesystem path where session state will be stored"],
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema:
+      Zoi.object(%{
+        path: Zoi.string(description: "Filesystem path where session state will be stored"),
+        timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error
