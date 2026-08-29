@@ -9,12 +9,11 @@ defmodule Jido.Browser.Plugin do
 
       defmodule MyAgent do
         use Jido.Agent,
-          plugins: [{Jido.Browser.Plugin, [profile: :core, headless: true]}]
+          plugins: [{Jido.Browser.Plugin, [headless: true]}]
       end
 
   ## Configuration Options
 
-  * `:profile` - Tool profile: `:core`, `:debug`, or `:all` (default: `:core`)
   * `:headless` - Run browser in headless mode (default: `true`)
   * `:timeout` - Default timeout in milliseconds (default: `30_000`)
   * `:adapter` - Browser adapter module (optional)
@@ -25,47 +24,24 @@ defmodule Jido.Browser.Plugin do
 
   ## Tool Profiles
 
-  * `:core` - Normal navigation, interaction, waits, page reading, screenshots,
-    and session close operations
-  * `:debug` - The core actions plus status, page identity, console, error, and
-    JavaScript diagnostics
-  * `:all` - Every action in `Jido.Browser.ActionRegistry`
+  * `Jido.Browser.Plugin` - Normal navigation, interaction, waits, page reading,
+    screenshots, and session close operations
+  * `Jido.Browser.Plugin.Debug` - The core actions plus status, page identity,
+    console, error, and JavaScript diagnostics
+  * `Jido.Browser.Plugin.All` - Every action in `Jido.Browser.ActionRegistry`
 
-  Use `profile: :all` to restore the complete action set from Jido Browser 2.x.
+  Use `Jido.Browser.Plugin.All` to restore the complete action set from Jido
+  Browser 2.x. Each profile is a separate module so Jido can compile its exact
+  action and signal contract from static plugin metadata.
   """
 
-  alias Jido.Browser.ActionRegistry
+  alias Jido.Browser.Plugin.Profile
 
-  @default_profile :core
-  @action_modules ActionRegistry.actions(@default_profile)
-  @signal_patterns ActionRegistry.signal_patterns(@default_profile)
-
-  use Jido.Plugin,
-    name: "browser",
-    state_key: :browser,
-    actions: @action_modules,
-    signal_patterns: @signal_patterns,
-    description: "Browser automation for web navigation, interaction, and content extraction",
-    category: "browser",
-    tags: ["browser", "web", "automation", "scraping"],
-    vsn: "2.0.0"
-
-  defoverridable plugin_spec: 1
-
-  @impl Jido.Plugin
-  def plugin_spec(config) do
-    profile = configured_profile(config)
-    spec = super(config)
-
-    %{
-      spec
-      | actions: ActionRegistry.actions(profile),
-        signal_patterns: ActionRegistry.signal_patterns(profile)
-    }
-  end
+  use Profile, profile: :core
 
   @impl Jido.Plugin
   def mount(_agent, config) do
+    :ok = Profile.reject_profile_option!(config)
     adapter = Map.get(config, :adapter, Jido.Browser.Adapters.AgentBrowser)
 
     initial_state = %{
@@ -86,27 +62,6 @@ defmodule Jido.Browser.Plugin do
 
     {:ok, initial_state}
   end
-
-  def schema do
-    Zoi.object(%{
-      session: Zoi.any(description: "Active browser session") |> Zoi.optional(),
-      headless: Zoi.boolean(description: "Run browser in headless mode") |> Zoi.default(true),
-      timeout: Zoi.integer(description: "Default timeout in milliseconds") |> Zoi.default(30_000),
-      adapter: Zoi.atom(description: "Browser adapter module") |> Zoi.optional(),
-      pool: Zoi.any(description: "Named warm session pool") |> Zoi.optional(),
-      checkout_timeout: Zoi.integer(description: "Warm pool checkout timeout in milliseconds") |> Zoi.default(5_000),
-      viewport: Zoi.any(description: "Browser viewport dimensions") |> Zoi.optional(),
-      base_url: Zoi.string(description: "Base URL for relative navigation") |> Zoi.optional(),
-      last_url: Zoi.string(description: "Last navigated URL") |> Zoi.optional(),
-      last_title: Zoi.string(description: "Last page title") |> Zoi.optional(),
-      seen_urls: Zoi.array(Zoi.string(description: "Known URLs discovered during tool use")) |> Zoi.default([]),
-      web_fetch_uses: Zoi.integer(description: "Successful web fetch calls in current skill state") |> Zoi.default(0),
-      fetch_rich_uses: Zoi.integer(description: "Successful rich fetch calls in current skill state") |> Zoi.default(0)
-    })
-  end
-
-  @impl Jido.Plugin
-  def signal_routes(config), do: config |> configured_profile() |> ActionRegistry.signal_routes()
 
   @impl Jido.Plugin
   def handle_signal(_signal, _context) do
@@ -222,10 +177,4 @@ defmodule Jido.Browser.Plugin do
   defp nil_or_empty?(nil), do: true
   defp nil_or_empty?(""), do: true
   defp nil_or_empty?(_value), do: false
-
-  defp configured_profile(config) when is_map(config) do
-    profile = Map.get(config, :profile, @default_profile)
-    ActionRegistry.entries(profile)
-    profile
-  end
 end

@@ -118,6 +118,8 @@ defmodule Jido.Browser.MixProject do
           Jido.Browser.Session,
           Jido.Browser.Result,
           Jido.Browser.Plugin,
+          Jido.Browser.Plugin.Debug,
+          Jido.Browser.Plugin.All,
           Jido.Browser.FetchRich,
           Jido.Browser.WebFetch
         ],
