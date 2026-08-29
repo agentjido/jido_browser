@@ -146,7 +146,7 @@ defmodule Jido.Browser.AgentBrowser.Binary do
   defp add_source(%{details: %{source: _existing_source}} = error, _path, _source), do: error
 
   defp add_source(error, path, source) do
-    details = Map.merge(error.details || %{}, %{path: path, source: source})
+    details = Map.merge(error.details, %{path: path, source: source})
     %{error | message: "#{source_label(source)} agent-browser binary: #{error.message}", details: details}
   end
 
