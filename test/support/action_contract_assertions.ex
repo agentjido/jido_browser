@@ -9,13 +9,126 @@ defmodule Jido.Browser.ActionContractAssertions do
   @unknown_atom :contract_unknown_atom
   @unknown_string "contract_unknown_string"
 
-  def assert_contract(%{module: action, name: name, description: description, schema: schema}) do
+  def assert_contract(%{module: action, name: name, description: description, schema: schema} = contract) do
     assert Schema.schema_type(action.schema()) == :zoi
 
     assert_validation_contract(action, schema)
     assert_tool_input_contract(action, schema)
     assert_generated_tool_contract(action, name, description, schema)
+
+    case contract do
+      %{output: output} -> assert_output_contract(action, output)
+      _contract -> :ok
+    end
   end
+
+  defp assert_output_contract(action, output) do
+    output_schema = action.output_schema()
+
+    assert Schema.schema_type(output_schema) == :zoi
+    assert %Zoi.Types.Map{} = output_schema
+    refute schema_contains?(output_schema, &is_function/1)
+    refute schema_contains?(output_schema, &match?(%Zoi.Types.Lazy{}, &1))
+
+    assert output_schema
+           |> Schema.known_keys()
+           |> MapSet.new() == MapSet.new(Map.keys(output))
+
+    sample = Map.new(output, fn {key, type} -> {key, output_sample(type, key)} end)
+    assert {:ok, ^sample} = action.validate_output(sample)
+
+    output_with_unknown_keys =
+      Map.merge(sample, %{@unknown_atom => :kept, @unknown_string => "kept"})
+
+    assert {:ok, ^output_with_unknown_keys} = action.validate_output(output_with_unknown_keys)
+
+    for {key, type} <- output do
+      assert_output_presence(action, sample, key, type)
+      assert_output_type(action, sample, key, type)
+      assert_nullable_output(action, sample, key, type)
+    end
+  end
+
+  defp assert_output_presence(action, sample, key, {:optional, _type}) do
+    expected = Map.delete(sample, key)
+    assert {:ok, ^expected} = action.validate_output(expected)
+  end
+
+  defp assert_output_presence(action, sample, key, _type) do
+    assert {:error, _reason} = action.validate_output(Map.delete(sample, key))
+  end
+
+  defp assert_output_type(action, sample, key, type) do
+    case invalid_output_value(type) do
+      :unconstrained ->
+        :ok
+
+      invalid ->
+        assert {:error, _reason} = action.validate_output(Map.put(sample, key, invalid))
+    end
+  end
+
+  defp assert_nullable_output(action, sample, key, {:nullable, _type}) do
+    expected = Map.put(sample, key, nil)
+    assert {:ok, ^expected} = action.validate_output(expected)
+  end
+
+  defp assert_nullable_output(action, sample, key, {:optional, type}) do
+    assert_nullable_output(action, sample, key, type)
+  end
+
+  defp assert_nullable_output(_action, _sample, _key, _type), do: :ok
+
+  defp output_sample({:literal, value}, _key), do: value
+  defp output_sample({:nullable, type}, key), do: output_sample(type, key)
+  defp output_sample({:optional, type}, key), do: output_sample(type, key)
+  defp output_sample({:list, type}, key), do: [output_sample(type, key)]
+  defp output_sample({:in, [value | _values]}, _key), do: value
+  defp output_sample(:string, key), do: "sample_#{key}"
+  defp output_sample(:integer, _key), do: 7
+  defp output_sample(:non_neg_integer, _key), do: 0
+  defp output_sample(:boolean, _key), do: true
+  defp output_sample(:atom, _key), do: :contract_sample
+  defp output_sample(:map, _key), do: %{contract: "sample"}
+  defp output_sample(:any, _key), do: {:contract, :sample}
+
+  defp invalid_output_value({:literal, value}) when is_binary(value), do: value <> "_invalid"
+  defp invalid_output_value({:literal, value}), do: {:not, value}
+  defp invalid_output_value({:nullable, type}), do: invalid_output_value(type)
+  defp invalid_output_value({:optional, type}), do: invalid_output_value(type)
+  defp invalid_output_value({:list, _type}), do: %{}
+  defp invalid_output_value({:in, _values}), do: :contract_invalid
+  defp invalid_output_value(:string), do: 7
+  defp invalid_output_value(:integer), do: "not-an-integer"
+  defp invalid_output_value(:non_neg_integer), do: -1
+  defp invalid_output_value(:boolean), do: "not-a-boolean"
+  defp invalid_output_value(:atom), do: "not-an-atom"
+  defp invalid_output_value(:map), do: []
+  defp invalid_output_value(:any), do: :unconstrained
+
+  defp schema_contains?(value, predicate) do
+    predicate.(value) or schema_children_contain?(value, predicate)
+  end
+
+  defp schema_children_contain?(value, predicate) when is_map(value) do
+    value
+    |> Map.to_list()
+    |> Enum.any?(fn {key, child} ->
+      schema_contains?(key, predicate) or schema_contains?(child, predicate)
+    end)
+  end
+
+  defp schema_children_contain?(value, predicate) when is_tuple(value) do
+    value
+    |> Tuple.to_list()
+    |> Enum.any?(&schema_contains?(&1, predicate))
+  end
+
+  defp schema_children_contain?(value, predicate) when is_list(value) do
+    Enum.any?(value, &schema_contains?(&1, predicate))
+  end
+
+  defp schema_children_contain?(_value, _predicate), do: false
 
   defp assert_validation_contract(action, schema) do
     all_atom_params = sample_params(schema)

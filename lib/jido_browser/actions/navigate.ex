@@ -19,6 +19,13 @@ defmodule Jido.Browser.Actions.Navigate do
       Zoi.object(%{
         url: Zoi.string(description: "The URL to navigate to"),
         timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        url: Zoi.string(),
+        result: Zoi.map(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

@@ -15,7 +15,13 @@ defmodule Jido.Browser.Actions.GetUrl do
   use Jido.Browser.Action,
     name: "browser_get_url",
     description: "Get the current page URL",
-    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()})
+    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()}),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        url: Zoi.string(),
+        session: Zoi.any()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

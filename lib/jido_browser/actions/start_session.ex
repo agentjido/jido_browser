@@ -23,6 +23,13 @@ defmodule Jido.Browser.Actions.StartSession do
         adapter: Zoi.atom(description: "Browser adapter module") |> Zoi.optional(),
         pool: Zoi.any(description: "Optional warm session pool name") |> Zoi.optional(),
         checkout_timeout: Zoi.integer(description: "Warm pool checkout timeout in ms") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        session: Zoi.any(),
+        adapter: Zoi.string(),
+        message: Zoi.string()
       })
 
   alias Jido.Browser.Error

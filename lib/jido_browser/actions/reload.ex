@@ -15,7 +15,14 @@ defmodule Jido.Browser.Actions.Reload do
   use Jido.Browser.Action,
     name: "browser_reload",
     description: "Reload the current page",
-    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()})
+    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()}),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        action: Zoi.literal("reload"),
+        result: Zoi.map(),
+        session: Zoi.any()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

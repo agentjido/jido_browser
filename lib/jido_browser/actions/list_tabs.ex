@@ -6,7 +6,14 @@ defmodule Jido.Browser.Actions.ListTabs do
   use Jido.Browser.Action,
     name: "browser_list_tabs",
     description: "List open browser tabs",
-    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()})
+    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()}),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        tabs: Zoi.list(Zoi.map()),
+        result: Zoi.map(),
+        session: Zoi.any()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error
