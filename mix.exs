@@ -66,7 +66,6 @@ defmodule Jido.Browser.MixProject do
 
       # Runtime
       {:zoi, "~> 0.18"},
-      {:splode, "~> 0.3.0"},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
       {:uniq, "~> 0.6"},

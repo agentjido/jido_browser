@@ -167,4 +167,10 @@ defmodule Jido.Browser.ErrorTest do
              function_exported?(Error, name, arity)
            end)
   end
+
+  test "does not declare Splode as a direct dependency" do
+    dependency_names = Mix.Project.config()[:deps] |> Enum.map(&elem(&1, 0))
+
+    refute :splode in dependency_names
+  end
 end
