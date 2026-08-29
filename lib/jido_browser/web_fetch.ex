@@ -57,9 +57,8 @@ defmodule Jido.Browser.WebFetch do
   - `:allowed_domains` / `:blocked_domains` - mutually exclusive host/path rules
   - `:allow_private_network` - allow private network destinations, defaults to `false`
   - `:max_response_bytes` - response cap in bytes, defaults to 5 MiB; Req
-    applies it to both the transfer body and each decoded content layer, while
-    Browsey applies it to curl's decoded output; use `:infinity` only as an
-    explicit compatibility override
+    applies it to both the transfer body and each decoded content layer; use
+    `:infinity` only as an explicit compatibility override
   - `:max_content_tokens` - approximate token cap
   - `:citations` - boolean, when true include passage spans
   - `:focus_terms` - list of terms used for focused filtering
@@ -98,53 +97,12 @@ defmodule Jido.Browser.WebFetch do
   def clear_cache, do: Cache.clear()
 
   defp do_fetch(url, opts) do
-    with {:ok, request_opts, cookie_file} <- prepare_redirect_chain(opts) do
-      try do
-        with {:ok, response, final_url, _final_uri} <- fetch_with_redirects(url, request_opts),
-             :ok <- validate_http_status(response, url),
-             {:ok, content} <- Content.extract(final_url, response, request_opts),
-             {:ok, result} <- Result.build(url, final_url, content, request_opts) do
-          Cache.store(url, request_opts, result)
-          {:ok, result}
-        end
-      after
-        if cookie_file, do: File.rm(cookie_file)
-      end
-    end
-  end
-
-  defp prepare_redirect_chain(opts) do
-    browsey_backend = Jido.Browser.WebFetch.Backends.Browsey
-    browsey_opts = opts[:browsey] || []
-
-    if opts[:backend] == browsey_backend and not Keyword.has_key?(browsey_opts, :cookie_file) do
-      cookie_file =
-        Path.join(
-          System.tmp_dir!(),
-          "jido_browser_cookie_#{Base.url_encode64(:crypto.strong_rand_bytes(18), padding: false)}"
-        )
-
-      case File.open(cookie_file, [:write, :exclusive]) do
-        {:ok, file} ->
-          File.close(file)
-          File.chmod(cookie_file, 0o600)
-
-          request_opts =
-            opts
-            |> Keyword.put(:browsey, Keyword.put(browsey_opts, :cookie_file, cookie_file))
-            |> Keyword.put(:managed_browsey_cookie_file, cookie_file)
-
-          {:ok, request_opts, cookie_file}
-
-        {:error, reason} ->
-          {:error,
-           Error.adapter_error("Web fetch could not create a redirect cookie file", %{
-             error_code: :unavailable,
-             reason: reason
-           })}
-      end
-    else
-      {:ok, opts, nil}
+    with {:ok, response, final_url, _final_uri} <- fetch_with_redirects(url, opts),
+         :ok <- validate_http_status(response, url),
+         {:ok, content} <- Content.extract(final_url, response, opts),
+         {:ok, result} <- Result.build(url, final_url, content, opts) do
+      Cache.store(url, opts, result)
+      {:ok, result}
     end
   end
 
@@ -274,9 +232,7 @@ defmodule Jido.Browser.WebFetch do
     if same_origin?(current_uri, redirect_uri) do
       {:ok, status_opts}
     else
-      status_opts
-      |> Keyword.update(:req, [], &remove_req_credentials/1)
-      |> isolate_browsey_redirect_cookies(current_url)
+      {:ok, Keyword.update(status_opts, :req, [], &remove_req_credentials/1)}
     end
   end
 
@@ -341,25 +297,6 @@ defmodule Jido.Browser.WebFetch do
 
   defp remove_proxy_credentials(connect_options), do: connect_options
 
-  defp isolate_browsey_redirect_cookies(opts, current_url) do
-    browsey_backend = Jido.Browser.WebFetch.Backends.Browsey
-
-    cond do
-      opts[:backend] != browsey_backend ->
-        {:ok, opts}
-
-      cookie_file = opts[:managed_browsey_cookie_file] ->
-        case File.write(cookie_file, "") do
-          :ok -> {:ok, opts}
-          {:error, reason} -> invalid_redirect_error(current_url, {:cookie_isolation_failed, reason})
-        end
-
-      true ->
-        browsey_opts = Keyword.put(opts[:browsey] || [], :send_cookies?, false)
-        {:ok, Keyword.put(opts, :browsey, browsey_opts)}
-    end
-  end
-
   defp finish_redirects(response, final_url) do
     final_uri = final_url |> URI.parse() |> URLRules.normalize_uri()
     final_url = URI.to_string(final_uri)
@@ -386,11 +323,6 @@ defmodule Jido.Browser.WebFetch do
         result
     end
   end
-
-  defp retryable_destination_error?(%Error.AdapterError{
-         details: %{reason: %Jido.Browser.Vendor.BrowseyHttp.ConnectionException{error_code: 7}}
-       }),
-       do: true
 
   defp retryable_destination_error?(%Error.AdapterError{
          details: %{reason: %Req.TransportError{reason: reason}}

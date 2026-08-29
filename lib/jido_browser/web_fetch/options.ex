@@ -1,13 +1,11 @@
 defmodule Jido.Browser.WebFetch.Options do
   @moduledoc false
 
-  alias Jido.Browser.Deprecations
   alias Jido.Browser.Error
 
   @default_backend Jido.Browser.WebFetch.Backends.Req
   @default_timeout 15_000
   @default_req_max_redirects 10
-  @default_browsey_max_redirects 19
   @default_max_response_bytes 5 * 1024 * 1024
   @default_cache_ttl_ms 300_000
   @supported_formats [:markdown, :text, :html]
@@ -22,8 +20,6 @@ defmodule Jido.Browser.WebFetch.Options do
     with {:ok, backend} <- normalize_backend(Keyword.get(opts, :backend, config(:backend, @default_backend))),
          {:ok, configured_req_opts} <- normalize_backend_opts(:req, config(:req, [])),
          {:ok, request_req_opts} <- normalize_backend_opts(:req, Keyword.get(opts, :req, [])),
-         {:ok, configured_browsey_opts} <- normalize_backend_opts(:browsey, config(:browsey, [])),
-         {:ok, request_browsey_opts} <- normalize_backend_opts(:browsey, Keyword.get(opts, :browsey, [])),
          {:ok, configured_extractous_opts} <- normalize_extractous_opts(config(:extractous, [])),
          {:ok, request_extractous_opts} <- normalize_extractous_opts(Keyword.get(opts, :extractous, [])),
          {:ok, selector} <- normalize_selector(opts[:selector]),
@@ -80,7 +76,6 @@ defmodule Jido.Browser.WebFetch.Options do
             opts
             |> Keyword.put(:backend, backend)
             |> Keyword.put(:req, Keyword.merge(configured_req_opts, request_req_opts))
-            |> Keyword.put(:browsey, Keyword.merge(configured_browsey_opts, request_browsey_opts))
             |> Keyword.put(:format, format)
             |> Keyword.put(:selector, selector)
             |> Keyword.put(:citations, citations)
@@ -119,10 +114,6 @@ defmodule Jido.Browser.WebFetch.Options do
     Keyword.get(req_opts, :max_redirects, @default_req_max_redirects)
   end
 
-  defp backend_redirect_limit(Jido.Browser.WebFetch.Backends.Browsey, _req_opts) do
-    @default_browsey_max_redirects
-  end
-
   defp backend_redirect_limit(_backend, req_opts) do
     Keyword.get(req_opts, :max_redirects, @default_req_max_redirects)
   end
@@ -147,14 +138,8 @@ defmodule Jido.Browser.WebFetch.Options do
 
   defp normalize_backend(:req), do: normalize_backend(Jido.Browser.WebFetch.Backends.Req)
 
-  defp normalize_backend(:browsey) do
-    :ok = Deprecations.warn(:browsey)
-    normalize_backend(Jido.Browser.WebFetch.Backends.Browsey)
-  end
-
   defp normalize_backend(backend) when is_atom(backend) and not is_nil(backend) do
     if Code.ensure_loaded?(backend) and function_exported?(backend, :fetch, 2) do
-      :ok = Deprecations.warn(backend)
       {:ok, backend}
     else
       {:error,
@@ -167,7 +152,7 @@ defmodule Jido.Browser.WebFetch.Options do
 
   defp normalize_backend(backend) do
     {:error,
-     Error.invalid_error("Web fetch backend must be :req, :browsey, or a backend module", %{
+     Error.invalid_error("Web fetch backend must be :req or a backend module", %{
        error_code: :invalid_input,
        backend: backend
      })}

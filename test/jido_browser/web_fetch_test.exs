@@ -3,7 +3,6 @@ defmodule Jido.Browser.WebFetchTest do
   use Mimic
 
   alias Jido.Browser.Error
-  alias Jido.Browser.Vendor.BrowseyHttp
   alias Jido.Browser.WebFetch
 
   @result_keys ~w(
@@ -28,41 +27,6 @@ defmodule Jido.Browser.WebFetchTest do
     end
   end
 
-  defmodule TestBrowseyClient do
-    def get("https://example.com/stealth" = url, opts) do
-      send(opts[:test_pid], {:browsey_get, url, opts})
-
-      {:ok,
-       %{
-         status: 302,
-         headers: %{"location" => ["/final"]},
-         body: "",
-         final_uri: URI.parse(url),
-         uri_sequence: [URI.parse(url)],
-         runtime_ms: 6
-       }}
-    end
-
-    def get("https://example.com/final" = url, opts) do
-      send(opts[:test_pid], {:browsey_get, url, opts})
-
-      {:ok,
-       %{
-         status: 200,
-         headers: %{"content-type" => ["text/html; charset=utf-8"]},
-         body: """
-         <html>
-           <head><title>Browsey Page</title></head>
-           <body><main><h1>Stealth HTTP</h1><p>Fetched by Browsey.</p></main></body>
-         </html>
-         """,
-         final_uri: URI.parse(url),
-         uri_sequence: [URI.parse(url)],
-         runtime_ms: 12
-       }}
-    end
-  end
-
   setup :set_mimic_global
 
   setup_all do
@@ -77,6 +41,11 @@ defmodule Jido.Browser.WebFetchTest do
   end
 
   describe "web_fetch/2" do
+    test "rejects the removed Browsey backend alias" do
+      assert {:error, %Error.InvalidError{details: %{backend: :browsey}}} =
+               Jido.Browser.web_fetch("https://example.com", backend: :browsey, cache: false)
+    end
+
     test "fetches HTML content with selector extraction and citation passages" do
       expect(Req, :run, fn opts ->
         assert opts[:url] == "https://example.com/article"
@@ -545,83 +514,6 @@ defmodule Jido.Browser.WebFetchTest do
       assert opts[:test_pid] == self()
       assert opts[:max_response_bytes] == 12_345
       assert result.content == "custom backend content"
-    end
-
-    test "routes through Browsey backend and preserves normalized result shape" do
-      assert {:ok, result} =
-               Jido.Browser.web_fetch(
-                 "https://example.com/stealth",
-                 format: :markdown,
-                 selector: "main",
-                 backend: :browsey,
-                 max_response_bytes: 1_000_000,
-                 browsey: [
-                   browser: :safari,
-                   client: TestBrowseyClient,
-                   test_pid: self()
-                 ]
-               )
-
-      assert_receive {:browsey_get, "https://example.com/stealth", opts}
-      assert opts[:browser] == :safari
-      assert opts[:max_response_size_bytes] == 1_000_000
-      assert opts[:timeout] == 30_000
-      assert opts[:follow_redirects?] == false
-      assert opts[:resolve] == {"example.com", 443, {93, 184, 216, 34}}
-      refute Keyword.has_key?(opts, :client)
-
-      assert_receive {:browsey_get, "https://example.com/final", final_opts}
-      assert final_opts[:follow_redirects?] == false
-      assert final_opts[:resolve] == {"example.com", 443, {93, 184, 216, 34}}
-
-      assert result.title == "Browsey Page"
-      assert result.final_url == "https://example.com/final"
-      assert result.document_type == :html
-      assert result.format == :markdown
-      assert result.content =~ "Stealth HTTP"
-      assert result.content =~ "Fetched by Browsey."
-      assert result.cached == false
-      assert result.passages == []
-      assert result |> Map.keys() |> Enum.sort() == Enum.sort(@result_keys)
-    end
-
-    test "WebFetch rejects unsafe response limit values before shell execution" do
-      assert {:error, %Error.InvalidError{} = error} =
-               Jido.Browser.web_fetch(
-                 "https://example.com/stealth",
-                 backend: :browsey,
-                 cache: false,
-                 max_response_bytes: "1; touch /tmp/jido-browser-owned"
-               )
-
-      assert error.details.error_code == :invalid_input
-      assert error.details.option == :max_response_bytes
-    end
-
-    test "vendored Browsey validates browser option aliases" do
-      assert {:error, %ArgumentError{} = error} = BrowseyHttp.get("https://example.com", browser: :netscape)
-      assert error.message =~ "browser must be one of"
-    end
-
-    @tag :integration
-    @tag timeout: 60_000
-    test "smoke tests real Browsey backend against example.com" do
-      assert {:ok, result} =
-               Jido.Browser.web_fetch(
-                 "https://example.com",
-                 backend: :browsey,
-                 format: :markdown,
-                 cache: false,
-                 timeout: 30_000,
-                 browsey: [
-                   browser: :chrome,
-                   max_response_size_bytes: 1_000_000
-                 ]
-               )
-
-      assert result.title == "Example Domain"
-      assert result.document_type == :html
-      assert result.content =~ "Example Domain"
     end
   end
 end

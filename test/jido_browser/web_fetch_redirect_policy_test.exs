@@ -24,16 +24,6 @@ defmodule Jido.Browser.WebFetchRedirectPolicyTest do
     "\\evil.test/path"
   ]
 
-  defmodule ScriptedBrowseyClient do
-    @moduledoc false
-
-    def get(url, opts) do
-      send(opts[:test_pid], {:scripted_browsey_get, url, opts})
-      response = opts[:responses] |> Map.fetch!(url) |> Map.put(:final_uri, URI.parse(url))
-      {:ok, response}
-    end
-  end
-
   setup do
     WebFetch.clear_cache()
     :ok
@@ -84,56 +74,6 @@ defmodule Jido.Browser.WebFetchRedirectPolicyTest do
     assert source_pid == source_server.pid
     blocked_pid = blocked_server.pid
     refute_receive {:web_fetch_server_request, ^blocked_pid, _request}
-  end
-
-  test "blocks a redirect to a cloud metadata address before the follow-up" do
-    responses = %{
-      "http://public.test/start" => %{
-        status: 302,
-        headers: %{"location" => ["http://100.100.100.200/latest/meta-data"]},
-        body: ""
-      }
-    }
-
-    assert {:error, %InvalidError{details: details}} =
-             fetch_scripted("http://public.test/start", responses, &public_resolver/1)
-
-    assert details.error_code == :url_not_allowed
-    assert details.policy_reason == :cloud_metadata
-    assert_receive {:scripted_browsey_get, "http://public.test/start", _opts}
-    refute_receive {:scripted_browsey_get, "http://100.100.100.200/latest/meta-data", _opts}
-  end
-
-  test "resolves every redirect request and blocks DNS rebinding" do
-    Process.put(:web_fetch_resolver_calls, 0)
-
-    resolver = fn "public.test" ->
-      calls = Process.get(:web_fetch_resolver_calls, 0) + 1
-      Process.put(:web_fetch_resolver_calls, calls)
-
-      if calls == 1 do
-        {:ok, [{93, 184, 216, 34}]}
-      else
-        {:ok, [{127, 0, 0, 1}]}
-      end
-    end
-
-    responses = %{
-      "http://public.test/start" => %{
-        status: 302,
-        headers: %{"location" => ["/rebound"]},
-        body: ""
-      }
-    }
-
-    assert {:error, %InvalidError{details: details}} =
-             fetch_scripted("http://public.test/start", responses, resolver)
-
-    assert details.error_code == :url_not_allowed
-    assert details.policy_reason == :loopback
-    assert Process.get(:web_fetch_resolver_calls) == 2
-    assert_receive {:scripted_browsey_get, "http://public.test/start", _opts}
-    refute_receive {:scripted_browsey_get, "http://public.test/rebound", _opts}
   end
 
   test "removes Req credentials when a redirect changes the effective port" do
@@ -411,25 +351,6 @@ defmodule Jido.Browser.WebFetchRedirectPolicyTest do
     assert target_request.headers["cookie"] == "same-origin=cookie"
   end
 
-  test "Browsey uses the stable policy code for strict malformed and unsupported redirect targets" do
-    for location <- @invalid_redirect_locations ++ ["/bad\tpath", "/bad\rpath"] do
-      responses = %{
-        "http://public.test/start" => %{
-          status: 302,
-          headers: %{"location" => [location]},
-          body: ""
-        }
-      }
-
-      assert {:error, %InvalidError{details: details}} =
-               fetch_scripted("http://public.test/start", responses, &public_resolver/1)
-
-      assert details.error_code == :url_not_allowed
-      assert_receive {:scripted_browsey_get, "http://public.test/start", _opts}
-      refute_receive {:scripted_browsey_get, _url, _opts}
-    end
-  end
-
   test "Req uses the stable policy code before requests to strict invalid redirect targets" do
     for location <- @invalid_redirect_locations do
       server = WebFetchServer.start_http(self(), fn _request -> redirect_response(location) end)
@@ -464,7 +385,7 @@ defmodule Jido.Browser.WebFetchRedirectPolicyTest do
     end
   end
 
-  test "Req and Browsey accept a valid parent relative redirect with escaped query data" do
+  test "Req accepts a valid parent relative redirect with escaped query data" do
     server =
       WebFetchServer.start_http(self(), fn
         %{path: "/dir/start"} -> redirect_response("../target?value=%2F")
@@ -475,94 +396,6 @@ defmodule Jido.Browser.WebFetchRedirectPolicyTest do
 
     assert {:ok, req_result} = fetch_local(server, "/dir/start")
     assert req_result.final_url == "http://fixture.test:#{server.port}/target?value=%2F"
-
-    responses = %{
-      "http://public.test/dir/start" => %{
-        status: 302,
-        headers: %{"location" => ["../target?value=%2F"]},
-        body: ""
-      },
-      "http://public.test/target?value=%2F" => %{
-        status: 200,
-        headers: %{"content-type" => ["text/plain"]},
-        body: "redirect target"
-      }
-    }
-
-    assert {:ok, browsey_result} =
-             fetch_scripted("http://public.test/dir/start", responses, &public_resolver/1)
-
-    assert browsey_result.final_url == "http://public.test/target?value=%2F"
-    assert_receive {:scripted_browsey_get, "http://public.test/dir/start", _opts}
-    assert_receive {:scripted_browsey_get, "http://public.test/target?value=%2F", _opts}
-  end
-
-  test "Browsey keeps one cookie jar across a same-origin redirect chain" do
-    server =
-      WebFetchServer.start_http(self(), fn
-        %{path: "/start"} ->
-          %{
-            redirect_response("/target")
-            | headers: [{"location", "/target"}, {"set-cookie", "session=same-secret; Path=/"}]
-          }
-
-        %{path: "/target"} ->
-          ok_response(nil)
-      end)
-
-    on_exit(fn -> WebFetchServer.stop(server) end)
-
-    assert {:ok, _result} = fetch_browsey_local("http://fixture.test:#{server.port}/start")
-    assert_receive {:web_fetch_server_request, server_pid, source_request}
-    assert server_pid == server.pid
-    refute Map.has_key?(source_request.headers, "cookie")
-    assert_receive {:web_fetch_server_request, ^server_pid, target_request}
-    assert target_request.headers["cookie"] =~ "session=same-secret"
-  end
-
-  test "Browsey does not send a host cookie across a cross-origin port change" do
-    target_server = WebFetchServer.start_http(self(), &ok_response/1)
-
-    source_server =
-      WebFetchServer.start_http(self(), fn _request ->
-        %{
-          redirect_response("http://fixture.test:#{target_server.port}/target")
-          | headers: [
-              {"location", "http://fixture.test:#{target_server.port}/target"},
-              {"set-cookie", "session=cross-secret; Path=/"}
-            ]
-        }
-      end)
-
-    on_exit(fn ->
-      WebFetchServer.stop(source_server)
-      WebFetchServer.stop(target_server)
-    end)
-
-    resolver = fn "fixture.test" -> {:ok, [{127, 0, 0, 1}]} end
-
-    assert {:ok, _result} =
-             fetch_browsey_local("http://fixture.test:#{source_server.port}/start", resolver)
-
-    assert_receive {:web_fetch_server_request, source_pid, _source_request}
-    assert source_pid == source_server.pid
-    assert_receive {:web_fetch_server_request, target_pid, target_request}
-    assert target_pid == target_server.pid
-    refute Map.has_key?(target_request.headers, "cookie")
-  end
-
-  test "uses the stable policy code for a missing or invalid Location header" do
-    for headers <- [%{}, %{"location" => [""]}, %{"location" => [123]}] do
-      responses = %{
-        "http://public.test/start" => %{status: 302, headers: headers, body: ""}
-      }
-
-      assert {:error, %InvalidError{details: details}} =
-               fetch_scripted("http://public.test/start", responses, &public_resolver/1)
-
-      assert details.error_code == :url_not_allowed
-      assert_receive {:scripted_browsey_get, "http://public.test/start", _opts}
-    end
   end
 
   test "keeps a nested Req redirect limit and does not request the next target" do
@@ -630,32 +463,6 @@ defmodule Jido.Browser.WebFetchRedirectPolicyTest do
     refute_receive {:web_fetch_server_request, _server_pid, %{path: "/11"}}
   end
 
-  test "uses Browsey's compatible default redirect limit of nineteen" do
-    responses =
-      Map.new(0..19, fn index ->
-        url = "http://public.test/#{index}"
-
-        {url,
-         %{
-           status: 302,
-           headers: %{"location" => ["/#{index + 1}"]},
-           body: ""
-         }}
-      end)
-
-    assert {:error, %AdapterError{details: details}} =
-             fetch_scripted("http://public.test/0", responses, &public_resolver/1)
-
-    assert details.max_redirects == 19
-
-    for index <- 0..19 do
-      url = "http://public.test/#{index}"
-      assert_receive {:scripted_browsey_get, ^url, _opts}
-    end
-
-    refute_receive {:scripted_browsey_get, "http://public.test/20", _opts}
-  end
-
   defp fetch_local(server, path, opts \\ []) do
     resolver = fn host ->
       assert host in ["fixture.test", "blocked.test"]
@@ -676,29 +483,6 @@ defmodule Jido.Browser.WebFetchRedirectPolicyTest do
 
     Jido.Browser.web_fetch("http://fixture.test:#{server.port}#{path}", request_opts)
   end
-
-  defp fetch_scripted(url, responses, resolver) do
-    Jido.Browser.web_fetch(
-      url,
-      backend: :browsey,
-      browsey: [client: ScriptedBrowseyClient, responses: responses, test_pid: self()],
-      cache: false,
-      format: :text,
-      resolver: resolver
-    )
-  end
-
-  defp fetch_browsey_local(url, resolver \\ fn "fixture.test" -> {:ok, [{127, 0, 0, 1}]} end) do
-    Jido.Browser.web_fetch(url,
-      allow_private_network: true,
-      backend: :browsey,
-      cache: false,
-      format: :text,
-      resolver: resolver
-    )
-  end
-
-  defp public_resolver("public.test"), do: {:ok, [{93, 184, 216, 34}]}
 
   defp redirect_response(location, status \\ 302) do
     %{status: status, headers: [{"location", location}], body: ""}

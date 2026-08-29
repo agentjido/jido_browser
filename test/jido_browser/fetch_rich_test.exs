@@ -8,20 +8,6 @@ defmodule Jido.Browser.FetchRichTest do
   alias Jido.Browser.Session
   alias Jido.Browser.WebFetch
 
-  defmodule TestBrowseyClient do
-    def get(url, opts) do
-      send(opts[:test_pid], {:browsey_get, url, opts})
-
-      {:ok,
-       %{
-         status: 200,
-         headers: %{"content-type" => ["text/html"]},
-         body: "<html><head><title>Browsey</title></head><body><main>Browsey body</main></body></html>",
-         final_url: url
-       }}
-    end
-  end
-
   setup :set_mimic_global
 
   setup_all do
@@ -54,21 +40,6 @@ defmodule Jido.Browser.FetchRichTest do
     assert result.blocked? == false
     assert result.title == "Article"
     assert result.content =~ "Hello world."
-  end
-
-  test "supports Browsey as the selected HTTP path" do
-    assert {:ok, result} =
-             Jido.Browser.fetch_rich(
-               "https://example.com/browsey",
-               backend: :browsey,
-               max_response_bytes: 2_048,
-               browsey: [client: TestBrowseyClient, test_pid: self()]
-             )
-
-    assert_receive {:browsey_get, "https://example.com/browsey", opts}
-    assert opts[:max_response_size_bytes] == 2_048
-    assert result.retrieval_path == :browsey
-    assert result.content =~ "Browsey body"
   end
 
   test "falls back to a browser session on blocked HTTP status when a pool option is present" do
@@ -151,7 +122,7 @@ defmodule Jido.Browser.FetchRichTest do
     expect(WebFetch, :fetch, fn "https://example.com/http", opts ->
       assert opts ==
                [
-                 backend: :browsey,
+                 backend: :req,
                  citations: true,
                  format: :text,
                  max_response_bytes: 4_096,
@@ -168,7 +139,7 @@ defmodule Jido.Browser.FetchRichTest do
              FetchRich.fetch(
                "https://example.com/http",
                adapter: AgentBrowser,
-               backend: :browsey,
+               backend: :req,
                browser_fallback: true,
                citations: true,
                format: :text,
@@ -179,7 +150,7 @@ defmodule Jido.Browser.FetchRichTest do
 
     assert tagged_result ==
              result
-             |> Map.put(:retrieval_path, :browsey)
+             |> Map.put(:retrieval_path, :web_fetch)
              |> Map.put(:fallback_reason, nil)
              |> Map.put(:blocked?, false)
   end

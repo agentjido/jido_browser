@@ -19,7 +19,7 @@ defmodule Jido.Browser.Actions.WebFetch do
           Zoi.enum([:markdown, :text, :html], description: "Output format")
           |> Zoi.default(:markdown)
           |> Zoi.optional(),
-        backend: Zoi.enum([:req, :browsey], description: "HTTP backend used for the fetch") |> Zoi.optional(),
+        backend: Zoi.enum([:req], description: "Req HTTP backend") |> Zoi.optional(),
         selector: Zoi.string(description: "Optional CSS selector for HTML pages") |> Zoi.optional(),
         allowed_domains:
           Zoi.list(Zoi.string(), description: "Allow-list of host or host/path rules")

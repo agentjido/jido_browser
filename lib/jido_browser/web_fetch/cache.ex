@@ -73,6 +73,6 @@ defmodule Jido.Browser.WebFetch.Cache do
   defp cache_key(url, opts) do
     {:jido_browser_web_fetch, url, opts[:format], opts[:selector], opts[:allowed_domains], opts[:blocked_domains],
      opts[:focus_terms], opts[:focus_window], opts[:max_content_tokens], opts[:max_response_bytes], opts[:citations],
-     opts[:extractous], opts[:backend], opts[:req], opts[:browsey], opts[:allow_private_network]}
+     opts[:extractous], opts[:backend], opts[:req], opts[:allow_private_network]}
   end
 end

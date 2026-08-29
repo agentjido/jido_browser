@@ -2,9 +2,8 @@
 
 Policy date: 2026-08-27.
 
-This guide is the canonical support policy for Jido Browser 2.x browser
-adapters and the BrowseyHttp web-fetch runtime. AgentBrowser is the supported
-default.
+This guide is the canonical support policy for Jido Browser browser adapters.
+AgentBrowser is the supported default.
 
 ## Support matrix
 
@@ -13,7 +12,6 @@ default.
 | AgentBrowser | [0.35.1](https://github.com/vercel-labs/agent-browser/releases/tag/v0.35.1) | Required unit, quality, and Linux real-runtime smoke tests on each PR | Supported default for 2.x. Version or daemon protocol failures block a release. The project maintains the current public API and fixes compatibility and security defects. | Use AgentBrowser 0.35.1 and the supervised local daemon transport. The runtime rejects other AgentBrowser versions. The required smoke lane covers start, navigate, snapshot, click, type, read, and close. |
 | Lightpanda | [0.3.0](https://github.com/lightpanda-io/browser/releases/tag/0.3.0) | Required fake-runtime unit tests; opt-in real-runtime integration test | Limited support for the listed base operations and warm pools. The project fixes defects in those operations, but does not promise AgentBrowser feature parity. | Add `light_cdp ~> 0.2.1` and `lightpanda_ex ~> 0.1.0`. Use the 0.3.0 binary baseline. Support includes session lifecycle, navigation, click, type, PNG screenshots, content extraction, JavaScript evaluation, and warm pools. AgentBrowser refs, state persistence, tab management, and console capture are not supported. |
 | Vibium | [26.3.11](https://github.com/VibiumDev/vibium/releases/tag/v26.3.11) | Required installer and facade tests; opt-in real-runtime integration test | Compatibility support in 2.x. The adapter is feature-frozen. The project fixes critical compatibility and security defects in its current operations. | Use Vibium 26.3.11. Support is for unpooled sessions and the current navigation, click, type, PNG screenshot, content extraction, and JavaScript evaluation operations. Markdown extraction uses Vibium plain text. Newer Vibium releases are not part of this support promise. |
-| BrowseyHttp | Vendored upstream commit [0324a26d](https://github.com/s3cur3/browsey_http/commit/0324a26d3853aee39db54ad947a2f50769afda01), with documented local patches | Required vendored-runtime unit tests; opt-in external-network smoke test | Deprecated. Only critical compatibility and security fixes are accepted in 2.x. BrowseyHttp and its curl-impersonate assets will be removed in 3.0. | Use only for migration of existing `:browsey` web-fetch calls. It does not execute JavaScript. Move HTTP retrieval to the default Req backend. Use AgentBrowser when a page needs a rendered browser. |
 
 "Required" means that the check runs in the normal pull-request CI. "Opt-in"
 means that the test has the `:integration` tag and the normal test command
@@ -42,11 +40,6 @@ The other CI levels come from the current test configuration and adapter tests:
   dependency and feature conditions.
 - The Vibium installer pins 26.3.11. Its local-fixture integration test covers
   the operations in the matrix.
-- The BrowseyHttp source records the exact upstream commit and local changes in
-  its
-  [vendor record](https://github.com/agentjido/jido_browser/blob/main/vendor/browsey_http/README.md).
-  Unit tests cover backend routing, result normalization, option validation,
-  and vendored runtime validation. The real network smoke test is opt-in.
 
 ## Migration
 
@@ -56,10 +49,4 @@ Jido Browser 3.0 removes the Web adapter and its installer target.
 | --- | --- |
 | Stateful browser sessions, rendered pages, JavaScript, or warm pools | Select `Jido.Browser.Adapters.AgentBrowser` and install the supported AgentBrowser runtime. |
 | Stateless HTTP retrieval | Use `Jido.Browser.web_fetch/2` with `:req` or `Jido.Browser.WebFetch.Backends.Req`. |
-
-For BrowseyHttp, select `:req` or
-`Jido.Browser.WebFetch.Backends.Req` for stateless HTTP retrieval. Select
-AgentBrowser only when the page needs JavaScript or browser rendering.
-
-The remaining 3.0 BrowseyHttp removal work is tracked in
-[#81](https://github.com/agentjido/jido_browser/issues/81).
+| `:browsey`, `Jido.Browser.WebFetch.Backends.Browsey`, or `browsey:` configuration | Use Req for stateless HTTP retrieval. Use AgentBrowser when the page needs JavaScript or browser rendering. |
