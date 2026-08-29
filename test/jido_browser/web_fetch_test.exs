@@ -4,6 +4,7 @@ defmodule Jido.Browser.WebFetchTest do
 
   alias Jido.Browser.Error
   alias Jido.Browser.WebFetch
+  alias Jido.Browser.WebFetch.DocumentExtractor
 
   @result_keys ~w(
     cached citations content content_type document_type estimated_tokens filtered final_url
@@ -32,6 +33,7 @@ defmodule Jido.Browser.WebFetchTest do
   setup_all do
     Mimic.copy(Req)
     Mimic.copy(ExtractousEx)
+    Mimic.copy(DocumentExtractor)
     :ok
   end
 
@@ -267,6 +269,71 @@ defmodule Jido.Browser.WebFetchTest do
 
       assert {:error, %Error.AdapterError{details: %{error_code: :unavailable, document_type: :pdf}}} =
                Jido.Browser.web_fetch("https://example.com/broken.pdf", format: :text)
+    end
+
+    test "returns a stable unsupported-feature error when document extraction is not installed" do
+      pdf_bytes = "%PDF-1.7 unavailable"
+
+      expect(Req, :run, fn opts ->
+        request = Req.Request.new(url: opts[:url])
+
+        response =
+          %Req.Response{
+            status: 200,
+            headers: %{"content-type" => ["application/pdf"]},
+            body: pdf_bytes
+          }
+
+        {request, response}
+      end)
+
+      expect(DocumentExtractor, :extract, fn ^pdf_bytes, [] ->
+        {:error, :dependency_unavailable}
+      end)
+
+      assert {:error,
+              %Error.AdapterError{
+                message: "Document extraction support is not installed",
+                details: %{
+                  error_code: :unsupported_feature,
+                  feature: :document_extraction,
+                  dependency: :extractous_ex,
+                  url: "https://example.com/report.pdf",
+                  content_type: "application/pdf",
+                  document_type: :pdf
+                }
+              }} = Jido.Browser.web_fetch("https://example.com/report.pdf", format: :text)
+    end
+
+    test "does not load the optional document extractor for HTML" do
+      reject(DocumentExtractor, :extract, 2)
+
+      expect(Req, :run, fn opts ->
+        request = Req.Request.new(url: opts[:url])
+
+        response =
+          %Req.Response{
+            status: 200,
+            headers: %{"content-type" => ["text/html"]},
+            body: "<html><body><p>Native HTML</p></body></html>"
+          }
+
+        {request, response}
+      end)
+
+      assert {:ok, result} =
+               Jido.Browser.web_fetch("https://example.com/native.html", format: :text)
+
+      assert result.content == "Native HTML"
+      assert result.document_type == :html
+    end
+
+    test "declares ExtractousEx as an optional application dependency" do
+      assert {:extractous_ex, "~> 0.2", opts} =
+               Enum.find(Mix.Project.config()[:deps], &(elem(&1, 0) == :extractous_ex))
+
+      assert opts[:optional] == true
+      assert :extractous_ex in Application.spec(:jido_browser, :optional_applications)
     end
 
     test "rejects URLs outside allowed_domains" do

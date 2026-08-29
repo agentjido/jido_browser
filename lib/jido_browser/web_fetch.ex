@@ -1,8 +1,8 @@
 defmodule Jido.Browser.WebFetch do
   @moduledoc """
   Stateless HTTP-first web retrieval with optional domain policy, caching,
-  focused filtering, citation-ready passage metadata, and Extractous-backed
-  document extraction.
+  focused filtering, citation-ready passage metadata, and optional
+  Extractous-backed document extraction.
 
   This module is intended for document retrieval workloads where starting a full
   browser session would be unnecessary or too expensive.
@@ -69,7 +69,8 @@ defmodule Jido.Browser.WebFetch do
   - `:cache` - enable ETS cache, defaults to `true`
   - `:cache_ttl_ms` - cache TTL in milliseconds
   - `:require_known_url` / `:known_urls` - optional URL provenance guard
-  - `:extractous` - optional `ExtractousEx` keyword options merged with config
+  - `:extractous` - keyword options for the optional `ExtractousEx` dependency,
+    merged with config
   """
   @spec fetch(String.t(), keyword()) :: {:ok, result()} | {:error, Exception.t()}
   def fetch(url, opts \\ [])

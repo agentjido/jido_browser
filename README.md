@@ -121,7 +121,25 @@ result.passages
 result.metadata # present when extraction returns document metadata
 ```
 
-`web_fetch/2` keeps HTML handling native for selector extraction and markdown conversion, and uses `extractous_ex` for fetched binary documents such as PDFs, Word, Excel, PowerPoint, OpenDocument, EPUB, and common email formats. Binary document responses may also include `result.metadata` when extraction returns document metadata.
+`web_fetch/2` keeps HTML handling native for selector extraction and markdown
+conversion. Document extraction is optional. Add `extractous_ex` to your
+application when you need to fetch PDFs, Word, Excel, PowerPoint, OpenDocument,
+EPUB, or common email formats:
+
+```elixir
+defp deps do
+  [
+    {:jido_browser, "~> 3.0"},
+    {:extractous_ex, "~> 0.2"}
+  ]
+end
+```
+
+Binary document responses can include `result.metadata` when extraction returns
+document metadata. Without `extractous_ex`, PDF and office document requests
+return an adapter error with `error_code: :unsupported_feature` and
+`feature: :document_extraction`. HTML and text retrieval and browser automation
+do not load ExtractousEx or Rustler.
 
 Web fetches reject loopback, private, link-local, and cloud metadata addresses by default. Set `allow_private_network: true` only when a fetch must reach a trusted private service. Domain allow and block rules still apply when this option is enabled.
 
@@ -339,8 +357,9 @@ config :jido_browser, :web_fetch,
 ```
 
 Configured `req` and `extractous` options are merged with any per-call options
-passed to `Jido.Browser.web_fetch/2`. The top-level `max_response_bytes` value
-is authoritative for the built-in Req backend.
+passed to `Jido.Browser.web_fetch/2`. Extractous options apply only when the host
+application includes the optional `extractous_ex` dependency. The top-level
+`max_response_bytes` value is authoritative for the built-in Req backend.
 
 ## Backends
 
