@@ -3,8 +3,8 @@ defmodule Jido.Browser.Installer do
   Binary installer for Jido.Browser adapters.
 
   This module handles downloading and installing the browser automation binaries
-  (vibium, web, lightpanda) for all supported platforms. It follows the same patterns as
-  Phoenix's Tailwind installer for a familiar experience.
+  (AgentBrowser, Vibium, and Lightpanda) for all supported platforms. It follows
+  the same patterns as Phoenix's Tailwind installer for a familiar experience.
 
   ## Supported Platforms
 
@@ -35,19 +35,16 @@ defmodule Jido.Browser.Installer do
   alias Jido.Browser.Installer.Paths
 
   @vibium_version "26.3.11"
-  @web_version "main"
   @lightpanda_version "0.3.0"
   @command_probes %{
     vibium: ["version"],
-    web: ["--help"],
     lightpanda: ["version"]
   }
   # Literal module atoms preserve exact selections without an xref edge to adapters.
   @adapter_binaries %{
     :"Elixir.Jido.Browser.Adapters.AgentBrowser" => :agent_browser,
     :"Elixir.Jido.Browser.Adapters.Lightpanda" => :lightpanda,
-    :"Elixir.Jido.Browser.Adapters.Vibium" => :vibium,
-    :"Elixir.Jido.Browser.Adapters.Web" => :web
+    :"Elixir.Jido.Browser.Adapters.Vibium" => :vibium
   }
 
   @type platform :: :darwin_arm64 | :darwin_amd64 | :linux_amd64 | :linux_arm64 | :windows_amd64
@@ -62,11 +59,10 @@ defmodule Jido.Browser.Installer do
   Returns whether a given binary is installed and available.
   """
   @spec installed?(atom()) :: boolean()
-  def installed?(binary) when binary in [:agent_browser, :vibium, :web, :lightpanda] do
+  def installed?(binary) when binary in [:agent_browser, :vibium, :lightpanda] do
     case binary do
       :agent_browser -> agent_browser_installed?()
       :vibium -> vibium_installed?()
-      :web -> web_installed?()
       :lightpanda -> lightpanda_installed?()
     end
   end
@@ -75,11 +71,10 @@ defmodule Jido.Browser.Installer do
   Returns the path to the binary if installed, or nil.
   """
   @spec bin_path(atom()) :: String.t() | nil
-  def bin_path(binary) when binary in [:agent_browser, :vibium, :web, :lightpanda] do
+  def bin_path(binary) when binary in [:agent_browser, :vibium, :lightpanda] do
     case binary do
       :agent_browser -> find_agent_browser_path()
       :vibium -> find_vibium_path()
-      :web -> find_web_path()
       :lightpanda -> find_lightpanda_path()
     end
   end
@@ -90,7 +85,7 @@ defmodule Jido.Browser.Installer do
 
   ## Options
 
-    * `:adapter` - The adapter to check/install (:vibium or :web)
+    * `:adapter` - The adapter binary to check or install
     * `:force` - Force reinstallation even if already installed
 
   """
@@ -129,13 +124,6 @@ defmodule Jido.Browser.Installer do
     verify_effective_install(:vibium, install_vibium(opts), opts)
   end
 
-  def install(:web, opts) do
-    install_path = opts[:path] || default_install_path()
-    force = opts[:force] || false
-
-    verify_effective_install(:web, install_web(install_path, force), opts)
-  end
-
   def install(:lightpanda, opts) do
     verify_effective_install(:lightpanda, install_lightpanda(opts), opts)
   end
@@ -161,7 +149,6 @@ defmodule Jido.Browser.Installer do
   def configured_version(:agent_browser), do: Binary.supported_version()
 
   def configured_version(:vibium), do: Application.get_env(:jido_browser, :vibium_version, @vibium_version)
-  def configured_version(:web), do: Application.get_env(:jido_browser, :web_version, @web_version)
   def configured_version(:lightpanda), do: Application.get_env(:jido_browser, :lightpanda_version, lightpanda_version())
 
   # Private implementation
@@ -182,13 +169,6 @@ defmodule Jido.Browser.Installer do
     case find_vibium_path() do
       nil -> false
       path -> command_usable?(path, @command_probes.vibium)
-    end
-  end
-
-  defp web_installed? do
-    case find_web_path() do
-      nil -> false
-      path -> command_usable?(path, @command_probes.web)
     end
   end
 
@@ -276,16 +256,6 @@ defmodule Jido.Browser.Installer do
     end
   end
 
-  defp find_web_path do
-    case configured_path(:web) do
-      path when is_binary(path) and path != "" ->
-        if File.exists?(path), do: path, else: nil
-
-      _ ->
-        find_in_path("web") || find_in_jido_browser_bin("web")
-    end
-  end
-
   defp find_lightpanda_path do
     case configured_path(:lightpanda) do
       path when is_binary(path) and path != "" ->
@@ -305,12 +275,6 @@ defmodule Jido.Browser.Installer do
   defp configured_path(:vibium) do
     :jido_browser
     |> Application.get_env(:vibium, [])
-    |> Keyword.get(:binary_path)
-  end
-
-  defp configured_path(:web) do
-    :jido_browser
-    |> Application.get_env(:web, [])
     |> Keyword.get(:binary_path)
   end
 
@@ -427,30 +391,6 @@ defmodule Jido.Browser.Installer do
     result
   end
 
-  defp install_web(install_path, force) do
-    target = Path.join(install_path, web_binary_name())
-
-    if command_usable?(target, @command_probes.web) and not force do
-      Logger.info("web already installed at #{target}. Use --force to overwrite.")
-      :ok
-    else
-      staged = staged_binary_path(target)
-      url = web_download_url()
-      Logger.info("Downloading web from #{url}...")
-
-      result =
-        with :ok <- ensure_install_directory(install_path),
-             :ok <- prepare_staged_binary(staged),
-             :ok <- download_binary(url, staged),
-             :ok <- ensure_command_usable(staged, @command_probes.web, "downloaded web binary") do
-          promote_staged_binary(staged, target)
-        end
-
-      if result != :ok, do: remove_staged_binary(staged)
-      result
-    end
-  end
-
   defp install_lightpanda(opts) do
     with {:ok, lightpanda_ex} <- ensure_lightpanda_ex() do
       with_lightpanda_ex_env(opts, fn ->
@@ -495,13 +435,6 @@ defmodule Jido.Browser.Installer do
   defp restore_env(app, key, :__missing__), do: Application.delete_env(app, key)
   defp restore_env(app, key, value), do: Application.put_env(app, key, value)
 
-  defp web_binary_name do
-    case target() do
-      :windows_amd64 -> "web.exe"
-      _ -> "web"
-    end
-  end
-
   defp lightpanda_binary_name do
     case target() do
       :windows_amd64 -> "lightpanda.exe"
@@ -514,20 +447,6 @@ defmodule Jido.Browser.Installer do
   defp agent_browser_download_url do
     version = configured_version(:agent_browser)
     "https://github.com/vercel-labs/agent-browser/releases/download/v#{version}/#{agent_browser_binary_name()}"
-  end
-
-  defp web_download_url do
-    platform = target()
-
-    base_url = "https://raw.githubusercontent.com/chrismccord/web/#{configured_version(:web)}"
-
-    case platform do
-      :darwin_arm64 -> "#{base_url}/web-darwin-arm64"
-      :darwin_amd64 -> "#{base_url}/web-darwin-amd64"
-      :linux_amd64 -> "#{base_url}/web-linux-amd64"
-      :linux_arm64 -> "#{base_url}/web-linux-arm64"
-      :windows_amd64 -> raise "Windows is not currently supported for the web adapter"
-    end
   end
 
   defp vibium_npm_package do

@@ -22,7 +22,7 @@ defmodule Jido.Browser.InstallerFailureTest do
 
   describe "installed?/1" do
     test "rejects present command shims that return a failure", %{directory: directory} do
-      Enum.each([:vibium, :web, :lightpanda], fn target ->
+      Enum.each([:vibium, :lightpanda], fn target ->
         path = write_command(Path.join(directory, Atom.to_string(target)), "exit 19")
 
         with_app_env(:jido_browser, target, [binary_path: path], fn ->
@@ -33,7 +33,7 @@ defmodule Jido.Browser.InstallerFailureTest do
     end
 
     test "accepts usable commands for all non-AgentBrowser targets", %{directory: directory} do
-      probes = %{vibium: "version", web: "--help", lightpanda: "version"}
+      probes = %{vibium: "version", lightpanda: "version"}
 
       Enum.each(probes, fn {target, probe} ->
         marker = Path.join(directory, "#{target}-probe")
@@ -116,57 +116,6 @@ defmodule Jido.Browser.InstallerFailureTest do
       target = Path.join(directory, agent_browser_binary_name())
       refute File.exists?(target)
       refute File.exists?(target <> ".tmp")
-    end
-  end
-
-  describe "Web installation" do
-    test "propagates download failure and removes the staged binary", %{directory: directory} do
-      expect(:httpc, :request, fn :get, {_url, []}, _http_options, body_format: :binary ->
-        {:error, :fake_offline}
-      end)
-
-      assert {:error, "Download failed: :fake_offline"} = Installer.install(:web, path: directory)
-
-      target = Path.join(directory, web_binary_name())
-      refute File.exists?(target)
-      refute File.exists?(target <> ".tmp")
-    end
-
-    test "rejects and removes an unusable downloaded command", %{directory: directory} do
-      expect_http_download("#!/bin/sh\nexit 31\n")
-
-      assert {:error, reason} = Installer.install(:web, path: directory)
-      assert reason =~ "downloaded web binary is not usable"
-
-      target = Path.join(directory, web_binary_name())
-      refute File.exists?(target)
-      refute File.exists?(target <> ".tmp")
-    end
-
-    test "promotes a usable downloaded command", %{directory: directory} do
-      marker = Path.join(directory, "web-download-probe")
-      expect_http_download("#!/bin/sh\n#{exact_argument_command("--help", marker)}\n")
-
-      assert :ok = Installer.install(:web, path: directory)
-
-      target = Path.join(directory, web_binary_name())
-      assert File.exists?(target)
-      refute File.exists?(target <> ".tmp")
-      assert File.read!(marker) == "--help"
-    end
-
-    test "rejects success when a configured broken command remains selected", %{directory: directory} do
-      configured = write_command(Path.join(directory, "configured-web"), "exit 41")
-      install_path = Path.join(directory, "web-install")
-      expect_http_download("#!/bin/sh\nexit 0\n")
-
-      with_app_env(:jido_browser, :web, [binary_path: configured], fn ->
-        assert {:error, reason} = Installer.install(:web, path: install_path)
-        assert reason =~ "web installation completed"
-        assert reason =~ "selected executable is not usable at #{configured}"
-        refute Installer.installed?(:web)
-        assert command_succeeds?(Path.join(install_path, web_binary_name()), ["--help"])
-      end)
     end
   end
 
@@ -436,10 +385,6 @@ defmodule Jido.Browser.InstallerFailureTest do
       :linux_arm64 -> "agent-browser-linux-arm64"
       :windows_amd64 -> "agent-browser-win32-x64.exe"
     end
-  end
-
-  defp web_binary_name do
-    if Installer.target() == :windows_amd64, do: "web.exe", else: "web"
   end
 
   defp lightpanda_binary_name do

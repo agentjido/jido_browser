@@ -44,8 +44,9 @@ body:
       label: Adapter
       description: Which browser adapter are you using?
       options:
-        - "Vibium (default)"
-        - "Web (chrismccord/web)"
+        - "AgentBrowser (default)"
+        - "Lightpanda"
+        - "Vibium"
         - "Custom adapter"
     validations:
       required: true

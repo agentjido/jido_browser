@@ -1,7 +1,6 @@
 defmodule Jido.Browser.SessionOperations do
   @moduledoc false
 
-  alias Jido.Browser.Deprecations
   alias Jido.Browser.Error
   alias Jido.Browser.PoolAdapter
   alias Jido.Browser.Session
@@ -15,7 +14,6 @@ defmodule Jido.Browser.SessionOperations do
   @spec start_session(keyword()) :: {:ok, Session.t()} | {:error, term()}
   def start_session(opts) do
     with {:ok, adapter} <- resolve_session_adapter(opts),
-         :ok <- Deprecations.warn(adapter),
          :ok <- validate_pool_capability(adapter, opts) do
       case adapter.start_session(opts) do
         {:ok, %Session{} = session} ->

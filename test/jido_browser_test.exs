@@ -22,16 +22,16 @@ defmodule Jido.BrowserTest do
     end
 
     test "accepts custom adapter" do
-      expect(Jido.Browser.Adapters.Web, :start_session, fn _opts ->
+      expect(Jido.Browser.Adapters.Test, :start_session, fn _opts ->
         Session.new(%{
-          adapter: Jido.Browser.Adapters.Web,
+          adapter: Jido.Browser.Adapters.Test,
           connection: %{profile: "default"}
         })
       end)
 
       # Mock returns bare session, adapter wraps with {:ok, ...}
-      assert {:ok, %Session{adapter: Jido.Browser.Adapters.Web}} =
-               Jido.Browser.start_session(adapter: Jido.Browser.Adapters.Web)
+      assert {:ok, %Session{adapter: Jido.Browser.Adapters.Test}} =
+               Jido.Browser.start_session(adapter: Jido.Browser.Adapters.Test)
     end
   end
 
@@ -48,17 +48,17 @@ defmodule Jido.BrowserTest do
     end
 
     test "permits pooled sessions for a pool-capable adapter" do
-      expect(Jido.Browser.Adapters.Web, :start_session, fn opts ->
+      expect(Jido.Browser.Adapters.AgentBrowser, :start_session, fn opts ->
         assert opts[:pool] == "default"
 
         Session.new(%{
-          adapter: Jido.Browser.Adapters.Web,
+          adapter: Jido.Browser.Adapters.AgentBrowser,
           connection: %{profile: "pooled-default"}
         })
       end)
 
-      assert {:ok, %Session{adapter: Jido.Browser.Adapters.Web}} =
-               Jido.Browser.start_session(adapter: Jido.Browser.Adapters.Web, pool: "default")
+      assert {:ok, %Session{adapter: Jido.Browser.Adapters.AgentBrowser}} =
+               Jido.Browser.start_session(adapter: Jido.Browser.Adapters.AgentBrowser, pool: "default")
     end
 
     test "public pool child spec is a supervisor with infinite shutdown" do

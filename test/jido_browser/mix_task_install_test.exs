@@ -26,7 +26,6 @@ defmodule Jido.Browser.MixTaskInstallTest do
     targets = [
       {"agent_browser", :agent_browser},
       {"agent-browser", :agent_browser},
-      {"web", :web},
       {"vibium", :vibium},
       {"lightpanda", :lightpanda}
     ]
@@ -45,16 +44,21 @@ defmodule Jido.Browser.MixTaskInstallTest do
     assert_raise ArgumentError, fn -> String.to_existing_atom(name) end
 
     assert_raise Mix.Error,
-                 "Unknown binary: #{name}. Use 'agent_browser', 'web', 'vibium', or 'lightpanda'.",
+                 "Unknown binary: #{name}. Use 'agent_browser', 'vibium', or 'lightpanda'.",
                  fn -> InstallTask.run([name]) end
 
     assert_raise ArgumentError, fn -> String.to_existing_atom(name) end
   end
 
+  test "rejects the removed Web installer target" do
+    assert_raise Mix.Error,
+                 "Unknown binary: web. Use 'agent_browser', 'vibium', or 'lightpanda'.",
+                 fn -> InstallTask.run(["web"]) end
+  end
+
   test "raises with the target-specific reason for every failed installer" do
     failures = [
       {:agent_browser, Error.adapter_error("fake AgentBrowser failure")},
-      {:web, "fake web failure"},
       {:vibium, {:npm_exit, 17}},
       {:lightpanda, "fake Lightpanda failure"}
     ]
@@ -76,14 +80,14 @@ defmodule Jido.Browser.MixTaskInstallTest do
   end
 
   test "keeps successful installation behavior" do
-    expect(Installer, :installed?, fn :web -> false end)
+    expect(Installer, :installed?, fn :vibium -> false end)
 
-    expect(Installer, :install, fn :web, opts ->
+    expect(Installer, :install, fn :vibium, opts ->
       assert opts == [path: "/fake/install", force: true]
       :ok
     end)
 
-    assert :ok = InstallTask.run(["--path", "/fake/install", "--force", "web"])
+    assert :ok = InstallTask.run(["--path", "/fake/install", "--force", "vibium"])
   end
 
   test "a failed installation command exits with a nonzero status", %{directory: directory} do

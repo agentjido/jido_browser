@@ -139,8 +139,7 @@ defmodule Jido.Browser.MixProject do
           Jido.Browser.Adapter,
           Jido.Browser.Adapters.AgentBrowser,
           Jido.Browser.Adapters.Lightpanda,
-          Jido.Browser.Adapters.Vibium,
-          Jido.Browser.Adapters.Web
+          Jido.Browser.Adapters.Vibium
         ],
         "Session Lifecycle": [
           Jido.Browser.Actions.StartSession,
