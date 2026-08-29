@@ -34,6 +34,10 @@ defmodule Jido.Browser.ActionRegistry do
   @tool_contract_version 3
   @support_level :supported
 
+  @type profile :: :core | :debug | :all
+
+  @profiles [:core, :debug, :all]
+
   @entry_specs [
     # Session lifecycle
     {Jido.Browser.Actions.StartSession, "browser.start_session", :session, ["browser", "session", "lifecycle"]},
@@ -105,6 +109,50 @@ defmodule Jido.Browser.ActionRegistry do
              }
            end)
 
+  @core_actions [
+    Jido.Browser.Actions.StartSession,
+    Jido.Browser.Actions.EndSession,
+    Jido.Browser.Actions.Navigate,
+    Jido.Browser.Actions.Back,
+    Jido.Browser.Actions.Forward,
+    Jido.Browser.Actions.Reload,
+    Jido.Browser.Actions.Click,
+    Jido.Browser.Actions.Type,
+    Jido.Browser.Actions.Hover,
+    Jido.Browser.Actions.Scroll,
+    Jido.Browser.Actions.SelectOption,
+    Jido.Browser.Actions.Wait,
+    Jido.Browser.Actions.WaitForSelector,
+    Jido.Browser.Actions.WaitForNavigation,
+    Jido.Browser.Actions.Snapshot,
+    Jido.Browser.Actions.Screenshot,
+    Jido.Browser.Actions.ReadPage,
+    Jido.Browser.Actions.SnapshotUrl,
+    Jido.Browser.Actions.WebFetch,
+    Jido.Browser.Actions.FetchRich
+  ]
+
+  @debug_actions @core_actions ++
+                   [
+                     Jido.Browser.Actions.GetStatus,
+                     Jido.Browser.Actions.PoolStatus,
+                     Jido.Browser.Actions.GetUrl,
+                     Jido.Browser.Actions.GetTitle,
+                     Jido.Browser.Actions.Console,
+                     Jido.Browser.Actions.Errors,
+                     Jido.Browser.Actions.Evaluate
+                   ]
+
+  @profile_actions %{
+    core: @core_actions,
+    debug: @debug_actions,
+    all: Enum.map(@entries, & &1.action)
+  }
+
+  @profile_entries Map.new(@profile_actions, fn {profile, actions} ->
+                     {profile, Enum.filter(@entries, &(&1.action in actions))}
+                   end)
+
   for %Entry{action: action} <- @entries do
     Code.ensure_compiled!(action)
   end
@@ -113,17 +161,42 @@ defmodule Jido.Browser.ActionRegistry do
   @spec entries() :: [Entry.t()]
   def entries, do: @entries
 
+  @doc "Returns the supported tool profile names."
+  @spec profiles() :: [profile()]
+  def profiles, do: @profiles
+
+  @doc "Returns one profile's entries in stable tool order."
+  @spec entries(profile()) :: [Entry.t()]
+  def entries(profile) when profile in @profiles, do: Map.fetch!(@profile_entries, profile)
+
+  def entries(profile) do
+    raise ArgumentError,
+          "unknown browser tool profile #{inspect(profile)}; expected one of #{inspect(@profiles)}"
+  end
+
   @doc "Returns all action modules in stable tool order."
   @spec actions() :: [module()]
   def actions, do: Enum.map(@entries, & &1.action)
+
+  @doc "Returns one profile's action modules in stable tool order."
+  @spec actions(profile()) :: [module()]
+  def actions(profile), do: Enum.map(entries(profile), & &1.action)
 
   @doc "Returns all signal routes in stable tool order."
   @spec signal_routes() :: [{String.t(), module()}]
   def signal_routes, do: Enum.map(@entries, &{&1.signal_name, &1.action})
 
+  @doc "Returns one profile's signal routes in stable tool order."
+  @spec signal_routes(profile()) :: [{String.t(), module()}]
+  def signal_routes(profile), do: Enum.map(entries(profile), &{&1.signal_name, &1.action})
+
   @doc "Returns all signal names in stable tool order."
   @spec signal_patterns() :: [String.t()]
   def signal_patterns, do: Enum.map(@entries, & &1.signal_name)
+
+  @doc "Returns one profile's signal names in stable tool order."
+  @spec signal_patterns(profile()) :: [String.t()]
+  def signal_patterns(profile), do: Enum.map(entries(profile), & &1.signal_name)
 
   @doc "Returns the browser tool contract major version."
   @spec tool_contract_version() :: pos_integer()
