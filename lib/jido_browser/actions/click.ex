@@ -23,6 +23,13 @@ defmodule Jido.Browser.Actions.Click do
           Zoi.string(description: "Optional text content to match within the selector")
           |> Zoi.optional(),
         timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        selector: Zoi.string(),
+        result: Zoi.map(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

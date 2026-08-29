@@ -8,6 +8,7 @@ defmodule Jido.Browser.Adapters.LightpandaIntegrationTest do
   use ExUnit.Case, async: false
 
   alias Jido.Browser
+  alias Jido.Browser.Actions
   alias Jido.Browser.Adapters.Lightpanda
   alias Jido.Browser.Installer
   alias Jido.Browser.TestSupport.IntegrationTestServer
@@ -48,6 +49,15 @@ defmodule Jido.Browser.Adapters.LightpandaIntegrationTest do
     } do
       {:ok, session, nav_result} = Browser.navigate(session, "#{base_url}/", timeout: @command_timeout)
       assert nav_result.url == "#{base_url}/"
+
+      navigate_output = %{
+        status: "success",
+        url: "#{base_url}/",
+        result: nav_result,
+        session: session
+      }
+
+      assert {:ok, ^navigate_output} = Actions.Navigate.validate_output(navigate_output)
 
       {:ok, session, title_result} = Browser.get_title(session, timeout: @command_timeout)
       assert title_result.title == "Integration Test Home"

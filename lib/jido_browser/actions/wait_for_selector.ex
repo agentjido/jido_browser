@@ -30,6 +30,14 @@ defmodule Jido.Browser.Actions.WaitForSelector do
           Zoi.integer(description: "Maximum wait time in milliseconds")
           |> Zoi.default(30_000)
           |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        selector: Zoi.string(),
+        state: Zoi.enum([:attached, :visible, :hidden, :detached]),
+        elapsed_ms: Zoi.integer(gte: 0),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

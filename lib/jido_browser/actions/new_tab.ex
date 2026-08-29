@@ -10,6 +10,13 @@ defmodule Jido.Browser.Actions.NewTab do
       Zoi.object(%{
         url: Zoi.string(description: "Optional URL to open in the new tab") |> Zoi.optional(),
         timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        url: Zoi.string() |> Zoi.nullable(),
+        result: Zoi.map(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

@@ -10,6 +10,13 @@ defmodule Jido.Browser.Actions.SaveState do
       Zoi.object(%{
         path: Zoi.string(description: "Filesystem path where session state will be stored"),
         timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        path: Zoi.string(),
+        result: Zoi.map(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

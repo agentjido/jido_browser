@@ -11,6 +11,12 @@ defmodule Jido.Browser.Actions.PoolStatus do
         pool:
           Zoi.any(description: "Warm pool name or pid. Defaults to plugin pool state.")
           |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        pool: Zoi.any(),
+        pool_status: Zoi.map()
       })
 
   alias Jido.Browser.Error

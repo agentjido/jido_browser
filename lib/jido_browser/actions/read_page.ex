@@ -36,6 +36,12 @@ defmodule Jido.Browser.Actions.ReadPage do
         adapter: Zoi.atom(description: "Browser adapter module") |> Zoi.optional(),
         headless: Zoi.boolean(description: "Run in headless mode") |> Zoi.optional(),
         timeout: Zoi.integer(description: "Default browser timeout in ms") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        url: Zoi.string(),
+        content: Zoi.string(),
+        format: Zoi.enum([:markdown, :text, :html])
       })
 
   @impl true

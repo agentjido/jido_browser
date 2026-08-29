@@ -16,19 +16,37 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
         adapter: %{type: :atom, doc: "Browser adapter module"},
         pool: %{type: :any, doc: "Optional warm session pool name"},
         checkout_timeout: %{type: :integer, doc: "Warm pool checkout timeout in ms"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        session: :any,
+        adapter: :string,
+        message: :string
       }
     },
     %{
       module: Actions.EndSession,
       name: "browser_end_session",
       description: "End the current browser session",
-      schema: %{}
+      schema: %{},
+      output: %{
+        status: {:literal, "success"},
+        message: :string
+      }
     },
     %{
       module: Actions.GetStatus,
       name: "browser_get_status",
       description: "Get current session status (url, title, is_alive)",
-      schema: %{}
+      schema: %{},
+      output: %{
+        status: {:literal, "success"},
+        alive: :boolean,
+        url: {:nullable, :string},
+        title: {:nullable, :string},
+        adapter: :string,
+        session: :any
+      }
     },
     %{
       module: Actions.PoolStatus,
@@ -36,6 +54,11 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       description: "Return readiness and lifecycle status for a warm browser pool.",
       schema: %{
         pool: %{type: :any, doc: "Warm pool name or pid. Defaults to plugin pool state."}
+      },
+      output: %{
+        status: {:literal, "success"},
+        pool: :any,
+        pool_status: :map
       }
     },
     %{
@@ -45,6 +68,12 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       schema: %{
         url: %{type: :string, required: true, doc: "The URL to navigate to"},
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        url: :string,
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -53,6 +82,12 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       description: "Navigate back in browser history",
       schema: %{
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        action: {:literal, "back"},
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -61,6 +96,12 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       description: "Navigate forward in browser history",
       schema: %{
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        action: {:literal, "forward"},
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -69,6 +110,12 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       description: "Reload the current page",
       schema: %{
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        action: {:literal, "reload"},
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -77,6 +124,11 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       description: "Get the current page URL",
       schema: %{
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        url: :string,
+        session: :any
       }
     },
     %{
@@ -85,6 +137,11 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       description: "Get the current page title",
       schema: %{
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        title: :string,
+        session: :any
       }
     },
     %{
@@ -94,6 +151,12 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       schema: %{
         url: %{type: :string, doc: "Optional URL to open in the new tab"},
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        url: {:nullable, :string},
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -103,6 +166,12 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       schema: %{
         index: %{type: :integer, doc: "Optional tab index to close"},
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        index: {:nullable, :integer},
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -112,6 +181,12 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       schema: %{
         index: %{type: :integer, required: true, doc: "Tab index to activate"},
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        index: :integer,
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -120,6 +195,12 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
       description: "List open browser tabs",
       schema: %{
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        tabs: {:list, :map},
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -133,6 +214,12 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
           doc: "Filesystem path where session state will be stored"
         },
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        path: :string,
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -146,6 +233,12 @@ defmodule Jido.Browser.ActionContractLifecycleNavigationTest do
           doc: "Filesystem path of the saved session state"
         },
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        path: :string,
+        result: :map,
+        session: :any
       }
     }
   ]

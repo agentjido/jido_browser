@@ -10,6 +10,13 @@ defmodule Jido.Browser.Actions.SwitchTab do
       Zoi.object(%{
         index: Zoi.integer(description: "Tab index to activate"),
         timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        index: Zoi.integer(),
+        result: Zoi.map(),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers

@@ -38,6 +38,12 @@ defmodule Jido.Browser.Actions.SearchWeb do
         freshness:
           Zoi.string(description: "Freshness filter: pd (24h), pw (week), pm (month), py (year)")
           |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        query: Zoi.string(),
+        results: Zoi.list(Zoi.map()),
+        count: Zoi.integer(gte: 0)
       })
 
   @brave_api_url "https://api.search.brave.com/res/v1/web/search"

@@ -12,6 +12,7 @@ defmodule Jido.Browser.Adapters.AgentBrowserSmokeTest do
   use ExUnit.Case, async: false
 
   alias Jido.Browser
+  alias Jido.Browser.Actions
   alias Jido.Browser.Adapters.AgentBrowser
   alias Jido.Browser.AgentBrowser.Runtime
   alias Jido.Browser.TestSupport.IntegrationTestServer
@@ -53,10 +54,21 @@ defmodule Jido.Browser.Adapters.AgentBrowserSmokeTest do
 
     on_exit(fn -> assert :ok = end_session_if_running(session) end)
 
-    assert {:ok, session, _navigate_result} =
+    assert {:ok, session, navigate_result} =
              Browser.navigate(session, "#{base_url}/refs", timeout: @command_timeout)
 
+    navigate_output = %{
+      status: "success",
+      url: "#{base_url}/refs",
+      result: navigate_result,
+      session: session
+    }
+
+    assert {:ok, ^navigate_output} = Actions.Navigate.validate_output(navigate_output)
+
     assert {:ok, session, snapshot_result} = Browser.snapshot(session, timeout: @command_timeout)
+    snapshot_output = snapshot_result |> Map.put(:status, "success") |> Map.put(:session, session)
+    assert {:ok, ^snapshot_output} = Actions.Snapshot.validate_output(snapshot_output)
     refs = fetch_value(snapshot_result, :refs)
 
     assert is_binary(fetch_value(snapshot_result, :snapshot))

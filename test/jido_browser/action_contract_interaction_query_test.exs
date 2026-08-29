@@ -21,6 +21,12 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
           doc: "Optional text content to match within the selector"
         },
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        selector: :string,
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -36,6 +42,12 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
         text: %{type: :string, required: true, doc: "Text to type into the element"},
         clear: %{type: :boolean, default: false, doc: "Clear the field before typing"},
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        selector: :string,
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -49,6 +61,12 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
           doc: "CSS selector for the element to hover"
         },
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        selector: :string,
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -62,6 +80,12 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
           doc: "CSS selector for the element to focus"
         },
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        selector: :string,
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -76,6 +100,11 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
           doc: "Preset scroll direction"
         },
         selector: %{type: :string, doc: "CSS selector to scroll element into view"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -91,6 +120,12 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
         value: %{type: :string, doc: "Option value to select"},
         label: %{type: :string, doc: "Option label/text to select"},
         index: %{type: :integer, doc: "Option index to select (0-based)"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        selector: :string,
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -99,6 +134,10 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
       description: "Wait for a specified number of milliseconds",
       schema: %{
         ms: %{type: :integer, required: true, doc: "Milliseconds to wait"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        waited_ms: :integer
       }
     },
     %{
@@ -117,6 +156,13 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
           default: 30_000,
           doc: "Maximum wait time in milliseconds"
         }
+      },
+      output: %{
+        status: {:literal, "success"},
+        selector: :string,
+        state: {:in, [:attached, :visible, :hidden, :detached]},
+        elapsed_ms: :non_neg_integer,
+        session: :any
       }
     },
     %{
@@ -130,6 +176,12 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
           default: 30_000,
           doc: "Maximum wait time in milliseconds"
         }
+      },
+      output: %{
+        status: {:literal, "success"},
+        url: {:nullable, :string},
+        elapsed_ms: :non_neg_integer,
+        session: :any
       }
     },
     %{
@@ -139,6 +191,12 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
       schema: %{
         selector: %{type: :string, required: true, doc: "CSS selector to query"},
         limit: %{type: :integer, default: 10, doc: "Maximum number of elements to return"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        count: :non_neg_integer,
+        elements: {:list, :map},
+        session: :any
       }
     },
     %{
@@ -152,6 +210,13 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
           default: false,
           doc: "Get text from all matching elements"
         }
+      },
+      output: %{
+        status: {:literal, "success"},
+        selector: :string,
+        text: {:optional, :string},
+        texts: {:optional, {:list, :string}},
+        session: :any
       }
     },
     %{
@@ -161,6 +226,13 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
       schema: %{
         selector: %{type: :string, required: true, doc: "CSS selector for the element"},
         attribute: %{type: :string, required: true, doc: "Attribute name to get"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        selector: :string,
+        attribute: :string,
+        value: :string,
+        session: :any
       }
     },
     %{
@@ -169,6 +241,11 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
       description: "Check if an element is visible",
       schema: %{
         selector: %{type: :string, required: true, doc: "CSS selector for the element"}
+      },
+      output: %{
+        exists: :boolean,
+        visible: :boolean,
+        session: :any
       }
     },
     %{
@@ -178,6 +255,11 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
       schema: %{
         script: %{type: :string, required: true, doc: "JavaScript code to execute"},
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        result: :any,
+        session: :any
       }
     },
     %{
@@ -186,6 +268,12 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
       description: "Read browser console messages",
       schema: %{
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        messages: {:list, :map},
+        result: :map,
+        session: :any
       }
     },
     %{
@@ -194,6 +282,12 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
       description: "Read browser runtime errors",
       schema: %{
         timeout: %{type: :integer, doc: "Timeout in milliseconds"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        errors: {:list, :map},
+        result: :map,
+        session: :any
       }
     }
   ]

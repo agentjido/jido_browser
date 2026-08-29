@@ -6,7 +6,14 @@ defmodule Jido.Browser.Actions.Errors do
   use Jido.Browser.Action,
     name: "browser_errors",
     description: "Read browser runtime errors",
-    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()})
+    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()}),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        errors: Zoi.list(Zoi.map()),
+        result: Zoi.map(),
+        session: Zoi.any()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

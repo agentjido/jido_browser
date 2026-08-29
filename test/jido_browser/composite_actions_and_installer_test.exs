@@ -65,6 +65,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
                  }
                )
 
+      assert {:ok, ^result} = ReadPage.validate_output(result)
       assert result.url == "https://example.com"
       assert result.content == "Example body"
       assert result.format == :text
@@ -120,6 +121,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
                  }
                })
 
+      assert {:ok, ^result} = SnapshotUrl.validate_output(result)
       assert result[:status] == "success"
       assert result.title == "Example Domain"
     end
@@ -149,6 +151,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
                  %{}
                )
 
+      assert {:ok, ^result} = SnapshotUrl.validate_output(result)
       assert result[:status] == "success"
       assert result[:fallback] == true
       assert result[:content] == "abcdefgh"
@@ -182,6 +185,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
         end)
 
         assert {:ok, result} = SearchWeb.run(%{query: "elixir language", max_results: 50}, %{})
+        assert {:ok, ^result} = SearchWeb.validate_output(result)
         assert result.count == 1
         assert hd(result.results).title == "Elixir"
         assert hd(result.results).rank == 1
@@ -251,6 +255,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
                  context
                )
 
+      assert {:ok, ^result} = WebFetch.validate_output(result)
       assert result.status == "success"
       assert result.url == "https://example.com/guide"
     end
@@ -300,6 +305,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
                  %{skill_state: %{web_fetch_uses: 0}}
                )
 
+      assert {:ok, ^result} = WebFetch.validate_output(result)
       assert result.status == "success"
     end
   end
@@ -322,8 +328,13 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
            format: :markdown,
            content_type: "text/html",
            document_type: :html,
+           retrieved_at: "2026-03-21T00:00:00Z",
            estimated_tokens: 6,
+           original_estimated_tokens: 6,
            truncated: false,
+           filtered: false,
+           focus_matches: 0,
+           cached: false,
            citations: %{enabled: false},
            passages: [],
            retrieval_path: :browser,
@@ -345,6 +356,7 @@ defmodule Jido.Browser.CompositeActionsAndInstallerTest do
                  context
                )
 
+      assert {:ok, ^result} = FetchRich.validate_output(result)
       assert result.status == "success"
       assert result.retrieval_path == :browser
     end

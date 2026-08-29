@@ -23,6 +23,13 @@ defmodule Jido.Browser.Actions.Query do
           Zoi.integer(description: "Maximum number of elements to return")
           |> Zoi.default(10)
           |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        count: Zoi.integer(gte: 0),
+        elements: Zoi.list(Zoi.map()),
+        session: Zoi.any()
       })
 
   alias Jido.Browser.ActionHelpers
