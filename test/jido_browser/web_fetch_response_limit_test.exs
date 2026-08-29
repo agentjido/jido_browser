@@ -5,7 +5,7 @@ defmodule Jido.Browser.WebFetchResponseLimitTest do
   alias Jido.Browser.TestSupport.WebFetchServer
   alias Jido.Browser.WebFetch
 
-  @backends [:req, :browsey]
+  @backends [:req]
 
   setup do
     WebFetch.clear_cache()
@@ -204,57 +204,6 @@ defmodule Jido.Browser.WebFetchResponseLimitTest do
     end
   end
 
-  test "Browsey reaps the exact curl process before an overflow error returns" do
-    decoded = String.duplicate("p", 16 * 1024)
-    encoded = :zlib.gzip(decoded)
-    cookie_path = tmp_path("browsey_cleanup_cookie")
-    on_exit(fn -> File.rm(cookie_path) end)
-    unrelated_pid = start_unrelated_process()
-
-    chunks = Stream.concat([encoded], Stream.repeatedly(fn -> :zlib.gzip("keep-open") end))
-
-    server =
-      start_server(fn _request ->
-        %{
-          status: 200,
-          chunks: chunks,
-          framing: :chunked,
-          headers: [{"content-encoding", "gzip"}, {"content-type", "text/plain"}],
-          chunk_delay_ms: 300
-        }
-      end)
-
-    task =
-      Task.async(fn ->
-        fetch(:browsey, server, "/gzip-process-cleanup",
-          max_response_bytes: 1_024,
-          browsey: [cookie_file: cookie_path]
-        )
-      end)
-
-    server_pid = server.pid
-    assert_receive {:web_fetch_server_request, ^server_pid, _request}, 1_000
-
-    curl_port = wait_for_task_port(task.pid)
-    {:os_pid, curl_pid} = Port.info(curl_port, :os_pid)
-    assert process_command(curl_pid) =~ cookie_path
-    assert process_command(curl_pid) =~ "curl-impersonate-chrome"
-    assert direct_child_pids(curl_pid) == []
-
-    assert_response_too_large(Task.await(task, 3_000), :browsey, 1_024)
-
-    assert Port.info(curl_port) == nil
-    refute os_process_alive?(curl_pid)
-    assert os_process_alive?(unrelated_pid)
-
-    File.rm(cookie_path)
-    Process.sleep(1_000)
-    refute File.exists?(cookie_path)
-
-    delivered = collect_server_chunks(server.pid, 500)
-    assert Enum.any?(delivered, fn {_index, result} -> match?({:error, _reason}, result) end)
-  end
-
   if Req.Utils.zstd_available?() do
     test "keeps locked zstd decoding bounded when the runtime supports it" do
       exact = String.duplicate("e", 64 * 1024)
@@ -365,96 +314,6 @@ defmodule Jido.Browser.WebFetchResponseLimitTest do
   end
 
   defp backend_module(:req), do: Jido.Browser.WebFetch.Backends.Req
-  defp backend_module(:browsey), do: Jido.Browser.WebFetch.Backends.Browsey
-
-  defp start_unrelated_process do
-    sleep = System.find_executable("sleep") || "/bin/sleep"
-    port = Port.open({:spawn_executable, sleep}, [:exit_status, args: ["10"]])
-    {:os_pid, os_pid} = Port.info(port, :os_pid)
-
-    on_exit(fn ->
-      if Port.info(port) do
-        System.cmd(kill_path(), ["-KILL", Integer.to_string(os_pid)], stderr_to_stdout: true, env: %{})
-
-        receive do
-          {^port, {:exit_status, _status}} -> :ok
-        after
-          1_000 -> :ok
-        end
-      end
-    end)
-
-    os_pid
-  end
-
-  defp wait_for_task_port(task_pid) do
-    wait_until(
-      fn ->
-        case Process.info(task_pid, :links) do
-          {:links, links} -> Enum.find(links, &is_port/1)
-          nil -> nil
-        end
-      end,
-      1_000
-    )
-  end
-
-  defp wait_until(fun, timeout) do
-    deadline = System.monotonic_time(:millisecond) + timeout
-    wait_until(fun, deadline, nil)
-  end
-
-  defp wait_until(fun, deadline, fallback) do
-    case fun.() do
-      nil ->
-        if System.monotonic_time(:millisecond) >= deadline do
-          fallback
-        else
-          Process.sleep(5)
-          wait_until(fun, deadline, fallback)
-        end
-
-      value ->
-        value
-    end
-  end
-
-  defp process_command(pid) do
-    {output, 0} =
-      System.cmd(ps_path(), ["-ww", "-p", Integer.to_string(pid), "-o", "command="],
-        stderr_to_stdout: true,
-        env: %{}
-      )
-
-    String.trim(output)
-  end
-
-  defp direct_child_pids(parent_pid) do
-    {output, 0} = System.cmd(ps_path(), ["-axo", "pid=,ppid="], stderr_to_stdout: true, env: %{})
-
-    output
-    |> String.split("\n", trim: true)
-    |> Enum.flat_map(fn line ->
-      case line |> String.split() |> Enum.map(&String.to_integer/1) do
-        [pid, ^parent_pid] -> [pid]
-        _other -> []
-      end
-    end)
-  end
-
-  defp os_process_alive?(pid) do
-    case System.cmd(kill_path(), ["-0", Integer.to_string(pid)], stderr_to_stdout: true, env: %{}) do
-      {_output, 0} -> true
-      {_output, _status} -> false
-    end
-  end
-
-  defp ps_path, do: System.find_executable("ps") || "/bin/ps"
-  defp kill_path, do: System.find_executable("kill") || "/bin/kill"
-
-  defp tmp_path(prefix) do
-    Path.join(System.tmp_dir!(), "#{prefix}_#{System.unique_integer([:positive])}")
-  end
 
   defp collect_server_chunks(server_pid, timeout) do
     deadline = System.monotonic_time(:millisecond) + timeout

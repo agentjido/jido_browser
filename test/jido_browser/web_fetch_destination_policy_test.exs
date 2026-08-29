@@ -3,49 +3,9 @@ defmodule Jido.Browser.WebFetchDestinationPolicyTest do
 
   alias Jido.Browser.Error.{AdapterError, InvalidError}
   alias Jido.Browser.TestSupport.WebFetchServer
-  alias Jido.Browser.Vendor.BrowseyHttp
   alias Jido.Browser.WebFetch
   alias Jido.Browser.WebFetch.Backends.Req, as: ReqBackend
   alias Jido.Browser.WebFetch.Backends.Req.PinnedFinch
-
-  defmodule MultiAddressBrowseyClient do
-    alias Jido.Browser.Vendor.BrowseyHttp.ConnectionException
-
-    def get(url, opts) do
-      resolve = Keyword.fetch!(opts, :resolve)
-      send(opts[:test_pid], {:browsey_address_attempt, resolve})
-
-      case resolve do
-        {"public.test", 80, {93, 184, 216, 34}} ->
-          {:error, ConnectionException.could_not_connect(URI.parse(url))}
-
-        {"public.test", 80, {1, 1, 1, 1}} ->
-          {:ok,
-           %{
-             status: 200,
-             headers: %{"content-type" => ["text/plain"]},
-             body: "second address response",
-             final_url: url
-           }}
-      end
-    end
-  end
-
-  defmodule AmbiguousBrowseyClient do
-    alias Jido.Browser.Vendor.BrowseyHttp.{ConnectionException, SslException, TimeoutException}
-
-    def get(url, opts) do
-      resolve = Keyword.fetch!(opts, :resolve)
-      send(opts[:test_pid], {:ambiguous_browsey_attempt, opts[:failure], resolve})
-      uri = URI.parse(url)
-
-      case opts[:failure] do
-        :timeout -> {:error, TimeoutException.timed_out(uri, 10)}
-        :receive -> {:error, ConnectionException.failed_to_receive(uri)}
-        :tls -> {:error, SslException.new(uri)}
-      end
-    end
-  end
 
   @blocked_urls [
     "http://0.0.0.0",
@@ -238,31 +198,6 @@ defmodule Jido.Browser.WebFetchDestinationPolicyTest do
     assert port == server.port
   end
 
-  test "tries each validated address in resolver order without resolving again" do
-    Process.put(:destination_resolver_calls, 0)
-
-    resolver = fn "public.test" ->
-      Process.put(:destination_resolver_calls, Process.get(:destination_resolver_calls, 0) + 1)
-      {:ok, [{93, 184, 216, 34}, {1, 1, 1, 1}]}
-    end
-
-    assert {:ok, result} =
-             Jido.Browser.web_fetch("http://public.test/content",
-               backend: :browsey,
-               browsey: [client: MultiAddressBrowseyClient, test_pid: self()],
-               cache: false,
-               format: :text,
-               resolver: resolver
-             )
-
-    assert result.content == "second address response"
-    assert Process.get(:destination_resolver_calls) == 1
-
-    assert_receive {:browsey_address_attempt, {"public.test", 80, {93, 184, 216, 34}}}
-    assert_receive {:browsey_address_attempt, {"public.test", 80, {1, 1, 1, 1}}}
-    refute_receive {:browsey_address_attempt, _resolve}
-  end
-
   test "Req tries the next saved address after connection refusal" do
     attach_connect_observer()
     server = WebFetchServer.start_http(self(), &ok_response/1)
@@ -380,103 +315,6 @@ defmodule Jido.Browser.WebFetchDestinationPolicyTest do
     end
   end
 
-  test "Browsey retries only curl connect failure code 7" do
-    resolver = fn "public.test" -> {:ok, [{93, 184, 216, 34}, {1, 1, 1, 1}]} end
-
-    for failure <- [:timeout, :receive, :tls] do
-      assert {:error, %AdapterError{}} =
-               Jido.Browser.web_fetch("http://public.test/content",
-                 backend: :browsey,
-                 browsey: [client: AmbiguousBrowseyClient, failure: failure, test_pid: self()],
-                 cache: false,
-                 format: :text,
-                 resolver: resolver
-               )
-
-      assert_receive {:ambiguous_browsey_attempt, ^failure, {"public.test", 80, {93, 184, 216, 34}}}
-
-      refute_receive {:ambiguous_browsey_attempt, ^failure, {"public.test", 80, {1, 1, 1, 1}}}
-    end
-  end
-
-  test "pinned Browsey ignores proxy variables and curl configuration" do
-    target_server = WebFetchServer.start_http(self(), &ok_response/1)
-    proxy_server = WebFetchServer.start_http(self(), fn _request -> %{status: 200, body: "proxy response"} end)
-    on_exit(fn -> WebFetchServer.stop(target_server) end)
-    on_exit(fn -> WebFetchServer.stop(proxy_server) end)
-
-    curl_home = Path.join(System.tmp_dir!(), "browsey_curl_home_#{System.unique_integer([:positive])}")
-    curl_output = Path.join(curl_home, "curl-config-output")
-    File.mkdir_p!(curl_home)
-    File.write!(Path.join(curl_home, ".curlrc"), "output = \"#{curl_output}\"\n")
-    on_exit(fn -> File.rm_rf(curl_home) end)
-
-    proxy_url = "http://127.0.0.1:#{proxy_server.port}"
-
-    set_temporary_environment(%{
-      "ALL_PROXY" => proxy_url,
-      "HTTP_PROXY" => proxy_url,
-      "HTTPS_PROXY" => proxy_url,
-      "NO_PROXY" => "",
-      "all_proxy" => proxy_url,
-      "http_proxy" => proxy_url,
-      "https_proxy" => proxy_url,
-      "no_proxy" => "",
-      "CURL_HOME" => curl_home
-    })
-
-    resolver = fn "fixture.test" -> {:ok, [{127, 0, 0, 1}]} end
-
-    assert {:ok, result} =
-             Jido.Browser.web_fetch("http://fixture.test:#{target_server.port}/content",
-               allow_private_network: true,
-               backend: :browsey,
-               cache: false,
-               format: :text,
-               resolver: resolver
-             )
-
-    assert result.content == "fixture response"
-    assert_receive {:web_fetch_server_request, target_pid, request}
-    assert target_pid == target_server.pid
-    assert request.headers["host"] == "fixture.test:#{target_server.port}"
-    proxy_pid = proxy_server.pid
-    refute_receive {:web_fetch_server_request, ^proxy_pid, _request}
-    refute File.exists?(curl_output)
-  end
-
-  test "pinned Browsey does not let curl configuration enable redirects" do
-    server =
-      WebFetchServer.start_http(self(), fn
-        %{path: "/start"} ->
-          %{status: 302, headers: [{"location", "/follow"}], body: ""}
-
-        %{path: "/follow"} ->
-          ok_response(nil)
-      end)
-
-    on_exit(fn -> WebFetchServer.stop(server) end)
-
-    curl_home = Path.join(System.tmp_dir!(), "browsey_redirect_curl_home_#{System.unique_integer([:positive])}")
-    File.mkdir_p!(curl_home)
-    File.write!(Path.join(curl_home, ".curlrc"), "location\n")
-    on_exit(fn -> File.rm_rf(curl_home) end)
-    set_temporary_environment(%{"CURL_HOME" => curl_home})
-
-    assert {:ok, response} =
-             BrowseyHttp.get("http://fixture.test:#{server.port}/start",
-               follow_redirects?: false,
-               pinned_request?: true,
-               resolve: {"fixture.test", server.port, {127, 0, 0, 1}},
-               timeout: 2_000
-             )
-
-    assert response.status == 302
-    assert_receive {:web_fetch_server_request, server_pid, %{path: "/start"}}
-    assert server_pid == server.pid
-    refute_receive {:web_fetch_server_request, ^server_pid, %{path: "/follow"}}
-  end
-
   test "keeps a bracketed authority for a direct public IPv6 literal" do
     address = {0x2606, 0x4700, 0x4700, 0, 0, 0, 0, 0x1111}
     url = "https://[2606:4700:4700::1111]:8443/content"
@@ -559,17 +397,5 @@ defmodule Jido.Browser.WebFetchDestinationPolicyTest do
       )
 
     on_exit(fn -> :telemetry.detach(handler_id) end)
-  end
-
-  defp set_temporary_environment(values) do
-    previous = Map.new(values, fn {name, _value} -> {name, System.get_env(name)} end)
-    Enum.each(values, fn {name, value} -> System.put_env(name, value) end)
-
-    on_exit(fn ->
-      Enum.each(previous, fn
-        {name, nil} -> System.delete_env(name)
-        {name, value} -> System.put_env(name, value)
-      end)
-    end)
   end
 end

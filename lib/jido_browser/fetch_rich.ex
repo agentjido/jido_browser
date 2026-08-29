@@ -18,7 +18,6 @@ defmodule Jido.Browser.FetchRich do
     :allowed_domains,
     :backend,
     :blocked_domains,
-    :browsey,
     :cache,
     :cache_ttl_ms,
     :citations,
@@ -72,10 +71,9 @@ defmodule Jido.Browser.FetchRich do
 
   defp fetch_http(url, opts, [backend | rest], last_result) do
     web_opts = opts |> Keyword.take(@http_option_keys) |> put_backend(backend)
-    retrieval_path = http_retrieval_path(backend, web_opts)
 
     case web_fetch(url, web_opts) do
-      {:ok, result} -> handle_http_success(result, retrieval_path, url, opts, rest)
+      {:ok, result} -> handle_http_success(result, :web_fetch, url, opts, rest)
       {:error, reason} -> handle_http_error(reason, last_result, url, opts, rest)
     end
   end
@@ -285,10 +283,6 @@ defmodule Jido.Browser.FetchRich do
        })}
     end
   end
-
-  defp http_retrieval_path(:browsey, _opts), do: :browsey
-  defp http_retrieval_path(Jido.Browser.WebFetch.Backends.Browsey, _opts), do: :browsey
-  defp http_retrieval_path(_backend, opts), do: if(opts[:backend] == :browsey, do: :browsey, else: :web_fetch)
 
   defp browser_fallback?(opts), do: Keyword.get(opts, :browser_fallback, false) == true or Keyword.has_key?(opts, :pool)
 

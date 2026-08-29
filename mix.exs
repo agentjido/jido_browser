@@ -54,9 +54,9 @@ defmodule Jido.Browser.MixProject do
     ]
   end
 
-  defp elixirc_paths(:test), do: ["lib", "vendor/browsey_http/lib", "release", "test/support"]
-  defp elixirc_paths(:dev), do: ["lib", "vendor/browsey_http/lib", "release"]
-  defp elixirc_paths(_), do: ["lib", "vendor/browsey_http/lib"]
+  defp elixirc_paths(:test), do: ["lib", "release", "test/support"]
+  defp elixirc_paths(:dev), do: ["lib", "release"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
     [
@@ -74,8 +74,6 @@ defmodule Jido.Browser.MixProject do
       {:html2markdown, "~> 0.3"},
       {:extractous_ex, "~> 0.2"},
       {:nimble_pool, "~> 1.1"},
-      {:domainatrex, "~> 3.0"},
-      {:typed_struct, "~> 0.3", runtime: false},
 
       # Dev/Test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
@@ -108,12 +106,6 @@ defmodule Jido.Browser.MixProject do
       main: "readme",
       source_ref: "v#{@version}",
       source_url: @source_url,
-      filter_modules: fn module, _metadata ->
-        module
-        |> Atom.to_string()
-        |> String.starts_with?("Elixir.Jido.Browser.Vendor.BrowseyHttp")
-        |> Kernel.not()
-      end,
       extras: [
         "README.md": [title: "Overview"],
         "guides/browser_adapter_support.md": [title: "Browser Adapter Support"],
@@ -132,8 +124,7 @@ defmodule Jido.Browser.MixProject do
         ],
         "Web Fetch": [
           Jido.Browser.WebFetch.Backend,
-          Jido.Browser.WebFetch.Backends.Req,
-          Jido.Browser.WebFetch.Backends.Browsey
+          Jido.Browser.WebFetch.Backends.Req
         ],
         Adapters: [
           Jido.Browser.Adapter,
@@ -194,12 +185,11 @@ defmodule Jido.Browser.MixProject do
   defp package do
     [
       name: "jido_browser",
-      files: ~w(lib priv/vendor vendor guides .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
-      licenses: ["Apache-2.0", "MIT"],
+      files: ~w(lib guides .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
+      licenses: ["Apache-2.0"],
       links: %{
         "GitHub" => @source_url,
-        "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md",
-        "Vendored BrowseyHttp" => "https://github.com/s3cur3/browsey_http"
+        "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md"
       }
     ]
   end

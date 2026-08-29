@@ -82,9 +82,8 @@ defmodule Jido.Browser.WebFetch.DestinationPolicy do
     validate_pinnable_backend(backend, opts)
   end
 
-  defp validate_pinnable_backend(backend, opts)
-       when backend in [Jido.Browser.WebFetch.Backends.Req, Jido.Browser.WebFetch.Backends.Browsey] do
-    if backend == Jido.Browser.WebFetch.Backends.Req and req_uses_proxy?(opts[:req]) do
+  defp validate_pinnable_backend(Jido.Browser.WebFetch.Backends.Req = backend, opts) do
+    if req_uses_proxy?(opts[:req]) do
       destination_policy_error("Web fetch proxy settings require allow_private_network", %{
         backend: backend
       })

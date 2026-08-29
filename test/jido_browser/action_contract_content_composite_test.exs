@@ -82,8 +82,8 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           doc: "Output format"
         },
         backend: %{
-          type: {:in, [:req, :browsey]},
-          doc: "HTTP backend used for the fetch"
+          type: {:in, [:req]},
+          doc: "Req HTTP backend"
         },
         selector: %{type: :string, doc: "Optional CSS selector for HTML pages"},
         allowed_domains: %{
@@ -159,10 +159,10 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           default: :markdown,
           doc: "Output format"
         },
-        backend: %{type: {:in, [:req, :browsey]}, doc: "Preferred HTTP backend"},
+        backend: %{type: {:in, [:req]}, doc: "Preferred Req HTTP backend"},
         http_backends: %{
           type: {:list, :atom},
-          doc: "HTTP backend sequence, such as [:req, :browsey]"
+          doc: "HTTP backend sequence, such as [:req]"
         },
         selector: %{
           type: :string,

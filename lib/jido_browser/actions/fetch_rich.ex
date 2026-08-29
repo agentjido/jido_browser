@@ -14,9 +14,9 @@ defmodule Jido.Browser.Actions.FetchRich do
           Zoi.enum([:markdown, :text, :html], description: "Output format")
           |> Zoi.default(:markdown)
           |> Zoi.optional(),
-        backend: Zoi.enum([:req, :browsey], description: "Preferred HTTP backend") |> Zoi.optional(),
+        backend: Zoi.enum([:req], description: "Preferred Req HTTP backend") |> Zoi.optional(),
         http_backends:
-          Zoi.list(Zoi.atom(), description: "HTTP backend sequence, such as [:req, :browsey]")
+          Zoi.list(Zoi.atom(), description: "HTTP backend sequence, such as [:req]")
           |> Zoi.optional(),
         selector: Zoi.string(description: "Optional CSS selector for HTML/browser extraction") |> Zoi.optional(),
         allowed_domains:
