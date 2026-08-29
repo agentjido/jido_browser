@@ -7,7 +7,7 @@ defmodule Jido.Browser.Actions.WebFetch do
   execution, including fetched PDFs and office-style documents.
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "web_fetch",
     description:
       "Fetch a URL over HTTP(S) with domain policy controls, Extractous-backed document extraction, " <>
@@ -15,29 +15,63 @@ defmodule Jido.Browser.Actions.WebFetch do
     category: "Browser",
     tags: ["browser", "web", "fetch", "http", "retrieval"],
     vsn: "2.0.0",
-    schema: [
-      url: [type: :string, required: true, doc: "The URL to fetch"],
-      format: [type: {:in, [:markdown, :text, :html]}, default: :markdown, doc: "Output format"],
-      backend: [type: {:in, [:req, :browsey]}, doc: "HTTP backend used for the fetch"],
-      selector: [type: :string, doc: "Optional CSS selector for HTML pages"],
-      allowed_domains: [type: {:list, :string}, default: [], doc: "Allow-list of host or host/path rules"],
-      blocked_domains: [type: {:list, :string}, default: [], doc: "Block-list of host or host/path rules"],
-      allow_private_network: [type: :boolean, default: false, doc: "Allow private network destinations"],
-      focus_terms: [type: {:list, :string}, default: [], doc: "Terms used to filter the fetched document"],
-      focus_window: [type: :integer, default: 0, doc: "Paragraph window around each focus match"],
-      max_content_tokens: [type: :integer, doc: "Approximate token cap for returned content"],
-      max_response_bytes: [
-        type: :timeout,
-        default: 5 * 1024 * 1024,
-        doc: "Positive response byte cap, or infinity to disable the cap"
-      ],
-      citations: [type: :boolean, default: false, doc: "Include citation-ready passage offsets"],
-      cache: [type: :boolean, default: true, doc: "Reuse cached fetch results when available"],
-      timeout: [type: :integer, doc: "Receive timeout in milliseconds"],
-      require_known_url: [type: :boolean, default: false, doc: "Require the URL to already be present in tool context"],
-      known_urls: [type: {:list, :string}, default: [], doc: "Additional known URLs accepted for provenance checks"],
-      max_uses: [type: :integer, doc: "Maximum successful web fetch calls allowed in current skill state"]
-    ]
+    schema:
+      Zoi.object(%{
+        url: Zoi.string(description: "The URL to fetch"),
+        format:
+          Zoi.enum([:markdown, :text, :html], description: "Output format")
+          |> Zoi.default(:markdown)
+          |> Zoi.optional(),
+        backend: Zoi.enum([:req, :browsey], description: "HTTP backend used for the fetch") |> Zoi.optional(),
+        selector: Zoi.string(description: "Optional CSS selector for HTML pages") |> Zoi.optional(),
+        allowed_domains:
+          Zoi.list(Zoi.string(), description: "Allow-list of host or host/path rules")
+          |> Zoi.default([])
+          |> Zoi.optional(),
+        blocked_domains:
+          Zoi.list(Zoi.string(), description: "Block-list of host or host/path rules")
+          |> Zoi.default([])
+          |> Zoi.optional(),
+        allow_private_network:
+          Zoi.boolean(description: "Allow private network destinations")
+          |> Zoi.default(false)
+          |> Zoi.optional(),
+        focus_terms:
+          Zoi.list(Zoi.string(), description: "Terms used to filter the fetched document")
+          |> Zoi.default([])
+          |> Zoi.optional(),
+        focus_window:
+          Zoi.integer(description: "Paragraph window around each focus match")
+          |> Zoi.default(0)
+          |> Zoi.optional(),
+        max_content_tokens: Zoi.integer(description: "Approximate token cap for returned content") |> Zoi.optional(),
+        max_response_bytes:
+          Zoi.union([Zoi.integer() |> Zoi.min(0), Zoi.literal(:infinity)],
+            description: "Positive response byte cap, or infinity to disable the cap"
+          )
+          |> Zoi.default(5 * 1024 * 1024)
+          |> Zoi.optional(),
+        citations:
+          Zoi.boolean(description: "Include citation-ready passage offsets")
+          |> Zoi.default(false)
+          |> Zoi.optional(),
+        cache:
+          Zoi.boolean(description: "Reuse cached fetch results when available")
+          |> Zoi.default(true)
+          |> Zoi.optional(),
+        timeout: Zoi.integer(description: "Receive timeout in milliseconds") |> Zoi.optional(),
+        require_known_url:
+          Zoi.boolean(description: "Require the URL to already be present in tool context")
+          |> Zoi.default(false)
+          |> Zoi.optional(),
+        known_urls:
+          Zoi.list(Zoi.string(), description: "Additional known URLs accepted for provenance checks")
+          |> Zoi.default([])
+          |> Zoi.optional(),
+        max_uses:
+          Zoi.integer(description: "Maximum successful web fetch calls allowed in current skill state")
+          |> Zoi.optional()
+      })
 
   alias Jido.Browser.Error
 

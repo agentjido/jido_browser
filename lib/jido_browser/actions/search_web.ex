@@ -18,7 +18,7 @@ defmodule Jido.Browser.Actions.SearchWeb do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "search_web",
     description:
       "Search the web using Brave Search API and return structured results " <>
@@ -26,13 +26,22 @@ defmodule Jido.Browser.Actions.SearchWeb do
     category: "Browser",
     tags: ["browser", "web", "search", "brave"],
     vsn: "2.0.0",
-    schema: [
-      query: [type: :string, required: true, doc: "Search query"],
-      max_results: [type: :integer, default: 10, doc: "Maximum number of results to return (max 20)"],
-      country: [type: :string, default: "us", doc: "Country code for results (e.g. us, gb, de)"],
-      search_lang: [type: :string, default: "en", doc: "Language code for results"],
-      freshness: [type: :string, doc: "Freshness filter: pd (24h), pw (week), pm (month), py (year)"]
-    ]
+    schema:
+      Zoi.object(%{
+        query: Zoi.string(description: "Search query"),
+        max_results:
+          Zoi.integer(description: "Maximum number of results to return (max 20)")
+          |> Zoi.default(10)
+          |> Zoi.optional(),
+        country:
+          Zoi.string(description: "Country code for results (e.g. us, gb, de)")
+          |> Zoi.default("us")
+          |> Zoi.optional(),
+        search_lang: Zoi.string(description: "Language code for results") |> Zoi.default("en") |> Zoi.optional(),
+        freshness:
+          Zoi.string(description: "Freshness filter: pd (24h), pw (week), pm (month), py (year)")
+          |> Zoi.optional()
+      })
 
   @brave_api_url "https://api.search.brave.com/res/v1/web/search"
 

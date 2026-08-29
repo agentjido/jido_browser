@@ -21,7 +21,7 @@ defmodule Jido.Browser.Actions.SnapshotUrl do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "snapshot_url",
     description:
       "Navigate to a URL and return a comprehensive LLM-friendly snapshot " <>
@@ -29,19 +29,26 @@ defmodule Jido.Browser.Actions.SnapshotUrl do
     category: "Browser",
     tags: ["browser", "web", "snapshot", "observe", "ai"],
     vsn: "2.0.0",
-    schema: [
-      url: [type: :string, required: true, doc: "The URL to snapshot"],
-      selector: [type: :string, default: "body", doc: "CSS selector to scope extraction"],
-      include_links: [type: :boolean, default: true, doc: "Include extracted links"],
-      include_forms: [type: :boolean, default: true, doc: "Include form field info"],
-      include_headings: [type: :boolean, default: true, doc: "Include heading structure"],
-      max_content_length: [type: :integer, default: 50_000, doc: "Truncate content at this length"],
-      pool: [type: :any, doc: "Optional warm session pool name"],
-      checkout_timeout: [type: :integer, doc: "Warm pool checkout timeout in ms"],
-      adapter: [type: :atom, doc: "Browser adapter module"],
-      headless: [type: :boolean, doc: "Run in headless mode"],
-      timeout: [type: :integer, doc: "Default browser timeout in ms"]
-    ]
+    schema:
+      Zoi.object(%{
+        url: Zoi.string(description: "The URL to snapshot"),
+        selector:
+          Zoi.string(description: "CSS selector to scope extraction")
+          |> Zoi.default("body")
+          |> Zoi.optional(),
+        include_links: Zoi.boolean(description: "Include extracted links") |> Zoi.default(true) |> Zoi.optional(),
+        include_forms: Zoi.boolean(description: "Include form field info") |> Zoi.default(true) |> Zoi.optional(),
+        include_headings: Zoi.boolean(description: "Include heading structure") |> Zoi.default(true) |> Zoi.optional(),
+        max_content_length:
+          Zoi.integer(description: "Truncate content at this length")
+          |> Zoi.default(50_000)
+          |> Zoi.optional(),
+        pool: Zoi.any(description: "Optional warm session pool name") |> Zoi.optional(),
+        checkout_timeout: Zoi.integer(description: "Warm pool checkout timeout in ms") |> Zoi.optional(),
+        adapter: Zoi.atom(description: "Browser adapter module") |> Zoi.optional(),
+        headless: Zoi.boolean(description: "Run in headless mode") |> Zoi.optional(),
+        timeout: Zoi.integer(description: "Default browser timeout in ms") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
 

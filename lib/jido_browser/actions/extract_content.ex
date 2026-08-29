@@ -18,16 +18,23 @@ defmodule Jido.Browser.Actions.ExtractContent do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_extract_content",
     description: "Extract content from the current page as markdown, HTML, or text",
     category: "Browser",
     tags: ["browser", "content", "extract", "markdown", "web"],
     vsn: "2.0.0",
-    schema: [
-      selector: [type: :string, default: "body", doc: "CSS selector to scope extraction"],
-      format: [type: {:in, [:markdown, :html, :text]}, default: :markdown, doc: "Output format"]
-    ]
+    schema:
+      Zoi.object(%{
+        selector:
+          Zoi.string(description: "CSS selector to scope extraction")
+          |> Zoi.default("body")
+          |> Zoi.optional(),
+        format:
+          Zoi.enum([:markdown, :html, :text], description: "Output format")
+          |> Zoi.default(:markdown)
+          |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

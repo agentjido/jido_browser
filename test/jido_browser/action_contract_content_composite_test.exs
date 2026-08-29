@@ -344,17 +344,20 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
       |> Kernel.++(@contracts)
       |> Enum.map(& &1.module)
 
-    production_modules =
-      :jido_browser
-      |> Application.spec(:modules)
-      |> Enum.filter(fn module ->
-        String.starts_with?(Atom.to_string(module), "Elixir.Jido.Browser.Actions.") and
-          Code.ensure_loaded?(module) and function_exported?(module, :__action_metadata__, 0)
-      end)
+    production_modules = production_actions()
 
     assert length(contract_modules) == 40
     assert length(Enum.uniq(contract_modules)) == 40
     assert MapSet.new(contract_modules) == MapSet.new(production_modules)
+  end
+
+  test "uses static Zoi object input schemas for every production action" do
+    for action <- production_actions() do
+      assert %Zoi.Types.Map{fields: fields} = schema = action.schema()
+      assert is_list(fields)
+      refute schema_contains?(schema, &is_function/1)
+      refute schema_contains?(schema, &match?(%Zoi.Types.Lazy{}, &1))
+    end
   end
 
   test "web retrieval actions convert the tool infinity value before validation" do
@@ -403,4 +406,37 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
     assert %{"error" => error_message} = Jason.decode!(error_json)
     assert error_message =~ "required :required_count option not found"
   end
+
+  defp production_actions do
+    :jido_browser
+    |> Application.spec(:modules)
+    |> Enum.filter(fn module ->
+      String.starts_with?(Atom.to_string(module), "Elixir.Jido.Browser.Actions.") and
+        Code.ensure_loaded?(module) and function_exported?(module, :__action_metadata__, 0)
+    end)
+  end
+
+  defp schema_contains?(value, predicate) do
+    predicate.(value) or schema_children_contain?(value, predicate)
+  end
+
+  defp schema_children_contain?(value, predicate) when is_map(value) do
+    value
+    |> Map.to_list()
+    |> Enum.any?(fn {key, child} ->
+      schema_contains?(key, predicate) or schema_contains?(child, predicate)
+    end)
+  end
+
+  defp schema_children_contain?(value, predicate) when is_list(value) do
+    Enum.any?(value, &schema_contains?(&1, predicate))
+  end
+
+  defp schema_children_contain?(value, predicate) when is_tuple(value) do
+    value
+    |> Tuple.to_list()
+    |> Enum.any?(&schema_contains?(&1, predicate))
+  end
+
+  defp schema_children_contain?(_value, _predicate), do: false
 end

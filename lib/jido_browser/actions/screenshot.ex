@@ -13,17 +13,24 @@ defmodule Jido.Browser.Actions.Screenshot do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_screenshot",
     description: "Take a screenshot of the current page",
     category: "Browser",
     tags: ["browser", "screenshot", "capture", "web"],
     vsn: "2.0.0",
-    schema: [
-      full_page: [type: :boolean, default: false, doc: "Capture the full scrollable page"],
-      format: [type: {:in, [:png]}, default: :png, doc: "Image format (only PNG is currently supported)"],
-      save_path: [type: :string, doc: "Optional file path to save the screenshot"]
-    ]
+    schema:
+      Zoi.object(%{
+        full_page:
+          Zoi.boolean(description: "Capture the full scrollable page")
+          |> Zoi.default(false)
+          |> Zoi.optional(),
+        format:
+          Zoi.enum([:png], description: "Image format (only PNG is currently supported)")
+          |> Zoi.default(:png)
+          |> Zoi.optional(),
+        save_path: Zoi.string(description: "Optional file path to save the screenshot") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error
