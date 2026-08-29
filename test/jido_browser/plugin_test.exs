@@ -3,6 +3,18 @@ defmodule Jido.Browser.PluginTest do
 
   alias Jido.Browser.Plugin
 
+  defmodule DefaultProfileAgent do
+    use Jido.Agent,
+      name: "browser_default_profile_test",
+      plugins: [Jido.Browser.Plugin]
+  end
+
+  defmodule AllProfileAgent do
+    use Jido.Agent,
+      name: "browser_all_profile_test",
+      plugins: [{Jido.Browser.Plugin, [profile: :all]}]
+  end
+
   @action_registry_contract [
     {Jido.Browser.Actions.StartSession, "browser.start_session"},
     {Jido.Browser.Actions.EndSession, "browser.end_session"},
@@ -46,14 +58,95 @@ defmodule Jido.Browser.PluginTest do
     {Jido.Browser.Actions.FetchRich, "browser.fetch_rich"}
   ]
 
-  test "keeps registry actions, routes, and signal patterns in contract order" do
-    expected_actions = Enum.map(@action_registry_contract, &elem(&1, 0))
-    expected_routes = Enum.map(@action_registry_contract, fn {action, signal_name} -> {signal_name, action} end)
-    expected_patterns = Enum.map(@action_registry_contract, &elem(&1, 1))
+  @core_action_contract [
+    Jido.Browser.Actions.StartSession,
+    Jido.Browser.Actions.EndSession,
+    Jido.Browser.Actions.Navigate,
+    Jido.Browser.Actions.Back,
+    Jido.Browser.Actions.Forward,
+    Jido.Browser.Actions.Reload,
+    Jido.Browser.Actions.Click,
+    Jido.Browser.Actions.Type,
+    Jido.Browser.Actions.Hover,
+    Jido.Browser.Actions.Scroll,
+    Jido.Browser.Actions.SelectOption,
+    Jido.Browser.Actions.Wait,
+    Jido.Browser.Actions.WaitForSelector,
+    Jido.Browser.Actions.WaitForNavigation,
+    Jido.Browser.Actions.Snapshot,
+    Jido.Browser.Actions.Screenshot,
+    Jido.Browser.Actions.ReadPage,
+    Jido.Browser.Actions.SnapshotUrl,
+    Jido.Browser.Actions.WebFetch,
+    Jido.Browser.Actions.FetchRich
+  ]
 
-    assert Plugin.actions() == expected_actions
+  @debug_action_contract [
+    Jido.Browser.Actions.StartSession,
+    Jido.Browser.Actions.EndSession,
+    Jido.Browser.Actions.GetStatus,
+    Jido.Browser.Actions.PoolStatus,
+    Jido.Browser.Actions.Navigate,
+    Jido.Browser.Actions.Back,
+    Jido.Browser.Actions.Forward,
+    Jido.Browser.Actions.Reload,
+    Jido.Browser.Actions.GetUrl,
+    Jido.Browser.Actions.GetTitle,
+    Jido.Browser.Actions.Click,
+    Jido.Browser.Actions.Type,
+    Jido.Browser.Actions.Hover,
+    Jido.Browser.Actions.Scroll,
+    Jido.Browser.Actions.SelectOption,
+    Jido.Browser.Actions.Wait,
+    Jido.Browser.Actions.WaitForSelector,
+    Jido.Browser.Actions.WaitForNavigation,
+    Jido.Browser.Actions.Snapshot,
+    Jido.Browser.Actions.Screenshot,
+    Jido.Browser.Actions.Console,
+    Jido.Browser.Actions.Errors,
+    Jido.Browser.Actions.Evaluate,
+    Jido.Browser.Actions.ReadPage,
+    Jido.Browser.Actions.SnapshotUrl,
+    Jido.Browser.Actions.WebFetch,
+    Jido.Browser.Actions.FetchRich
+  ]
+
+  test "uses the core actions, routes, and signal patterns by default" do
+    expected_routes = routes_for(@core_action_contract)
+    expected_patterns = Enum.map(expected_routes, &elem(&1, 0))
+
+    assert Plugin.actions() == @core_action_contract
     assert Plugin.signal_routes(%{}) == expected_routes
     assert Plugin.signal_patterns() == expected_patterns
+  end
+
+  test "selects exact debug and all profile contracts in registry order" do
+    all_actions = Enum.map(@action_registry_contract, &elem(&1, 0))
+
+    assert Plugin.plugin_spec(%{profile: :debug}).actions == @debug_action_contract
+    assert Plugin.signal_routes(%{profile: :debug}) == routes_for(@debug_action_contract)
+
+    assert Plugin.plugin_spec(%{profile: :all}).actions == all_actions
+
+    assert Plugin.signal_routes(%{profile: :all}) ==
+             Enum.map(@action_registry_contract, fn {action, signal_name} -> {signal_name, action} end)
+  end
+
+  test "applies profile selection to compiled Jido agents" do
+    all_actions = Enum.map(@action_registry_contract, &elem(&1, 0))
+    default_spec = browser_spec(DefaultProfileAgent)
+    all_spec = browser_spec(AllProfileAgent)
+
+    assert DefaultProfileAgent.actions() == @core_action_contract
+    assert AllProfileAgent.actions() == all_actions
+    assert default_spec.signal_patterns == signal_patterns_for(@core_action_contract)
+    assert all_spec.signal_patterns == signal_patterns_for(all_actions)
+  end
+
+  test "rejects unknown profiles" do
+    assert_raise ArgumentError, ~r/unknown browser tool profile :unknown/, fn ->
+      Plugin.plugin_spec(%{profile: :unknown})
+    end
   end
 
   describe "plugin metadata" do
@@ -76,66 +169,20 @@ defmodule Jido.Browser.PluginTest do
       assert "automation" in tags
     end
 
-    test "has 40 actions" do
+    test "has 20 default actions" do
       actions = Plugin.actions()
-      assert length(actions) == 40
+      assert length(actions) == 20
     end
 
-    test "includes all expected action modules" do
-      actions = Plugin.actions()
-
-      # Session lifecycle
-      assert Jido.Browser.Actions.StartSession in actions
-      assert Jido.Browser.Actions.EndSession in actions
-      assert Jido.Browser.Actions.GetStatus in actions
-      assert Jido.Browser.Actions.PoolStatus in actions
-      assert Jido.Browser.Actions.SaveState in actions
-      assert Jido.Browser.Actions.LoadState in actions
-
-      # Navigation
-      assert Jido.Browser.Actions.Navigate in actions
-      assert Jido.Browser.Actions.Back in actions
-      assert Jido.Browser.Actions.Forward in actions
-      assert Jido.Browser.Actions.Reload in actions
-
-      # Interaction
-      assert Jido.Browser.Actions.Click in actions
-      assert Jido.Browser.Actions.Type in actions
-      assert Jido.Browser.Actions.Hover in actions
-      assert Jido.Browser.Actions.Scroll in actions
-
-      # Waiting
-      assert Jido.Browser.Actions.Wait in actions
-      assert Jido.Browser.Actions.WaitForSelector in actions
-      assert Jido.Browser.Actions.WaitForNavigation in actions
-
-      # Queries
-      assert Jido.Browser.Actions.Query in actions
-      assert Jido.Browser.Actions.GetText in actions
-      assert Jido.Browser.Actions.IsVisible in actions
-      assert Jido.Browser.Actions.ListTabs in actions
-      assert Jido.Browser.Actions.NewTab in actions
-      assert Jido.Browser.Actions.SwitchTab in actions
-      assert Jido.Browser.Actions.CloseTab in actions
-
-      # Extraction
-      assert Jido.Browser.Actions.Snapshot in actions
-      assert Jido.Browser.Actions.Screenshot in actions
-      assert Jido.Browser.Actions.ExtractContent in actions
-      assert Jido.Browser.Actions.Console in actions
-      assert Jido.Browser.Actions.Errors in actions
-
-      # Advanced
-      assert Jido.Browser.Actions.Evaluate in actions
-      assert Jido.Browser.Actions.WebFetch in actions
-      assert Jido.Browser.Actions.FetchRich in actions
+    test "keeps the complete action set in the all profile" do
+      assert length(Plugin.plugin_spec(%{profile: :all}).actions) == 40
     end
   end
 
   describe "signal_routes/1" do
-    test "returns 40 routes" do
+    test "returns 20 core routes by default" do
       routes = Plugin.signal_routes(%{})
-      assert length(routes) == 40
+      assert length(routes) == 20
     end
 
     test "maps browser.navigate to Navigate action" do
@@ -221,7 +268,7 @@ defmodule Jido.Browser.PluginTest do
     test "returns list of signal patterns" do
       patterns = Plugin.signal_patterns()
       assert is_list(patterns)
-      assert length(patterns) == 40
+      assert length(patterns) == 20
     end
 
     test "all patterns have browser. prefix" do
@@ -237,12 +284,12 @@ defmodule Jido.Browser.PluginTest do
       assert "browser.click" in patterns
       assert "browser.snapshot" in patterns
       assert "browser.wait_for_selector" in patterns
-      assert "browser.save_state" in patterns
-      assert "browser.tab_list" in patterns
-      assert "browser.console" in patterns
       assert "browser.web_fetch" in patterns
       assert "browser.fetch_rich" in patterns
-      assert "browser.pool_status" in patterns
+      refute "browser.save_state" in patterns
+      refute "browser.tab_list" in patterns
+      refute "browser.console" in patterns
+      refute "browser.pool_status" in patterns
     end
   end
 
@@ -321,5 +368,16 @@ defmodule Jido.Browser.PluginTest do
       assert Map.has_key?(enhanced.diagnostics, :adapter)
       assert Map.has_key?(enhanced.diagnostics, :pool)
     end
+  end
+
+  defp routes_for(actions) do
+    all_routes = Enum.map(@action_registry_contract, fn {action, signal_name} -> {action, {signal_name, action}} end)
+    Map.new(all_routes) |> Map.take(actions) |> then(fn routes -> Enum.map(actions, &Map.fetch!(routes, &1)) end)
+  end
+
+  defp signal_patterns_for(actions), do: Enum.map(routes_for(actions), &elem(&1, 0))
+
+  defp browser_spec(agent) do
+    Enum.find(agent.plugin_specs(), &(&1.module == Jido.Browser.Plugin))
   end
 end

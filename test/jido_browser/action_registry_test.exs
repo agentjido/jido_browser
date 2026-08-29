@@ -39,6 +39,59 @@ defmodule Jido.Browser.ActionRegistryTest do
     composite: [Actions.ReadPage, Actions.SnapshotUrl, Actions.SearchWeb, Actions.WebFetch, Actions.FetchRich]
   ]
 
+  @core_profile [
+    Actions.StartSession,
+    Actions.EndSession,
+    Actions.Navigate,
+    Actions.Back,
+    Actions.Forward,
+    Actions.Reload,
+    Actions.Click,
+    Actions.Type,
+    Actions.Hover,
+    Actions.Scroll,
+    Actions.SelectOption,
+    Actions.Wait,
+    Actions.WaitForSelector,
+    Actions.WaitForNavigation,
+    Actions.Snapshot,
+    Actions.Screenshot,
+    Actions.ReadPage,
+    Actions.SnapshotUrl,
+    Actions.WebFetch,
+    Actions.FetchRich
+  ]
+
+  @debug_profile [
+    Actions.StartSession,
+    Actions.EndSession,
+    Actions.GetStatus,
+    Actions.PoolStatus,
+    Actions.Navigate,
+    Actions.Back,
+    Actions.Forward,
+    Actions.Reload,
+    Actions.GetUrl,
+    Actions.GetTitle,
+    Actions.Click,
+    Actions.Type,
+    Actions.Hover,
+    Actions.Scroll,
+    Actions.SelectOption,
+    Actions.Wait,
+    Actions.WaitForSelector,
+    Actions.WaitForNavigation,
+    Actions.Snapshot,
+    Actions.Screenshot,
+    Actions.Console,
+    Actions.Errors,
+    Actions.Evaluate,
+    Actions.ReadPage,
+    Actions.SnapshotUrl,
+    Actions.WebFetch,
+    Actions.FetchRich
+  ]
+
   test "owns complete metadata in stable tool order" do
     entries = ActionRegistry.entries()
     expected_actions = Enum.flat_map(@category_contract, &elem(&1, 1))
@@ -73,6 +126,26 @@ defmodule Jido.Browser.ActionRegistryTest do
 
     assert ActionRegistry.by_support_level(:supported) == ActionRegistry.entries()
     assert ActionRegistry.by_support_level(:unsupported) == []
+  end
+
+  test "defines exact core, debug, and all profiles in registry order" do
+    assert ActionRegistry.profiles() == [:core, :debug, :all]
+    assert ActionRegistry.actions(:core) == @core_profile
+    assert ActionRegistry.actions(:debug) == @debug_profile
+    assert ActionRegistry.actions(:all) == ActionRegistry.actions()
+
+    for profile <- ActionRegistry.profiles() do
+      entries = ActionRegistry.entries(profile)
+
+      assert ActionRegistry.signal_routes(profile) == Enum.map(entries, &{&1.signal_name, &1.action})
+      assert ActionRegistry.signal_patterns(profile) == Enum.map(entries, & &1.signal_name)
+    end
+  end
+
+  test "rejects an unknown profile" do
+    assert_raise ArgumentError, ~r/expected one of \[:core, :debug, :all\]/, fn ->
+      ActionRegistry.entries(:unknown)
+    end
   end
 
   test "looks up metadata by action or signal name" do

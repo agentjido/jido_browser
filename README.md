@@ -306,6 +306,7 @@ defmodule MyBrowsingAgent do
     plugins: [
       {Jido.Browser.Plugin,
        [
+         profile: :core,
          adapter: Jido.Browser.Adapters.AgentBrowser,
          pool: :default,
          checkout_timeout: 5_000,
@@ -501,7 +502,24 @@ defmodule MyBrowsingAgent do
 end
 ```
 
-`Jido.Browser.Plugin` now exposes 38 browser actions, including snapshot/refs workflows, browser state actions, diagnostics, tab management, and stateless web fetch.
+The plugin uses the `:core` tool profile by default. It includes 20 actions for
+normal navigation, interaction, waits, page reading, screenshots, web fetches,
+and session close operations. Use the `:debug` profile to add status and live
+page diagnostics.
+
+Existing users who need every browser action can select the `:all` profile:
+
+```elixir
+defmodule MyFullBrowsingAgent do
+  use Jido.Agent,
+    name: "full_web_browser",
+    plugins: [{Jido.Browser.Plugin, [profile: :all, headless: true]}]
+end
+```
+
+The `:all` profile restores all 40 actions, including browser state, element
+queries, tab management, diagnostics, JavaScript evaluation, and stateless web
+fetch.
 
 ## License
 

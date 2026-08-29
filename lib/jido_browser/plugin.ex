@@ -2,18 +2,19 @@ defmodule Jido.Browser.Plugin do
   @moduledoc """
   A Jido.Plugin providing browser automation capabilities for AI agents.
 
-  This plugin owns browser session lifecycle and provides a complete set of
-  actions for web navigation, interaction, and content extraction.
+  This plugin owns browser session lifecycle and provides profiles for web
+  navigation, interaction, content extraction, and diagnostics.
 
   ## Usage
 
       defmodule MyAgent do
         use Jido.Agent,
-          plugins: [{Jido.Browser.Plugin, [headless: true]}]
+          plugins: [{Jido.Browser.Plugin, [profile: :core, headless: true]}]
       end
 
   ## Configuration Options
 
+  * `:profile` - Tool profile: `:core`, `:debug`, or `:all` (default: `:core`)
   * `:headless` - Run browser in headless mode (default: `true`)
   * `:timeout` - Default timeout in milliseconds (default: `30_000`)
   * `:adapter` - Browser adapter module (optional)
@@ -22,21 +23,22 @@ defmodule Jido.Browser.Plugin do
   * `:viewport` - Browser viewport dimensions (default: `%{width: 1280, height: 720}`)
   * `:base_url` - Base URL for relative navigation (optional)
 
-  ## Actions
+  ## Tool Profiles
 
-  * `Navigate` - Navigate to a URL
-  * `Click` - Click an element by selector
-  * `Type` - Type text into an input element
-  * `Screenshot` - Take a screenshot of the current page
-  * `ExtractContent` - Extract page content as markdown or HTML
-  * `Evaluate` - Execute JavaScript in the browser
+  * `:core` - Normal navigation, interaction, waits, page reading, screenshots,
+    and session close operations
+  * `:debug` - The core actions plus status, page identity, console, error, and
+    JavaScript diagnostics
+  * `:all` - Every action in `Jido.Browser.ActionRegistry`
+
+  Use `profile: :all` to restore the complete action set from Jido Browser 2.x.
   """
 
   alias Jido.Browser.ActionRegistry
 
-  @action_modules ActionRegistry.actions()
-  @signal_routes ActionRegistry.signal_routes()
-  @signal_patterns ActionRegistry.signal_patterns()
+  @default_profile :core
+  @action_modules ActionRegistry.actions(@default_profile)
+  @signal_patterns ActionRegistry.signal_patterns(@default_profile)
 
   use Jido.Plugin,
     name: "browser",
@@ -47,6 +49,20 @@ defmodule Jido.Browser.Plugin do
     category: "browser",
     tags: ["browser", "web", "automation", "scraping"],
     vsn: "2.0.0"
+
+  defoverridable plugin_spec: 1
+
+  @impl Jido.Plugin
+  def plugin_spec(config) do
+    profile = configured_profile(config)
+    spec = super(config)
+
+    %{
+      spec
+      | actions: ActionRegistry.actions(profile),
+        signal_patterns: ActionRegistry.signal_patterns(profile)
+    }
+  end
 
   @impl Jido.Plugin
   def mount(_agent, config) do
@@ -90,7 +106,7 @@ defmodule Jido.Browser.Plugin do
   end
 
   @impl Jido.Plugin
-  def signal_routes(_config), do: @signal_routes
+  def signal_routes(config), do: config |> configured_profile() |> ActionRegistry.signal_routes()
 
   @impl Jido.Plugin
   def handle_signal(_signal, _context) do
@@ -206,4 +222,10 @@ defmodule Jido.Browser.Plugin do
   defp nil_or_empty?(nil), do: true
   defp nil_or_empty?(""), do: true
   defp nil_or_empty?(_value), do: false
+
+  defp configured_profile(config) when is_map(config) do
+    profile = Map.get(config, :profile, @default_profile)
+    ActionRegistry.entries(profile)
+    profile
+  end
 end
