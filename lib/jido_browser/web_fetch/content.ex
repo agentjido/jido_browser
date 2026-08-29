@@ -2,6 +2,7 @@ defmodule Jido.Browser.WebFetch.Content do
   @moduledoc false
 
   alias Jido.Browser.Error
+  alias Jido.Browser.WebFetch.DocumentExtractor
 
   @html_content_types ["text/html", "application/xhtml+xml"]
   @text_content_types [
@@ -268,7 +269,7 @@ defmodule Jido.Browser.WebFetch.Content do
   end
 
   defp extract_document_content(bytes, final_url, content_type, document_type, opts) do
-    case ExtractousEx.extract_from_bytes(bytes, opts[:extractous]) do
+    case DocumentExtractor.extract(bytes, opts[:extractous]) do
       {:ok, %{content: content, metadata: metadata}} when is_binary(content) ->
         {:ok, String.trim(content), normalize_metadata(metadata)}
 
