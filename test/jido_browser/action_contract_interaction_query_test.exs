@@ -297,7 +297,7 @@ defmodule Jido.Browser.ActionContractInteractionQueryTest do
   for contract <- @contracts do
     @contract contract
 
-    test "freezes the #{contract.name} schema and tool contract" do
+    test "freezes the #{contract.name} schema and Action contract" do
       assert_contract(@contract)
     end
   end

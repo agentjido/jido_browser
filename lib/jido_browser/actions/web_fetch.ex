@@ -96,6 +96,7 @@ defmodule Jido.Browser.Actions.WebFetch do
   @impl true
   def on_before_validate_params(params) when is_map(params) do
     params
+    |> then(&Jido.Browser.Action.apply_schema_defaults(schema(), &1))
     |> normalize_infinity()
     |> validate_response_limit()
   end

@@ -6,9 +6,11 @@ defmodule Jido.Browser.Action do
       use Jido.Action, unquote(opts)
 
       @impl Jido.Action
-      def on_after_validate_params(params) do
+      def on_before_validate_params(params) do
         {:ok, Jido.Browser.Action.apply_schema_defaults(schema(), params)}
       end
+
+      defoverridable on_before_validate_params: 1
     end
   end
 

@@ -3,18 +3,14 @@ defmodule Jido.Browser.ActionContractAssertions do
 
   import ExUnit.Assertions
 
-  alias Jido.Action.Schema
-  alias Jido.Action.Tool
-
   @unknown_atom :contract_unknown_atom
   @unknown_string "contract_unknown_string"
 
   def assert_contract(%{module: action, name: name, description: description, schema: schema} = contract) do
-    assert Schema.schema_type(action.schema()) == :zoi
+    assert %Zoi.Types.Map{} = action.schema()
 
     assert_validation_contract(action, schema)
-    assert_tool_input_contract(action, schema)
-    assert_generated_tool_contract(action, name, description, schema)
+    assert_schema_metadata_contract(action, name, description, schema)
 
     case contract do
       %{output: output} -> assert_output_contract(action, output)
@@ -25,14 +21,11 @@ defmodule Jido.Browser.ActionContractAssertions do
   defp assert_output_contract(action, output) do
     output_schema = action.output_schema()
 
-    assert Schema.schema_type(output_schema) == :zoi
-    assert %Zoi.Types.Map{} = output_schema
+    assert %Zoi.Types.Map{fields: fields} = output_schema
     refute schema_contains?(output_schema, &is_function/1)
     refute schema_contains?(output_schema, &match?(%Zoi.Types.Lazy{}, &1))
 
-    assert output_schema
-           |> Schema.known_keys()
-           |> MapSet.new() == MapSet.new(Map.keys(output))
+    assert fields |> Keyword.keys() |> MapSet.new() == MapSet.new(Map.keys(output))
 
     sample = Map.new(output, fn {key, type} -> {key, output_sample(type, key)} end)
     assert {:ok, ^sample} = action.validate_output(sample)
@@ -174,44 +167,16 @@ defmodule Jido.Browser.ActionContractAssertions do
     end
   end
 
-  defp assert_tool_input_contract(action, schema) do
-    all_atom_params = sample_params(schema)
-    all_string_params = Map.new(all_atom_params, fn {key, value} -> {Atom.to_string(key), value} end)
+  defp assert_schema_metadata_contract(action, name, description, schema) do
+    assert action.name() == name
+    assert action.description() == description
 
-    assert Tool.convert_params_using_schema(all_string_params, action.schema()) == all_atom_params
-
-    params_with_unknown_keys =
-      Map.merge(all_string_params, %{@unknown_atom => :kept, @unknown_string => "kept"})
-
-    assert Tool.convert_params_using_schema(params_with_unknown_keys, action.schema()) ==
-             Map.merge(all_atom_params, %{@unknown_atom => :kept, @unknown_string => "kept"})
-
-    assert_atom_key_precedence(action, schema)
+    assert action.schema()
+           |> Zoi.to_json_schema()
+           |> normalize_json_schema() == expected_json_schema(schema)
   end
 
-  defp assert_atom_key_precedence(_action, schema) when map_size(schema) == 0, do: :ok
-
-  defp assert_atom_key_precedence(action, schema) do
-    {key, options} = Enum.at(schema, 0)
-    atom_value = sample_value(options.type, key)
-    string_value = alternate_sample_value(options.type, key)
-
-    params = %{key => atom_value, Atom.to_string(key) => string_value}
-
-    assert Tool.convert_params_using_schema(params, action.schema()) == %{key => atom_value}
-  end
-
-  defp assert_generated_tool_contract(action, name, description, schema) do
-    tool = action.to_tool()
-
-    assert Map.keys(tool) |> Enum.sort() == [:description, :function, :name, :parameters_schema]
-    assert tool.name == name
-    assert tool.description == description
-    assert is_function(tool.function, 2)
-    assert normalize_json_schema(tool.parameters_schema) == expected_tool_schema(schema)
-  end
-
-  defp expected_tool_schema(schema) do
+  defp expected_json_schema(schema) do
     properties =
       Map.new(schema, fn {key, options} ->
         property =
@@ -231,7 +196,7 @@ defmodule Jido.Browser.ActionContractAssertions do
 
     %{
       "$schema" => "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties" => false,
+      "additionalProperties" => true,
       "properties" => properties,
       "required" => required,
       "type" => "object"
@@ -313,19 +278,6 @@ defmodule Jido.Browser.ActionContractAssertions do
   defp sample_value(:any, _key), do: {:contract, :sample}
   defp sample_value({:list, subtype}, key), do: [sample_value(subtype, key)]
   defp sample_value({:in, [value | _values]}, _key), do: value
-
-  defp alternate_sample_value(:string, key), do: "alternate_#{key}"
-  defp alternate_sample_value(:integer, _key), do: 9
-  defp alternate_sample_value(:boolean, _key), do: false
-  defp alternate_sample_value(:float, _key), do: 2.5
-  defp alternate_sample_value(:number, _key), do: 3
-  defp alternate_sample_value(:non_neg_integer, _key), do: 2
-  defp alternate_sample_value(:pos_integer, _key), do: 2
-  defp alternate_sample_value(:timeout, _key), do: 2
-  defp alternate_sample_value(:atom, _key), do: :contract_alternate
-  defp alternate_sample_value(:any, _key), do: {:contract, :alternate}
-  defp alternate_sample_value({:list, subtype}, key), do: [alternate_sample_value(subtype, key)]
-  defp alternate_sample_value({:in, values}, _key), do: List.last(values)
 
   defp normalize_json_schema(schema) do
     schema

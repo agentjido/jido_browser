@@ -5,7 +5,7 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
 
   alias Jido.Browser.ActionContractInteractionQueryTest
   alias Jido.Browser.ActionContractLifecycleNavigationTest
-  alias Jido.Browser.ActionContractToolExecutionProbe
+  alias Jido.Browser.ActionRegistry
   alias Jido.Browser.Actions
 
   @web_fetch_output %{
@@ -414,7 +414,7 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
   for contract <- @contracts do
     @contract contract
 
-    test "freezes the #{contract.name} schema and tool contract" do
+    test "freezes the #{contract.name} schema and Action contract" do
       assert_contract(@contract)
     end
   end
@@ -470,35 +470,7 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
     end
   end
 
-  @tag capture_log: true
-  test "generated tool function converts and validates Action 2.x input" do
-    tool = ActionContractToolExecutionProbe.to_tool()
-
-    assert {:ok, result_json} =
-             tool.function.(
-               %{"required_count" => "7", "unknown_input" => "kept"},
-               %{}
-             )
-
-    assert Jason.decode!(result_json) == %{
-             "label" => "default-label",
-             "required_count" => 7,
-             "unknown_input" => "kept"
-           }
-
-    assert {:error, error_json} = tool.function.(%{"unknown_input" => "kept"}, %{})
-    assert %{"error" => error_message} = Jason.decode!(error_json)
-    assert error_message =~ "required :required_count option not found"
-  end
-
-  defp production_actions do
-    :jido_browser
-    |> Application.spec(:modules)
-    |> Enum.filter(fn module ->
-      String.starts_with?(Atom.to_string(module), "Elixir.Jido.Browser.Actions.") and
-        Code.ensure_loaded?(module) and function_exported?(module, :__action_metadata__, 0)
-    end)
-  end
+  defp production_actions, do: ActionRegistry.actions()
 
   defp schema_contains?(value, predicate) do
     predicate.(value) or schema_children_contain?(value, predicate)
