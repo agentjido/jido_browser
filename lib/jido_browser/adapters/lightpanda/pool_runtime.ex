@@ -2,12 +2,13 @@ defmodule Jido.Browser.Adapters.Lightpanda.PoolRuntime do
   @moduledoc false
   @behaviour Jido.Browser.WarmPool.Runtime
 
+  alias Jido.Browser.ID
   alias Jido.Browser.WarmPool.Runtime, as: PoolRuntimeBoundary
 
   @impl true
   @spec start_worker(map()) :: {:ok, map()} | {:error, term()}
   def start_worker(%{worker_opts: worker_opts} = pool_state) do
-    session_id = "lightpanda-pool-#{System.unique_integer([:positive])}"
+    session_id = "lightpanda-pool-#{ID.generate()}"
     runtime_context = PoolRuntimeBoundary.context(pool_state)
     start_connection = Map.fetch!(runtime_context, :start_connection)
     stop_connection = Map.fetch!(runtime_context, :stop_connection)

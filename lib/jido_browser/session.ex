@@ -6,6 +6,8 @@ defmodule Jido.Browser.Session do
   the adapter being used for communication.
   """
 
+  alias Jido.Browser.ID
+
   @schema Zoi.struct(
             __MODULE__,
             %{
@@ -46,7 +48,7 @@ defmodule Jido.Browser.Session do
   @spec new(map()) :: {:ok, t()} | {:error, term()}
   def new(attrs) when is_map(attrs) do
     attrs = Map.put_new(attrs, :started_at, DateTime.utc_now())
-    attrs = Map.put_new_lazy(attrs, :id, fn -> Uniq.UUID.uuid4() end)
+    attrs = Map.put_new_lazy(attrs, :id, &ID.generate/0)
     Zoi.parse(@schema, attrs)
   end
 

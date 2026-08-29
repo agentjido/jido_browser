@@ -13,6 +13,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   alias Jido.Browser.AgentBrowser.SessionServer
   alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.Error
+  alias Jido.Browser.ID
   alias Jido.Browser.Result
   alias Jido.Browser.Session
   alias Jido.Browser.WarmPool.Lease
@@ -395,7 +396,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   defp with_tmp_file(prefix, suffix, fun) do
-    path = Path.join(System.tmp_dir!(), "#{prefix}_#{System.unique_integer([:positive])}#{suffix}")
+    path = Path.join(System.tmp_dir!(), "#{prefix}_#{ID.generate()}#{suffix}")
 
     try do
       fun.(path)
@@ -406,7 +407,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
 
   defp start_unpooled_session(opts) do
     with {:ok, session_opts} <- build_session_opts(opts) do
-      session_id = opts[:session_id] || Uniq.UUID.uuid4()
+      session_id = opts[:session_id] || ID.generate()
 
       case Runtime.ensure_session_server(session_id, session_opts) do
         {:ok, pid, runtime} ->
@@ -427,7 +428,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
              checkout_timeout: Keyword.get(opts, :checkout_timeout, @default_checkout_timeout)
            ) do
       Session.new(%{
-        id: opts[:session_id] || Uniq.UUID.uuid4(),
+        id: opts[:session_id] || ID.generate(),
         adapter: __MODULE__,
         connection: %{
           binary: worker_state.binary,
