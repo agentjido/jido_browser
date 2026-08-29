@@ -38,6 +38,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.Error
   alias Jido.Browser.Installer
+  alias Jido.Browser.Result
   alias Jido.Browser.Session
   alias Jido.Browser.WarmPool.Lease
   alias Jido.Browser.WarmPool.Manager
@@ -152,7 +153,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
     case page_call(session, :navigate, [page(session), url, timeout_opts(opts)]) do
       :ok ->
         updated_session = put_current_url(session, url)
-        {:ok, updated_session, %{url: url}}
+        success(updated_session, %{url: url})
 
       {:error, reason} ->
         {:error, Error.navigation_error(url, reason)}
@@ -163,7 +164,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   @spec click(Session.t(), String.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, Error.t()}
   def click(%Session{} = session, selector, opts) do
     case page_call(session, :click, [page(session), selector, timeout_opts(opts)]) do
-      :ok -> {:ok, session, %{selector: selector}}
+      :ok -> success(session, %{selector: selector})
       {:error, reason} -> {:error, Error.element_error("click", selector, reason)}
     end
   end
@@ -172,7 +173,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   @spec type(Session.t(), String.t(), String.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, Error.t()}
   def type(%Session{} = session, selector, text, opts) do
     case page_call(session, :fill, [page(session), selector, text, timeout_opts(opts)]) do
-      :ok -> {:ok, session, %{selector: selector}}
+      :ok -> success(session, %{selector: selector})
       {:error, reason} -> {:error, Error.element_error("type", selector, reason)}
     end
   end
@@ -184,7 +185,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
 
     with :ok <- validate_screenshot_format(format),
          {:ok, bytes} <- page_call(session, :screenshot, [page(session), timeout_opts(opts)]) do
-      {:ok, session, %{bytes: bytes, mime: "image/png", format: :png}}
+      success(session, %{bytes: bytes, mime: "image/png", format: :png})
     else
       {:error, %Error.AdapterError{} = error} ->
         {:error, error}
@@ -204,7 +205,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
          {:ok, html} <- page_call(session, :content, [page(session)]),
          {:ok, selected_html} <- select_html(html, selector),
          {:ok, content} <- format_html(selected_html, format) do
-      {:ok, session, %{content: content, format: format}}
+      success(session, %{content: content, format: format})
     else
       {:error, %Error.AdapterError{} = error} ->
         {:error, error}
@@ -218,7 +219,7 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   @spec evaluate(Session.t(), String.t(), keyword()) :: {:ok, Session.t(), map()} | {:error, Error.t()}
   def evaluate(%Session{} = session, script, opts) do
     case page_call(session, :evaluate, [page(session), script, timeout_opts(opts)]) do
-      {:ok, result} -> {:ok, session, %{result: result}}
+      {:ok, result} -> success(session, %{result: result})
       {:error, reason} -> {:error, Error.adapter_error("Evaluate failed", %{reason: reason})}
     end
   end
@@ -520,6 +521,8 @@ defmodule Jido.Browser.Adapters.Lightpanda do
   defp put_current_url(%Session{connection: connection} = session, url) do
     %{session | connection: Map.put(connection, :current_url, url)}
   end
+
+  defp success(session, result), do: {:ok, session, Result.normalize(result)}
 
   defp timeout_opts(opts), do: [timeout: opts[:timeout] || @default_timeout]
   defp page(%Session{connection: %{page: page}}), do: page

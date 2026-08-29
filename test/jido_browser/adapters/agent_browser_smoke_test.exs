@@ -131,10 +131,5 @@ defmodule Jido.Browser.Adapters.AgentBrowserSmokeTest do
   defp normalize_ref("@" <> _ = ref), do: ref
   defp normalize_ref(ref), do: "@#{ref}"
 
-  defp fetch_value(map, key) do
-    case Map.fetch(map, key) do
-      {:ok, value} -> value
-      :error -> Map.get(map, Atom.to_string(key))
-    end
-  end
+  defp fetch_value(map, key), do: Map.fetch!(map, key)
 end

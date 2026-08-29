@@ -13,6 +13,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
   alias Jido.Browser.AgentBrowser.SessionServer
   alias Jido.Browser.Application, as: BrowserApplication
   alias Jido.Browser.Error
+  alias Jido.Browser.Result
   alias Jido.Browser.Session
   alias Jido.Browser.WarmPool.Lease
   alias Jido.Browser.WarmPool.Manager
@@ -103,7 +104,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
 
     case run(session, payload, opts) do
       {:ok, session, data} ->
-        updated_session = put_current_url(session, Map.get(data, "url", url))
+        updated_session = put_current_url(session, Map.get(data, :url, url))
         {:ok, updated_session, data}
 
       error ->
@@ -146,7 +147,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
         }
 
       with {:ok, session, data} <- run(session, payload, opts),
-           {:ok, bytes} <- File.read(data["path"] || path) do
+           {:ok, bytes} <- File.read(data[:path] || path) do
         {:ok, session, %{bytes: bytes, mime: "image/#{format}", format: String.to_atom(format)}}
       else
         {:error, reason} ->
@@ -274,10 +275,10 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
     end
   end
 
-  defp tab_id_at_index(%{"tabs" => tabs}, index)
+  defp tab_id_at_index(%{tabs: tabs}, index)
        when is_list(tabs) and is_integer(index) and index >= 0 do
     case Enum.fetch(tabs, index) do
-      {:ok, %{"tabId" => tab_id}} when is_binary(tab_id) ->
+      {:ok, %{tab_id: tab_id}} when is_binary(tab_id) ->
         {:ok, tab_id}
 
       {:ok, tab} ->
@@ -288,7 +289,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
     end
   end
 
-  defp tab_id_at_index(%{"tabs" => tabs}, index) when is_list(tabs) do
+  defp tab_id_at_index(%{tabs: tabs}, index) when is_list(tabs) do
     {:error, Error.adapter_error("Invalid tab index", %{index: index})}
   end
 
@@ -301,7 +302,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
 
     case Lease.command(pid, payload, timeout) do
       {:ok, data} ->
-        {:ok, session, data}
+        {:ok, session, Result.normalize(data)}
 
       {:error, reason} ->
         {:error, Error.adapter_error("agent-browser pooled command failed", %{reason: reason, payload: payload})}
@@ -317,7 +318,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
 
     case SessionServer.command(pid, payload, timeout) do
       {:ok, data} ->
-        {:ok, session, data}
+        {:ok, session, Result.normalize(data)}
 
       {:error, reason} ->
         {:error, Error.adapter_error("agent-browser command failed", %{reason: reason, payload: payload})}
@@ -336,7 +337,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
 
   defp fetch_html(session, selector, opts) when selector in [nil, "", "body"] do
     case command(session, :content, opts) do
-      {:ok, session, %{"html" => html}} -> {:ok, session, html}
+      {:ok, session, %{html: html}} -> {:ok, session, html}
       {:ok, _session, data} -> {:error, "Unexpected content response: #{inspect(data)}"}
       {:error, reason} -> {:error, reason}
     end
@@ -351,7 +352,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
     """
 
     case evaluate(session, script, opts) do
-      {:ok, session, %{"result" => html}} when is_binary(html) -> {:ok, session, html}
+      {:ok, session, %{result: html}} when is_binary(html) -> {:ok, session, html}
       {:ok, _session, _data} -> {:error, "Selector #{selector} did not match any element"}
       {:error, reason} -> {:error, reason}
     end
@@ -363,7 +364,7 @@ defmodule Jido.Browser.Adapters.AgentBrowser do
     selector = normalize_selector(selector)
 
     case command(session, :get_text, Keyword.merge(opts, selector: selector)) do
-      {:ok, _session, %{"text" => text}} when is_binary(text) -> {:ok, text}
+      {:ok, _session, %{text: text}} when is_binary(text) -> {:ok, text}
       {:ok, _session, data} -> {:error, "Unexpected text response: #{inspect(data)}"}
       {:error, reason} -> {:error, reason}
     end

@@ -33,6 +33,7 @@ defmodule Jido.Browser.Adapters.Vibium do
 
   alias Jido.Browser.Error
   alias Jido.Browser.Installer
+  alias Jido.Browser.Result
   alias Jido.Browser.Session
 
   @default_timeout 30_000
@@ -68,7 +69,7 @@ defmodule Jido.Browser.Adapters.Vibium do
       {:ok, output} ->
         updated_connection = Map.put(connection, :current_url, url)
         updated_session = %{session | connection: updated_connection}
-        {:ok, updated_session, %{url: url, output: output}}
+        success(updated_session, %{url: url, output: output})
 
       {:error, reason} ->
         {:error, Error.navigation_error(url, reason)}
@@ -87,7 +88,7 @@ defmodule Jido.Browser.Adapters.Vibium do
 
         case run_vibium(connection, args, timeout) do
           {:ok, output} ->
-            {:ok, session, %{selector: selector, output: output}}
+            success(session, %{selector: selector, output: output})
 
           {:error, reason} ->
             {:error, Error.element_error("click", selector, reason)}
@@ -107,7 +108,7 @@ defmodule Jido.Browser.Adapters.Vibium do
 
         case run_vibium(connection, args, timeout) do
           {:ok, output} ->
-            {:ok, session, %{selector: selector, output: output}}
+            success(session, %{selector: selector, output: output})
 
           {:error, reason} ->
             {:error, Error.element_error("type", selector, reason)}
@@ -158,7 +159,7 @@ defmodule Jido.Browser.Adapters.Vibium do
 
       with {:ok, output} <- run_vibium(connection, args, timeout),
            {:ok, bytes} <- read_screenshot_bytes(output, path) do
-        {:ok, session, %{bytes: bytes, mime: "image/png", format: :png}}
+        success(session, %{bytes: bytes, mime: "image/png", format: :png})
       else
         {:error, reason} when is_atom(reason) ->
           {:error, Error.adapter_error("Failed to read screenshot", %{reason: reason})}
@@ -206,7 +207,7 @@ defmodule Jido.Browser.Adapters.Vibium do
 
         case run_vibium(connection, args, timeout) do
           {:ok, content} ->
-            {:ok, session, %{content: content, format: format}}
+            success(session, %{content: content, format: format})
 
           {:error, reason} ->
             {:error, Error.adapter_error("Extract content failed", %{reason: reason})}
@@ -239,7 +240,7 @@ defmodule Jido.Browser.Adapters.Vibium do
         case run_vibium(connection, args, timeout) do
           {:ok, result} ->
             parsed_result = parse_js_result(result)
-            {:ok, session, %{result: parsed_result}}
+            success(session, %{result: parsed_result})
 
           {:error, reason} ->
             {:error, Error.adapter_error("Evaluate failed", %{reason: reason})}
@@ -254,6 +255,8 @@ defmodule Jido.Browser.Adapters.Vibium do
       {:error, _} -> result
     end
   end
+
+  defp success(session, result), do: {:ok, session, Result.normalize(result)}
 
   defp run_vibium(%{binary: binary, headless: headless}, args, timeout) do
     full_args = if headless, do: ["--headless" | args], else: args

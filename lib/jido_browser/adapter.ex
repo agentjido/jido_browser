@@ -60,6 +60,7 @@ defmodule Jido.Browser.Adapter do
 
   """
 
+  alias Jido.Browser.Result
   alias Jido.Browser.Session
 
   @doc """
@@ -78,7 +79,7 @@ defmodule Jido.Browser.Adapter do
   Returns the updated session with `current_url` set, plus a result map.
   """
   @callback navigate(session :: Session.t(), url :: String.t(), opts :: keyword()) ::
-              {:ok, Session.t(), map()} | {:error, term()}
+              {:ok, Session.t(), Result.navigation()} | {:error, term()}
 
   @doc """
   Clicks an element matching the selector.
@@ -86,7 +87,7 @@ defmodule Jido.Browser.Adapter do
   Returns the updated session plus a result map.
   """
   @callback click(session :: Session.t(), selector :: String.t(), opts :: keyword()) ::
-              {:ok, Session.t(), map()} | {:error, term()}
+              {:ok, Session.t(), Result.interaction()} | {:error, term()}
 
   @doc """
   Types text into an element matching the selector.
@@ -99,31 +100,31 @@ defmodule Jido.Browser.Adapter do
               text :: String.t(),
               opts :: keyword()
             ) ::
-              {:ok, Session.t(), map()} | {:error, term()}
+              {:ok, Session.t(), Result.interaction()} | {:error, term()}
 
   @doc """
   Takes a screenshot of the current page.
   """
   @callback screenshot(session :: Session.t(), opts :: keyword()) ::
-              {:ok, Session.t(), %{bytes: binary(), mime: String.t()}} | {:error, term()}
+              {:ok, Session.t(), Result.screenshot()} | {:error, term()}
 
   @doc """
   Extracts content from the current page.
   """
   @callback extract_content(session :: Session.t(), opts :: keyword()) ::
-              {:ok, Session.t(), %{content: String.t(), format: atom()}} | {:error, term()}
+              {:ok, Session.t(), Result.content()} | {:error, term()}
 
   @doc """
   Executes JavaScript in the browser context.
   """
   @callback evaluate(session :: Session.t(), script :: String.t(), opts :: keyword()) ::
-              {:ok, Session.t(), %{result: term()}} | {:error, term()}
+              {:ok, Session.t(), Result.evaluation()} | {:error, term()}
 
   @doc """
   Executes adapter-native operations that are not part of the base behaviour.
   """
   @callback command(session :: Session.t(), action :: atom(), opts :: keyword()) ::
-              {:ok, Session.t(), map()} | {:error, term()}
+              {:ok, Session.t(), Result.t()} | {:error, term()}
 
   @optional_callbacks [evaluate: 3, command: 3]
 end

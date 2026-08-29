@@ -182,7 +182,7 @@ defmodule Jido.Browser.AgentBrowserPoolTest do
 
       assert {:error, _reason} = Browser.navigate(session, "fail://page")
 
-      assert {:ok, _updated_session, %{"url" => "https://example.com"}} =
+      assert {:ok, _updated_session, %{url: "https://example.com"}} =
                Browser.navigate(session, "https://example.com")
 
       assert :ok = Browser.end_session(session)
