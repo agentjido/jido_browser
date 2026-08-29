@@ -8,6 +8,27 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
   alias Jido.Browser.ActionContractToolExecutionProbe
   alias Jido.Browser.Actions
 
+  @web_fetch_output %{
+    status: {:literal, "success"},
+    url: :string,
+    final_url: :string,
+    title: {:optional, {:nullable, :string}},
+    content: :string,
+    format: {:in, [:markdown, :text, :html]},
+    content_type: :string,
+    document_type: :atom,
+    retrieved_at: :string,
+    estimated_tokens: :non_neg_integer,
+    original_estimated_tokens: :non_neg_integer,
+    truncated: :boolean,
+    filtered: :boolean,
+    focus_matches: :non_neg_integer,
+    cached: :boolean,
+    citations: :map,
+    passages: {:list, :map},
+    metadata: {:optional, :map}
+  }
+
   @contracts [
     %{
       module: Actions.Snapshot,
@@ -31,6 +52,20 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           default: "body",
           doc: "CSS selector to scope extraction"
         }
+      },
+      output: %{
+        status: {:literal, "success"},
+        session: :any,
+        url: {:optional, {:nullable, :string}},
+        title: {:optional, {:nullable, :string}},
+        origin: {:optional, {:nullable, :string}},
+        snapshot: {:optional, :string},
+        content: {:optional, :string},
+        refs: {:optional, :map},
+        links: {:optional, {:list, :map}},
+        forms: {:optional, {:list, :map}},
+        headings: {:optional, {:list, :map}},
+        raw: {:optional, :map}
       }
     },
     %{
@@ -49,6 +84,15 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           doc: "Image format (only PNG is currently supported)"
         },
         save_path: %{type: :string, doc: "Optional file path to save the screenshot"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        mime: :string,
+        size: :non_neg_integer,
+        base64: :string,
+        session: :any,
+        saved_to: {:optional, :string},
+        save_error: {:optional, :string}
       }
     },
     %{
@@ -66,6 +110,13 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           default: :markdown,
           doc: "Output format"
         }
+      },
+      output: %{
+        status: {:literal, "success"},
+        content: :string,
+        format: {:in, [:markdown, :html, :text]},
+        length: :non_neg_integer,
+        session: :any
       }
     },
     %{
@@ -145,7 +196,8 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           type: :integer,
           doc: "Maximum successful web fetch calls allowed in current skill state"
         }
-      }
+      },
+      output: @web_fetch_output
     },
     %{
       module: Actions.FetchRich,
@@ -239,7 +291,13 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           type: :integer,
           doc: "Maximum successful rich fetch calls allowed in current skill state"
         }
-      }
+      },
+      output:
+        Map.merge(@web_fetch_output, %{
+          retrieval_path: {:in, [:web_fetch, :browser]},
+          fallback_reason: :any,
+          blocked?: :boolean
+        })
     },
     %{
       module: Actions.ReadPage,
@@ -264,6 +322,11 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
         adapter: %{type: :atom, doc: "Browser adapter module"},
         headless: %{type: :boolean, doc: "Run in headless mode"},
         timeout: %{type: :integer, doc: "Default browser timeout in ms"}
+      },
+      output: %{
+        url: :string,
+        content: :string,
+        format: {:in, [:markdown, :text, :html]}
       }
     },
     %{
@@ -296,6 +359,20 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
         adapter: %{type: :atom, doc: "Browser adapter module"},
         headless: %{type: :boolean, doc: "Run in headless mode"},
         timeout: %{type: :integer, doc: "Default browser timeout in ms"}
+      },
+      output: %{
+        status: {:literal, "success"},
+        url: {:optional, {:nullable, :string}},
+        title: {:optional, {:nullable, :string}},
+        origin: {:optional, {:nullable, :string}},
+        snapshot: {:optional, :string},
+        content: {:optional, :string},
+        refs: {:optional, :map},
+        links: {:optional, {:list, :map}},
+        forms: {:optional, {:list, :map}},
+        headings: {:optional, {:list, :map}},
+        fallback: {:optional, :boolean},
+        raw: {:optional, :map}
       }
     },
     %{
@@ -325,6 +402,11 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
           type: :string,
           doc: "Freshness filter: pd (24h), pw (week), pm (month), py (year)"
         }
+      },
+      output: %{
+        query: :string,
+        results: {:list, :map},
+        count: :non_neg_integer
       }
     }
   ]
@@ -351,12 +433,14 @@ defmodule Jido.Browser.ActionContractContentCompositeTest do
     assert MapSet.new(contract_modules) == MapSet.new(production_modules)
   end
 
-  test "uses static Zoi object input schemas for every production action" do
+  test "uses static Zoi object input and output schemas for every production action" do
     for action <- production_actions() do
-      assert %Zoi.Types.Map{fields: fields} = schema = action.schema()
-      assert is_list(fields)
-      refute schema_contains?(schema, &is_function/1)
-      refute schema_contains?(schema, &match?(%Zoi.Types.Lazy{}, &1))
+      for schema <- [action.schema(), action.output_schema()] do
+        assert %Zoi.Types.Map{fields: fields} = schema
+        assert is_list(fields)
+        refute schema_contains?(schema, &is_function/1)
+        refute schema_contains?(schema, &match?(%Zoi.Types.Lazy{}, &1))
+      end
     end
   end
 

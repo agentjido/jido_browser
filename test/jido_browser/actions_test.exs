@@ -330,6 +330,7 @@ defmodule Jido.Browser.ActionsTest do
       end)
 
       assert {:ok, result} = Actions.Snapshot.run(%{}, context)
+      assert {:ok, ^result} = Actions.Snapshot.validate_output(result)
       assert result.status == "success"
       assert result.url == "https://example.com"
       assert result.title == "Example Page"
@@ -342,8 +343,9 @@ defmodule Jido.Browser.ActionsTest do
         {:ok, sess, %{content: "# Hello World\n\nThis is the page content.", format: :markdown}}
       end)
 
-      assert {:ok, %{status: "success", content: content, format: :markdown, session: ^session}} =
-               Actions.ExtractContent.run(%{}, context)
+      assert {:ok, result} = Actions.ExtractContent.run(%{}, context)
+      assert {:ok, ^result} = Actions.ExtractContent.validate_output(result)
+      assert %{status: "success", content: content, format: :markdown, session: ^session} = result
 
       assert content =~ "Hello World"
     end
@@ -375,8 +377,9 @@ defmodule Jido.Browser.ActionsTest do
         {:ok, sess, %{bytes: png_bytes, mime: "image/png"}}
       end)
 
-      assert {:ok, %{status: "success", mime: "image/png", size: 8, base64: _, session: ^session}} =
-               Actions.Screenshot.run(%{}, context)
+      assert {:ok, result} = Actions.Screenshot.run(%{}, context)
+      assert {:ok, ^result} = Actions.Screenshot.validate_output(result)
+      assert %{status: "success", mime: "image/png", size: 8, base64: _, session: ^session} = result
     end
   end
 

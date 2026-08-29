@@ -45,6 +45,21 @@ defmodule Jido.Browser.Actions.SnapshotUrl do
         adapter: Zoi.atom(description: "Browser adapter module") |> Zoi.optional(),
         headless: Zoi.boolean(description: "Run in headless mode") |> Zoi.optional(),
         timeout: Zoi.integer(description: "Default browser timeout in ms") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        url: Zoi.string() |> Zoi.nullish(),
+        title: Zoi.string() |> Zoi.nullish(),
+        origin: Zoi.string() |> Zoi.nullish(),
+        snapshot: Zoi.string() |> Zoi.optional(),
+        content: Zoi.string() |> Zoi.optional(),
+        refs: Zoi.map() |> Zoi.optional(),
+        links: Zoi.list(Zoi.map()) |> Zoi.optional(),
+        forms: Zoi.list(Zoi.map()) |> Zoi.optional(),
+        headings: Zoi.list(Zoi.map()) |> Zoi.optional(),
+        fallback: Zoi.boolean() |> Zoi.optional(),
+        raw: Zoi.map() |> Zoi.optional()
       })
 
   alias Jido.Browser.ActionHelpers

@@ -68,6 +68,27 @@ defmodule Jido.Browser.Actions.WebFetch do
         max_uses:
           Zoi.integer(description: "Maximum successful web fetch calls allowed in current skill state")
           |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        url: Zoi.string(),
+        final_url: Zoi.string(),
+        title: Zoi.string() |> Zoi.nullish(),
+        content: Zoi.string(),
+        format: Zoi.enum([:markdown, :text, :html]),
+        content_type: Zoi.string(),
+        document_type: Zoi.atom(),
+        retrieved_at: Zoi.string(),
+        estimated_tokens: Zoi.integer(gte: 0),
+        original_estimated_tokens: Zoi.integer(gte: 0),
+        truncated: Zoi.boolean(),
+        filtered: Zoi.boolean(),
+        focus_matches: Zoi.integer(gte: 0),
+        cached: Zoi.boolean(),
+        citations: Zoi.map(),
+        passages: Zoi.list(Zoi.map()),
+        metadata: Zoi.map() |> Zoi.optional()
       })
 
   alias Jido.Browser.Error

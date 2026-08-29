@@ -27,6 +27,16 @@ defmodule Jido.Browser.Actions.Screenshot do
           |> Zoi.default(:png)
           |> Zoi.optional(),
         save_path: Zoi.string(description: "Optional file path to save the screenshot") |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        mime: Zoi.string(),
+        size: Zoi.integer(gte: 0),
+        base64: Zoi.string(),
+        session: Zoi.any(),
+        saved_to: Zoi.string() |> Zoi.optional(),
+        save_error: Zoi.string() |> Zoi.optional()
       })
 
   alias Jido.Browser.ActionHelpers

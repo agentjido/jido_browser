@@ -34,6 +34,21 @@ defmodule Jido.Browser.Actions.Snapshot do
           Zoi.string(description: "CSS selector to scope extraction")
           |> Zoi.default("body")
           |> Zoi.optional()
+      }),
+    output_schema:
+      Zoi.object(%{
+        status: Zoi.literal("success"),
+        session: Zoi.any(),
+        url: Zoi.string() |> Zoi.nullish(),
+        title: Zoi.string() |> Zoi.nullish(),
+        origin: Zoi.string() |> Zoi.nullish(),
+        snapshot: Zoi.string() |> Zoi.optional(),
+        content: Zoi.string() |> Zoi.optional(),
+        refs: Zoi.map() |> Zoi.optional(),
+        links: Zoi.list(Zoi.map()) |> Zoi.optional(),
+        forms: Zoi.list(Zoi.map()) |> Zoi.optional(),
+        headings: Zoi.list(Zoi.map()) |> Zoi.optional(),
+        raw: Zoi.map() |> Zoi.optional()
       })
 
   alias Jido.Browser.ActionHelpers

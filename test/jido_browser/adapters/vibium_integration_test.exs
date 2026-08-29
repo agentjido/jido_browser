@@ -7,6 +7,7 @@ defmodule Jido.Browser.Adapters.VibiumIntegrationTest do
   """
   use ExUnit.Case, async: false
 
+  alias Jido.Browser.Actions
   alias Jido.Browser.Adapters.Vibium
   alias Jido.Browser.TestSupport.IntegrationTestServer
 
@@ -35,8 +36,11 @@ defmodule Jido.Browser.Adapters.VibiumIntegrationTest do
   describe "navigate/3" do
     test "fetches local fixture webpage", %{session: session, base_url: base_url} do
       url = "#{base_url}/"
-      {:ok, _session, result} = Vibium.navigate(session, url, timeout: @command_timeout)
+      {:ok, output_session, result} = Vibium.navigate(session, url, timeout: @command_timeout)
       assert result.url == url
+
+      navigate_output = %{status: "success", url: url, result: result, session: output_session}
+      assert {:ok, ^navigate_output} = Actions.Navigate.validate_output(navigate_output)
     end
 
     test "navigates to a second local page", %{session: session, base_url: base_url} do
