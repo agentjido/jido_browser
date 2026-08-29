@@ -3,15 +3,13 @@ defmodule Jido.Browser.Actions.Errors do
   Jido Action for retrieving browser/runtime errors.
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_errors",
     description: "Read browser runtime errors",
     category: "Browser",
     tags: ["browser", "diagnostics", "errors"],
     vsn: "2.0.0",
-    schema: [
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()})
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

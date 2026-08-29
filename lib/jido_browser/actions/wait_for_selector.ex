@@ -14,21 +14,26 @@ defmodule Jido.Browser.Actions.WaitForSelector do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_wait_for_selector",
     description: "Wait for an element to appear, disappear, or change visibility state",
     category: "Browser",
     tags: ["browser", "wait", "sync", "web"],
     vsn: "2.0.0",
-    schema: [
-      selector: [type: :string, required: true, doc: "CSS selector to wait for"],
-      state: [
-        type: {:in, [:attached, :visible, :hidden, :detached]},
-        default: :visible,
-        doc: "State to wait for: :attached, :visible, :hidden, or :detached"
-      ],
-      timeout: [type: :integer, default: 30_000, doc: "Maximum wait time in milliseconds"]
-    ]
+    schema:
+      Zoi.object(%{
+        selector: Zoi.string(description: "CSS selector to wait for"),
+        state:
+          Zoi.enum([:attached, :visible, :hidden, :detached],
+            description: "State to wait for: :attached, :visible, :hidden, or :detached"
+          )
+          |> Zoi.default(:visible)
+          |> Zoi.optional(),
+        timeout:
+          Zoi.integer(description: "Maximum wait time in milliseconds")
+          |> Zoi.default(30_000)
+          |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

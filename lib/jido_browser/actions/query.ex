@@ -13,16 +13,20 @@ defmodule Jido.Browser.Actions.Query do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_query",
     description: "Query for elements matching a CSS selector",
     category: "Browser",
     tags: ["browser", "query", "web"],
     vsn: "2.0.0",
-    schema: [
-      selector: [type: :string, required: true, doc: "CSS selector to query"],
-      limit: [type: :integer, default: 10, doc: "Maximum number of elements to return"]
-    ]
+    schema:
+      Zoi.object(%{
+        selector: Zoi.string(description: "CSS selector to query"),
+        limit:
+          Zoi.integer(description: "Maximum number of elements to return")
+          |> Zoi.default(10)
+          |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

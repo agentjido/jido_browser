@@ -13,15 +13,13 @@ defmodule Jido.Browser.Actions.Wait do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_wait",
     description: "Wait for a specified number of milliseconds",
     category: "Browser",
     tags: ["browser", "wait", "sync", "web"],
     vsn: "2.0.0",
-    schema: [
-      ms: [type: :integer, required: true, doc: "Milliseconds to wait"]
-    ]
+    schema: Zoi.object(%{ms: Zoi.integer(description: "Milliseconds to wait")})
 
   @impl true
   def run(%{ms: ms}, _context) do
