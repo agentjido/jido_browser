@@ -13,16 +13,17 @@ defmodule Jido.Browser.Actions.GetAttribute do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_get_attribute",
     description: "Get an attribute value from an element",
     category: "Browser",
     tags: ["browser", "query", "web"],
     vsn: "2.0.0",
-    schema: [
-      selector: [type: :string, required: true, doc: "CSS selector for the element"],
-      attribute: [type: :string, required: true, doc: "Attribute name to get"]
-    ]
+    schema:
+      Zoi.object(%{
+        selector: Zoi.string(description: "CSS selector for the element"),
+        attribute: Zoi.string(description: "Attribute name to get")
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

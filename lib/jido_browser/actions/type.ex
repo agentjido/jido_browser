@@ -12,18 +12,22 @@ defmodule Jido.Browser.Actions.Type do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_type",
     description: "Type text into an element in the browser",
     category: "Browser",
     tags: ["browser", "interaction", "input", "web"],
     vsn: "2.0.0",
-    schema: [
-      selector: [type: :string, required: true, doc: "CSS selector for the input element"],
-      text: [type: :string, required: true, doc: "Text to type into the element"],
-      clear: [type: :boolean, default: false, doc: "Clear the field before typing"],
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema:
+      Zoi.object(%{
+        selector: Zoi.string(description: "CSS selector for the input element"),
+        text: Zoi.string(description: "Text to type into the element"),
+        clear:
+          Zoi.boolean(description: "Clear the field before typing")
+          |> Zoi.default(false)
+          |> Zoi.optional(),
+        timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

@@ -3,16 +3,17 @@ defmodule Jido.Browser.Actions.CloseTab do
   Jido Action for closing the current tab or a specific browser tab.
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_close_tab",
     description: "Close a browser tab",
     category: "Browser",
     tags: ["browser", "tabs", "session"],
     vsn: "2.0.0",
-    schema: [
-      index: [type: :integer, doc: "Optional tab index to close"],
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema:
+      Zoi.object(%{
+        index: Zoi.integer(description: "Optional tab index to close") |> Zoi.optional(),
+        timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

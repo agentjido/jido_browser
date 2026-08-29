@@ -13,19 +13,20 @@ defmodule Jido.Browser.Actions.StartSession do
   The returned session should be stored in skill state for use by other browser actions.
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_start_session",
     description: "Start a new browser session",
     category: "Browser",
     tags: ["browser", "session", "lifecycle"],
     vsn: "2.0.0",
-    schema: [
-      headless: [type: :boolean, doc: "Run in headless mode"],
-      timeout: [type: :integer, doc: "Default timeout in ms"],
-      adapter: [type: :atom, doc: "Browser adapter module"],
-      pool: [type: :any, doc: "Optional warm session pool name"],
-      checkout_timeout: [type: :integer, doc: "Warm pool checkout timeout in ms"]
-    ]
+    schema:
+      Zoi.object(%{
+        headless: Zoi.boolean(description: "Run in headless mode") |> Zoi.optional(),
+        timeout: Zoi.integer(description: "Default timeout in ms") |> Zoi.optional(),
+        adapter: Zoi.atom(description: "Browser adapter module") |> Zoi.optional(),
+        pool: Zoi.any(description: "Optional warm session pool name") |> Zoi.optional(),
+        checkout_timeout: Zoi.integer(description: "Warm pool checkout timeout in ms") |> Zoi.optional()
+      })
 
   alias Jido.Browser.Error
 

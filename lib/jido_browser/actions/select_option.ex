@@ -14,18 +14,19 @@ defmodule Jido.Browser.Actions.SelectOption do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_select_option",
     description: "Select an option from a dropdown element",
     category: "Browser",
     tags: ["browser", "interaction", "select", "form", "web"],
     vsn: "2.0.0",
-    schema: [
-      selector: [type: :string, required: true, doc: "CSS selector for the select element"],
-      value: [type: :string, doc: "Option value to select"],
-      label: [type: :string, doc: "Option label/text to select"],
-      index: [type: :integer, doc: "Option index to select (0-based)"]
-    ]
+    schema:
+      Zoi.object(%{
+        selector: Zoi.string(description: "CSS selector for the select element"),
+        value: Zoi.string(description: "Option value to select") |> Zoi.optional(),
+        label: Zoi.string(description: "Option label/text to select") |> Zoi.optional(),
+        index: Zoi.integer(description: "Option index to select (0-based)") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

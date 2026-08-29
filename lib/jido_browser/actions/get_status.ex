@@ -14,13 +14,13 @@ defmodule Jido.Browser.Actions.GetStatus do
   Requires a browser session in context (via :session, :browser_session, or tool_context).
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_get_status",
     description: "Get current session status (url, title, is_alive)",
     category: "Browser",
     tags: ["browser", "session", "status"],
     vsn: "2.0.0",
-    schema: []
+    schema: Zoi.object(%{})
 
   alias Jido.Browser.ActionHelpers
 

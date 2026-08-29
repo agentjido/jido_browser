@@ -18,19 +18,26 @@ defmodule Jido.Browser.Actions.Snapshot do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_snapshot",
     description: "Get comprehensive LLM-friendly snapshot of the current page state",
     category: "Browser",
     tags: ["browser", "snapshot", "observe", "page", "web", "ai"],
     vsn: "2.0.0",
-    schema: [
-      include_links: [type: :boolean, default: true, doc: "Include extracted links"],
-      include_forms: [type: :boolean, default: true, doc: "Include form field info"],
-      include_headings: [type: :boolean, default: true, doc: "Include heading structure"],
-      max_content_length: [type: :integer, default: 50_000, doc: "Truncate content at this length"],
-      selector: [type: :string, default: "body", doc: "CSS selector to scope extraction"]
-    ]
+    schema:
+      Zoi.object(%{
+        include_links: Zoi.boolean(description: "Include extracted links") |> Zoi.default(true) |> Zoi.optional(),
+        include_forms: Zoi.boolean(description: "Include form field info") |> Zoi.default(true) |> Zoi.optional(),
+        include_headings: Zoi.boolean(description: "Include heading structure") |> Zoi.default(true) |> Zoi.optional(),
+        max_content_length:
+          Zoi.integer(description: "Truncate content at this length")
+          |> Zoi.default(50_000)
+          |> Zoi.optional(),
+        selector:
+          Zoi.string(description: "CSS selector to scope extraction")
+          |> Zoi.default("body")
+          |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

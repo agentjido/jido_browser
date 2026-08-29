@@ -15,7 +15,7 @@ defmodule Jido.Browser.Actions.ReadPage do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "read_page",
     description:
       "Read a web page and return its content as markdown, text, or HTML. " <>
@@ -23,20 +23,23 @@ defmodule Jido.Browser.Actions.ReadPage do
     category: "Browser",
     tags: ["browser", "web", "read", "content", "markdown"],
     vsn: "2.0.0",
-    schema: [
-      url: [type: :string, required: true, doc: "The URL to read"],
-      selector: [type: :string, default: "body", doc: "CSS selector to scope extraction"],
-      format: [
-        type: {:in, [:markdown, :text, :html]},
-        default: :markdown,
-        doc: "Output format"
-      ],
-      pool: [type: :any, doc: "Optional warm session pool name"],
-      checkout_timeout: [type: :integer, doc: "Warm pool checkout timeout in ms"],
-      adapter: [type: :atom, doc: "Browser adapter module"],
-      headless: [type: :boolean, doc: "Run in headless mode"],
-      timeout: [type: :integer, doc: "Default browser timeout in ms"]
-    ]
+    schema:
+      Zoi.object(%{
+        url: Zoi.string(description: "The URL to read"),
+        selector:
+          Zoi.string(description: "CSS selector to scope extraction")
+          |> Zoi.default("body")
+          |> Zoi.optional(),
+        format:
+          Zoi.enum([:markdown, :text, :html], description: "Output format")
+          |> Zoi.default(:markdown)
+          |> Zoi.optional(),
+        pool: Zoi.any(description: "Optional warm session pool name") |> Zoi.optional(),
+        checkout_timeout: Zoi.integer(description: "Warm pool checkout timeout in ms") |> Zoi.optional(),
+        adapter: Zoi.atom(description: "Browser adapter module") |> Zoi.optional(),
+        headless: Zoi.boolean(description: "Run in headless mode") |> Zoi.optional(),
+        timeout: Zoi.integer(description: "Default browser timeout in ms") |> Zoi.optional()
+      })
 
   @impl true
   def run(params, context) do

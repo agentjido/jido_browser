@@ -13,16 +13,20 @@ defmodule Jido.Browser.Actions.GetText do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_get_text",
     description: "Get text content of an element",
     category: "Browser",
     tags: ["browser", "query", "web"],
     vsn: "2.0.0",
-    schema: [
-      selector: [type: :string, required: true, doc: "CSS selector for the element"],
-      all: [type: :boolean, default: false, doc: "Get text from all matching elements"]
-    ]
+    schema:
+      Zoi.object(%{
+        selector: Zoi.string(description: "CSS selector for the element"),
+        all:
+          Zoi.boolean(description: "Get text from all matching elements")
+          |> Zoi.default(false)
+          |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

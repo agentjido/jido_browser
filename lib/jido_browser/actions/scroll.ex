@@ -15,21 +15,21 @@ defmodule Jido.Browser.Actions.Scroll do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_scroll",
     description: "Scroll the page by pixels, to preset positions, or to an element",
     category: "Browser",
     tags: ["browser", "interaction", "scroll", "web"],
     vsn: "2.0.0",
-    schema: [
-      x: [type: :integer, doc: "Horizontal scroll pixels"],
-      y: [type: :integer, doc: "Vertical scroll pixels"],
-      direction: [
-        type: {:in, [:up, :down, :top, :bottom]},
-        doc: "Preset scroll direction"
-      ],
-      selector: [type: :string, doc: "CSS selector to scroll element into view"]
-    ]
+    schema:
+      Zoi.object(%{
+        x: Zoi.integer(description: "Horizontal scroll pixels") |> Zoi.optional(),
+        y: Zoi.integer(description: "Vertical scroll pixels") |> Zoi.optional(),
+        direction:
+          Zoi.enum([:up, :down, :top, :bottom], description: "Preset scroll direction")
+          |> Zoi.optional(),
+        selector: Zoi.string(description: "CSS selector to scroll element into view") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

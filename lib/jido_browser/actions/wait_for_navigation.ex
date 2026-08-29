@@ -14,16 +14,20 @@ defmodule Jido.Browser.Actions.WaitForNavigation do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_wait_for_navigation",
     description: "Wait for page navigation to complete",
     category: "Browser",
     tags: ["browser", "wait", "navigation", "web"],
     vsn: "2.0.0",
-    schema: [
-      url: [type: :string, doc: "URL pattern to match (substring match)"],
-      timeout: [type: :integer, default: 30_000, doc: "Maximum wait time in milliseconds"]
-    ]
+    schema:
+      Zoi.object(%{
+        url: Zoi.string(description: "URL pattern to match (substring match)") |> Zoi.optional(),
+        timeout:
+          Zoi.integer(description: "Maximum wait time in milliseconds")
+          |> Zoi.default(30_000)
+          |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

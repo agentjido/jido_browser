@@ -3,15 +3,13 @@ defmodule Jido.Browser.Actions.Console do
   Jido Action for retrieving browser console messages.
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_console",
     description: "Read browser console messages",
     category: "Browser",
     tags: ["browser", "diagnostics", "console"],
     vsn: "2.0.0",
-    schema: [
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema: Zoi.object(%{timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()})
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

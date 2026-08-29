@@ -13,16 +13,17 @@ defmodule Jido.Browser.Actions.Evaluate do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_evaluate",
     description: "Execute JavaScript in the browser and return the result",
     category: "Browser",
     tags: ["browser", "javascript", "evaluate", "web"],
     vsn: "2.0.0",
-    schema: [
-      script: [type: :string, required: true, doc: "JavaScript code to execute"],
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema:
+      Zoi.object(%{
+        script: Zoi.string(description: "JavaScript code to execute"),
+        timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

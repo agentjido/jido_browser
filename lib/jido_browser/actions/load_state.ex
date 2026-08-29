@@ -3,16 +3,17 @@ defmodule Jido.Browser.Actions.LoadState do
   Jido Action for restoring browser session state from disk.
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_load_state",
     description: "Load browser session state from a file",
     category: "Browser",
     tags: ["browser", "state", "session"],
     vsn: "2.0.0",
-    schema: [
-      path: [type: :string, required: true, doc: "Filesystem path of the saved session state"],
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema:
+      Zoi.object(%{
+        path: Zoi.string(description: "Filesystem path of the saved session state"),
+        timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error

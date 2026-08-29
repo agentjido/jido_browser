@@ -13,16 +13,17 @@ defmodule Jido.Browser.Actions.Focus do
 
   """
 
-  use Jido.Action,
+  use Jido.Browser.Action,
     name: "browser_focus",
     description: "Focus on an element in the browser",
     category: "Browser",
     tags: ["browser", "interaction", "focus", "web"],
     vsn: "2.0.0",
-    schema: [
-      selector: [type: :string, required: true, doc: "CSS selector for the element to focus"],
-      timeout: [type: :integer, doc: "Timeout in milliseconds"]
-    ]
+    schema:
+      Zoi.object(%{
+        selector: Zoi.string(description: "CSS selector for the element to focus"),
+        timeout: Zoi.integer(description: "Timeout in milliseconds") |> Zoi.optional()
+      })
 
   alias Jido.Browser.ActionHelpers
   alias Jido.Browser.Error
