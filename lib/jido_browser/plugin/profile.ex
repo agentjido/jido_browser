@@ -67,28 +67,83 @@ defmodule Jido.Browser.Plugin.Profile do
       alias Jido.Browser.Plugin.Profile, as: ProfileContract
 
       use Jido.Plugin,
-        name: "browser",
-        state_key: :browser,
-        actions: unquote(actions),
-        schema: unquote(Macro.escape(@state_schema)),
-        config_schema: unquote(Macro.escape(@config_schema)),
-        signal_patterns: unquote(signal_patterns),
-        signal_routes: unquote(Macro.escape(signal_routes)),
-        description: "Browser automation for web navigation, interaction, and content extraction",
-        category: "browser",
-        tags: ["browser", "web", "automation", "scraping"],
-        vsn: "2.0.0"
+        vsn: 3,
+        option_keys: [agent: [:headless, :timeout, :adapter, :pool, :checkout_timeout, :viewport, :base_url]]
 
-      defoverridable plugin_spec: 1
-
+      @doc false
       @impl Jido.Plugin
-      def plugin_spec(config) do
-        :ok = ProfileContract.reject_profile_option!(config)
-        super(config)
+      def state_spec(opts) do
+        :ok = ProfileContract.reject_profile_option!(Map.new(opts))
+        {:browser, ProfileContract.state_schema()}
       end
 
+      @doc false
       @impl Jido.Plugin
-      def signal_routes(_config), do: signal_routes()
+      def prepare(%Jido.Agent.Plugin.Preparation{plugin_state: state}, _opts), do: {:ok, state}
+
+      @doc false
+      @impl Jido.Plugin
+      def reduce(%Jido.Agent.Plugin.Reduction{plugin_state: state}, _opts), do: {:ok, state}
+
+      @doc false
+      def name, do: "browser"
+      @doc false
+      def state_key, do: :browser
+
+      @doc "Returns the Actions in this static browser tool profile."
+      @spec actions() :: [module()]
+      def actions, do: unquote(actions)
+
+      @doc false
+      def schema, do: ProfileContract.state_schema()
+      @doc false
+      def config_schema, do: ProfileContract.config_schema()
+
+      @doc "Returns the Signal patterns in this static browser tool profile."
+      @spec signal_patterns() :: [String.t()]
+      def signal_patterns, do: unquote(signal_patterns)
+
+      @doc "Returns the Signal routes in this static browser tool profile."
+      @spec signal_routes() :: [{String.t(), module()}]
+      def signal_routes, do: unquote(Macro.escape(signal_routes))
+
+      @doc false
+      def signal_routes(config) do
+        :ok = ProfileContract.reject_profile_option!(config)
+        signal_routes()
+      end
+
+      @doc false
+      def description, do: "Browser automation for web navigation, interaction, and content extraction"
+      @doc false
+      def category, do: "browser"
+      @doc false
+      def tags, do: ["browser", "web", "automation", "scraping"]
+      @doc false
+      def vsn, do: "3.0.0"
+
+      @doc false
+      def manifest do
+        %{
+          name: name(),
+          state_key: state_key(),
+          actions: actions(),
+          schema: schema(),
+          config_schema: config_schema(),
+          signal_patterns: signal_patterns(),
+          signal_routes: signal_routes(),
+          description: description(),
+          category: category(),
+          tags: tags(),
+          vsn: vsn()
+        }
+      end
+
+      @doc false
+      def plugin_spec(config) do
+        :ok = ProfileContract.reject_profile_option!(config)
+        manifest()
+      end
     end
   end
 end

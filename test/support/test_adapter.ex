@@ -38,12 +38,12 @@ defmodule Jido.Browser.Adapters.Test do
 
   @impl true
   def click(%Session{} = session, selector, _opts) do
-    {:ok, session, %{selector: selector, clicked: true}}
+    {:ok, session, %{selector: selector, value: true}}
   end
 
   @impl true
   def type(%Session{} = session, selector, text, _opts) do
-    {:ok, session, %{selector: selector, typed: text}}
+    {:ok, session, %{selector: selector, value: text}}
   end
 
   @impl true

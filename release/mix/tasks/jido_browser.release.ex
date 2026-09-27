@@ -6,7 +6,7 @@ defmodule Mix.Tasks.JidoBrowser.Release do
   @moduledoc """
   Prepares a release through GitOps after applying the repository version-link policy.
 
-      mix jido_browser.release --override 2.3.0 --dry-run
+      mix jido_browser.release --override 3.0.0-beta.1 --dry-run
 
   All GitOps release options are accepted. A bare version override is normalized to the
   repository's v-prefixed tag format before GitOps creates the changelog heading and tag.

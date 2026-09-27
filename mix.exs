@@ -1,7 +1,7 @@
 defmodule Jido.Browser.MixProject do
   use Mix.Project
 
-  @version "2.4.0"
+  @version "3.0.0-beta.1"
   @source_url "https://github.com/agentjido/jido_browser"
   @description "Browser automation actions for Jido AI agents"
   @otp_release List.to_string(:erlang.system_info(:otp_release))
@@ -61,8 +61,8 @@ defmodule Jido.Browser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.3"},
-      {:jido_action, "~> 2.3"},
+      v3_dependency(:jido, "~> 3.0.0-beta.1"),
+      v3_dependency(:jido_action, "~> 3.0.0-beta.11"),
 
       # Runtime
       {:zoi, "~> 0.18"},
@@ -83,6 +83,16 @@ defmodule Jido.Browser.MixProject do
       {:git_hooks, "~> 0.8", only: :dev, runtime: false},
       {:mimic, "~> 2.3", only: :test}
     ]
+  end
+
+  defp v3_dependency(app, requirement) do
+    path = "../#{app}"
+
+    if File.exists?(Path.join(path, "mix.exs")) do
+      {app, requirement, path: path, override: true}
+    else
+      {app, git: "https://github.com/agentjido/#{app}.git", branch: "release/v3", override: true}
+    end
   end
 
   defp aliases do

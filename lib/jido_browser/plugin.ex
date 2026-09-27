@@ -39,7 +39,8 @@ defmodule Jido.Browser.Plugin do
 
   use Profile, profile: :core
 
-  @impl Jido.Plugin
+  @doc "Builds the initial browser state from plugin configuration."
+  @spec mount(term(), map()) :: {:ok, map()}
   def mount(_agent, config) do
     :ok = Profile.reject_profile_option!(config)
     adapter = Map.get(config, :adapter, Jido.Browser.Adapters.AgentBrowser)
@@ -63,12 +64,14 @@ defmodule Jido.Browser.Plugin do
     {:ok, initial_state}
   end
 
-  @impl Jido.Plugin
+  @doc "Continues Signal processing without changing the Signal."
+  @spec handle_signal(term(), map()) :: {:ok, :continue}
   def handle_signal(_signal, _context) do
     {:ok, :continue}
   end
 
-  @impl Jido.Plugin
+  @doc "Adds browser state updates and diagnostics to an Action result."
+  @spec transform_result(module() | atom(), term(), map()) :: term()
   def transform_result(action, {:ok, result}, context) when is_map(result) do
     state_updates =
       %{}

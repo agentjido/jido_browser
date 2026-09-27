@@ -7,21 +7,27 @@ defmodule Jido.Browser.PluginTest do
   alias Jido.Browser.Plugin.Profile
 
   defmodule DefaultProfileAgent do
-    use Jido.Agent,
-      name: "browser_default_profile_test",
-      plugins: [Jido.Browser.Plugin]
+    use Jido.Agent, name: "browser_default_profile_test"
+
+    agent do
+      plugin(Jido.Browser.Plugin)
+    end
   end
 
   defmodule DebugProfileAgent do
-    use Jido.Agent,
-      name: "browser_debug_profile_test",
-      plugins: [Jido.Browser.Plugin.Debug]
+    use Jido.Agent, name: "browser_debug_profile_test"
+
+    agent do
+      plugin(Jido.Browser.Plugin.Debug)
+    end
   end
 
   defmodule AllProfileAgent do
-    use Jido.Agent,
-      name: "browser_all_profile_test",
-      plugins: [Jido.Browser.Plugin.All]
+    use Jido.Agent, name: "browser_all_profile_test"
+
+    agent do
+      plugin(Jido.Browser.Plugin.All)
+    end
   end
 
   @action_registry_contract [
@@ -146,18 +152,15 @@ defmodule Jido.Browser.PluginTest do
     assert All.signal_patterns() == signal_patterns_for(all_actions)
   end
 
-  test "applies each static profile to compiled Jido agents" do
+  test "keeps each static profile available to compiled Jido agents" do
     all_actions = Enum.map(@action_registry_contract, &elem(&1, 0))
-    default_spec = browser_spec(DefaultProfileAgent, Plugin)
-    debug_spec = browser_spec(DebugProfileAgent, Debug)
-    all_spec = browser_spec(AllProfileAgent, All)
 
-    assert DefaultProfileAgent.actions() == @core_action_contract
-    assert DebugProfileAgent.actions() == @debug_action_contract
-    assert AllProfileAgent.actions() == all_actions
-    assert default_spec.signal_patterns == signal_patterns_for(@core_action_contract)
-    assert debug_spec.signal_patterns == signal_patterns_for(@debug_action_contract)
-    assert all_spec.signal_patterns == signal_patterns_for(all_actions)
+    assert DefaultProfileAgent.definition().plugins == [{Plugin, []}]
+    assert DebugProfileAgent.definition().plugins == [{Debug, []}]
+    assert AllProfileAgent.definition().plugins == [{All, []}]
+    assert Plugin.actions() == @core_action_contract
+    assert Debug.actions() == @debug_action_contract
+    assert All.actions() == all_actions
   end
 
   test "rejects the configuration-dependent profile option" do
@@ -409,8 +412,4 @@ defmodule Jido.Browser.PluginTest do
   end
 
   defp signal_patterns_for(actions), do: Enum.map(routes_for(actions), &elem(&1, 0))
-
-  defp browser_spec(agent, plugin) do
-    Enum.find(agent.plugin_specs(), &(&1.module == plugin))
-  end
 end

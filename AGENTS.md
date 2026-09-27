@@ -34,7 +34,7 @@ Expose browser automation as session-scoped Jido actions with predictable adapte
 - Prefer robust selectors and explicit wait conditions to reduce flakiness
 
 ## Release Hygiene
-- Keep semver ranges stable (`~> 2.0` for `jido_browser`, `~> 2.0` peers)
+- Keep the V3 prerelease ranges aligned with the compatible Jido V3 package line.
 - Use Conventional Commits
 - Do not modify `CHANGELOG.md`; release notes are generated from Git history during release, so keep changes focused on proper Conventional Commits.
 

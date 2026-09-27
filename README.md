@@ -30,6 +30,10 @@ removal notices.
 
 The Hex package and OTP app remain `jido_browser`, while the public Elixir namespace is `Jido.Browser.*`.
 
+This `release/v3` branch is active V3 work. It uses sibling `jido` and
+`jido_action` checkouts on compatible `release/v3` branches. Replace these path
+dependencies with published V3 requirements before release.
+
 ## Installation
 
 Add the dependency:
@@ -37,7 +41,7 @@ Add the dependency:
 ```elixir
 def deps do
   [
-    {:jido_browser, "~> 2.0"}
+    {:jido_browser, "~> 3.0.0-beta.1"}
   ]
 end
 ```
@@ -75,7 +79,7 @@ select `Jido.Browser.Adapters.Lightpanda`:
 ```elixir
 def deps do
   [
-    {:jido_browser, "~> 2.0"},
+    {:jido_browser, "~> 3.0.0-beta.1"},
     {:light_cdp, "~> 0.2.1"},
     {:lightpanda_ex, "~> 0.1.0"}
   ]
@@ -301,18 +305,18 @@ state remain application concerns.
 
 ```elixir
 defmodule MyBrowsingAgent do
-  use Jido.Agent,
-    name: "browser_agent",
-    plugins: [
-      {Jido.Browser.Plugin,
-       [
-         adapter: Jido.Browser.Adapters.AgentBrowser,
-         pool: :default,
-         checkout_timeout: 5_000,
-         headless: true,
-         timeout: 30_000
-       ]}
-    ]
+  use Jido.Agent, name: "browser_agent"
+
+  agent do
+    plugin Jido.Browser.Plugin,
+      config: [
+        adapter: Jido.Browser.Adapters.AgentBrowser,
+        pool: :default,
+        checkout_timeout: 5_000,
+        headless: true,
+        timeout: 30_000
+      ]
+  end
 end
 ```
 
@@ -494,31 +498,35 @@ Agent-browser-native operations:
 
 ```elixir
 defmodule MyBrowsingAgent do
-  use Jido.Agent,
-    name: "web_browser",
-    description: "An agent that can browse the web",
-    plugins: [{Jido.Browser.Plugin, [headless: true]}]
+  use Jido.Agent, name: "web_browser", description: "An agent that can browse the web"
+
+  agent do
+    plugin Jido.Browser.Plugin, config: [headless: true]
+  end
 end
 ```
 
-`Jido.Browser.Plugin` is the core tool profile. It includes 20 actions for
-normal navigation, interaction, waits, page reading, screenshots, web fetches,
-and session close operations. Use `Jido.Browser.Plugin.Debug` to add status and
-live page diagnostics.
+`Jido.Browser.Plugin` owns browser state and exposes the core static tool profile
+through `actions/0`, `signal_routes/0`, and `signal_patterns/0`. Integrations use
+these functions to select 20 actions for navigation, interaction, waits, page
+reading, screenshots, web fetches, and session close operations. Use
+`Jido.Browser.Plugin.Debug` for the diagnostic profile.
 
 Existing users who need every browser action can use the All plugin:
 
 ```elixir
 defmodule MyFullBrowsingAgent do
-  use Jido.Agent,
-    name: "full_web_browser",
-    plugins: [{Jido.Browser.Plugin.All, [headless: true]}]
+  use Jido.Agent, name: "full_web_browser"
+
+  agent do
+    plugin Jido.Browser.Plugin.All, config: [headless: true]
+  end
 end
 ```
 
-`Jido.Browser.Plugin.All` restores all 40 actions, including browser state, element
-queries, tab management, diagnostics, JavaScript evaluation, and stateless web
-fetch.
+`Jido.Browser.Plugin.All.actions/0` returns all 40 actions, including browser
+state, element queries, tab management, diagnostics, JavaScript evaluation, and
+stateless web fetch.
 
 ## License
 

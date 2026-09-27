@@ -375,17 +375,20 @@ After:
 
 ```elixir
 defmodule MyFullBrowsingAgent do
-  use Jido.Agent,
-    name: "full_web_browser",
-    plugins: [{Jido.Browser.Plugin.All, [headless: true]}]
+  use Jido.Agent, name: "full_web_browser"
+
+  agent do
+    plugin Jido.Browser.Plugin.All, config: [headless: true]
+  end
 end
 ```
 
 The `profile:` option is removed and rejected. Runtime options such as
 `headless:`, `adapter:`, and `pool:` remain plugin configuration. Signal names
 do not change. Each plugin preserves registry order for actions, routes, and
-signal patterns. Its exact contract and state schema are available to the Jido
-compiler as static metadata.
+signal patterns through its profile functions. The Jido Plugin owns browser
+state through the V3 callback contract; tool integrations select actions from
+the static profile explicitly.
 
 Use the profile-aware registry functions for inspection:
 

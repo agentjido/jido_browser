@@ -61,7 +61,7 @@ Use the repository release task so version headings, comparison links, and tags
 use the same `v` prefix:
 
 ```bash
-mix jido_browser.release --override 2.3.0 --dry-run
+mix jido_browser.release --override 3.0.0-beta.1 --dry-run
 ```
 
 The task delegates changelog, `mix.exs`, and README updates to GitOps. Do not edit

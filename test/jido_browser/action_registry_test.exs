@@ -159,9 +159,9 @@ defmodule Jido.Browser.ActionRegistryTest do
 
   test "keeps Action definitions free of browser catalog metadata" do
     for action <- ActionRegistry.actions() do
-      assert action.category() == nil
-      assert action.tags() == []
-      assert action.vsn() == nil
+      refute function_exported?(action, :category, 0)
+      refute function_exported?(action, :tags, 0)
+      refute function_exported?(action, :vsn, 0)
     end
   end
 end
