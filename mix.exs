@@ -61,7 +61,7 @@ defmodule Jido.Browser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 2.4", override: true},
+      {:jido, "~> 2.4"},
       {:jido_action, "~> 2.3"},
 
       # Runtime
