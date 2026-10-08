@@ -16,10 +16,10 @@ defmodule Jido.Browser.Actions.WebFetch do
       Zoi.object(%{
         url: Zoi.string(description: "The URL to fetch"),
         format:
-          Zoi.enum([:markdown, :text, :html], description: "Output format")
+          Jido.Browser.Schema.atom_enum([:markdown, :text, :html], description: "Output format")
           |> Zoi.default(:markdown)
           |> Zoi.optional(),
-        backend: Zoi.enum([:req], description: "Req HTTP backend") |> Zoi.optional(),
+        backend: Jido.Browser.Schema.atom_enum([:req], description: "Req HTTP backend") |> Zoi.optional(),
         selector: Zoi.string(description: "Optional CSS selector for HTML pages") |> Zoi.optional(),
         allowed_domains:
           Zoi.list(Zoi.string(), description: "Allow-list of host or host/path rules")
@@ -76,7 +76,7 @@ defmodule Jido.Browser.Actions.WebFetch do
         final_url: Zoi.string(),
         title: Zoi.string() |> Zoi.nullish(),
         content: Zoi.string(),
-        format: Zoi.enum([:markdown, :text, :html]),
+        format: Jido.Browser.Schema.atom_enum([:markdown, :text, :html]),
         content_type: Zoi.string(),
         document_type: Zoi.atom(),
         retrieved_at: Zoi.string(),

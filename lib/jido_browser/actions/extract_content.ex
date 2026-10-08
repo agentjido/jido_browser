@@ -28,7 +28,7 @@ defmodule Jido.Browser.Actions.ExtractContent do
           |> Zoi.default("body")
           |> Zoi.optional(),
         format:
-          Zoi.enum([:markdown, :html, :text], description: "Output format")
+          Jido.Browser.Schema.atom_enum([:markdown, :html, :text], description: "Output format")
           |> Zoi.default(:markdown)
           |> Zoi.optional()
       }),
@@ -36,7 +36,7 @@ defmodule Jido.Browser.Actions.ExtractContent do
       Zoi.object(%{
         status: Zoi.literal("success"),
         content: Zoi.string(),
-        format: Zoi.enum([:markdown, :html, :text]),
+        format: Jido.Browser.Schema.atom_enum([:markdown, :html, :text]),
         length: Zoi.integer(gte: 0),
         session: Zoi.any()
       })

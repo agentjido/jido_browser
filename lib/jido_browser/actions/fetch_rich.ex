@@ -11,10 +11,10 @@ defmodule Jido.Browser.Actions.FetchRich do
       Zoi.object(%{
         url: Zoi.string(description: "The URL to fetch"),
         format:
-          Zoi.enum([:markdown, :text, :html], description: "Output format")
+          Jido.Browser.Schema.atom_enum([:markdown, :text, :html], description: "Output format")
           |> Zoi.default(:markdown)
           |> Zoi.optional(),
-        backend: Zoi.enum([:req], description: "Preferred Req HTTP backend") |> Zoi.optional(),
+        backend: Jido.Browser.Schema.atom_enum([:req], description: "Preferred Req HTTP backend") |> Zoi.optional(),
         http_backends:
           Zoi.list(Zoi.atom(), description: "HTTP backend sequence, such as [:req]")
           |> Zoi.optional(),
@@ -82,7 +82,7 @@ defmodule Jido.Browser.Actions.FetchRich do
         final_url: Zoi.string(),
         title: Zoi.string() |> Zoi.nullish(),
         content: Zoi.string(),
-        format: Zoi.enum([:markdown, :text, :html]),
+        format: Jido.Browser.Schema.atom_enum([:markdown, :text, :html]),
         content_type: Zoi.string(),
         document_type: Zoi.atom(),
         retrieved_at: Zoi.string(),
@@ -95,7 +95,7 @@ defmodule Jido.Browser.Actions.FetchRich do
         citations: Zoi.map(),
         passages: Zoi.list(Zoi.map()),
         metadata: Zoi.map() |> Zoi.optional(),
-        retrieval_path: Zoi.enum([:web_fetch, :browser]),
+        retrieval_path: Jido.Browser.Schema.atom_enum([:web_fetch, :browser]),
         fallback_reason: Zoi.any(),
         blocked?: Zoi.boolean()
       })

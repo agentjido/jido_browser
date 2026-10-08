@@ -61,11 +61,16 @@ defmodule Jido.Browser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      v3_dependency(:jido, "~> 3.0.0-beta.1"),
-      v3_dependency(:jido_action, "~> 3.0.0-beta.11"),
+      {:jido,
+       git: "https://github.com/agentjido/jido.git", ref: "c7da4e2e98389747d120de3c5f6080abf930f787", override: true},
+      {:jido_action,
+       git: "https://github.com/agentjido/jido_action.git",
+       ref: "8e9b3f7b268e175091b0eb3720bab3b8633d3c24",
+       override: true},
 
       # Runtime
-      {:zoi, "~> 0.18"},
+      {:zoi,
+       git: "https://github.com/mikehostetler/zoi.git", ref: "2fff2a23e23e7ac0b26f62f49bbc1b12f7818ac9", override: true},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
       {:floki, "~> 0.38"},
@@ -83,16 +88,6 @@ defmodule Jido.Browser.MixProject do
       {:git_hooks, "~> 0.8", only: :dev, runtime: false},
       {:mimic, "~> 2.3", only: :test}
     ]
-  end
-
-  defp v3_dependency(app, requirement) do
-    path = "../#{app}"
-
-    if File.exists?(Path.join(path, "mix.exs")) do
-      {app, requirement, path: path, override: true}
-    else
-      {app, git: "https://github.com/agentjido/#{app}.git", branch: "release/v3", override: true}
-    end
   end
 
   defp aliases do

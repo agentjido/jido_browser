@@ -21,7 +21,7 @@ defmodule Jido.Browser.Actions.WaitForSelector do
       Zoi.object(%{
         selector: Zoi.string(description: "CSS selector to wait for"),
         state:
-          Zoi.enum([:attached, :visible, :hidden, :detached],
+          Jido.Browser.Schema.atom_enum([:attached, :visible, :hidden, :detached],
             description: "State to wait for: :attached, :visible, :hidden, or :detached"
           )
           |> Zoi.default(:visible)
@@ -35,7 +35,7 @@ defmodule Jido.Browser.Actions.WaitForSelector do
       Zoi.object(%{
         status: Zoi.literal("success"),
         selector: Zoi.string(),
-        state: Zoi.enum([:attached, :visible, :hidden, :detached]),
+        state: Jido.Browser.Schema.atom_enum([:attached, :visible, :hidden, :detached]),
         elapsed_ms: Zoi.integer(gte: 0),
         session: Zoi.any()
       })

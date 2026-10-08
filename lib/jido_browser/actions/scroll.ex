@@ -23,7 +23,7 @@ defmodule Jido.Browser.Actions.Scroll do
         x: Zoi.integer(description: "Horizontal scroll pixels") |> Zoi.optional(),
         y: Zoi.integer(description: "Vertical scroll pixels") |> Zoi.optional(),
         direction:
-          Zoi.enum([:up, :down, :top, :bottom], description: "Preset scroll direction")
+          Jido.Browser.Schema.atom_enum([:up, :down, :top, :bottom], description: "Preset scroll direction")
           |> Zoi.optional(),
         selector: Zoi.string(description: "CSS selector to scroll element into view") |> Zoi.optional()
       }),
