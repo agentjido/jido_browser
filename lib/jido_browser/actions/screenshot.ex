@@ -13,6 +13,8 @@ defmodule Jido.Browser.Actions.Screenshot do
 
   """
 
+  alias Jido.Browser.Schema
+
   use Jido.Browser.Action,
     name: "browser_screenshot",
     description: "Take a screenshot of the current page",
@@ -23,7 +25,7 @@ defmodule Jido.Browser.Actions.Screenshot do
           |> Zoi.default(false)
           |> Zoi.optional(),
         format:
-          Jido.Browser.Schema.atom_enum([:png], description: "Image format (only PNG is currently supported)")
+          Schema.atom_enum([:png], description: "Image format (only PNG is currently supported)")
           |> Zoi.default(:png)
           |> Zoi.optional(),
         save_path: Zoi.string(description: "Optional file path to save the screenshot") |> Zoi.optional()

@@ -15,6 +15,8 @@ defmodule Jido.Browser.Actions.Scroll do
 
   """
 
+  alias Jido.Browser.Schema
+
   use Jido.Browser.Action,
     name: "browser_scroll",
     description: "Scroll the page by pixels, to preset positions, or to an element",
@@ -23,7 +25,7 @@ defmodule Jido.Browser.Actions.Scroll do
         x: Zoi.integer(description: "Horizontal scroll pixels") |> Zoi.optional(),
         y: Zoi.integer(description: "Vertical scroll pixels") |> Zoi.optional(),
         direction:
-          Jido.Browser.Schema.atom_enum([:up, :down, :top, :bottom], description: "Preset scroll direction")
+          Schema.atom_enum([:up, :down, :top, :bottom], description: "Preset scroll direction")
           |> Zoi.optional(),
         selector: Zoi.string(description: "CSS selector to scroll element into view") |> Zoi.optional()
       }),
