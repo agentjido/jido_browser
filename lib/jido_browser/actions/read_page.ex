@@ -15,6 +15,8 @@ defmodule Jido.Browser.Actions.ReadPage do
 
   """
 
+  alias Jido.Browser.Schema
+
   use Jido.Browser.Action,
     name: "read_page",
     description:
@@ -28,7 +30,7 @@ defmodule Jido.Browser.Actions.ReadPage do
           |> Zoi.default("body")
           |> Zoi.optional(),
         format:
-          Zoi.enum([:markdown, :text, :html], description: "Output format")
+          Schema.atom_enum([:markdown, :text, :html], description: "Output format")
           |> Zoi.default(:markdown)
           |> Zoi.optional(),
         pool: Zoi.any(description: "Optional warm session pool name") |> Zoi.optional(),
@@ -41,7 +43,7 @@ defmodule Jido.Browser.Actions.ReadPage do
       Zoi.object(%{
         url: Zoi.string(),
         content: Zoi.string(),
-        format: Zoi.enum([:markdown, :text, :html])
+        format: Schema.atom_enum([:markdown, :text, :html])
       })
 
   @impl true

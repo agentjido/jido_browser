@@ -18,6 +18,8 @@ defmodule Jido.Browser.Actions.ExtractContent do
 
   """
 
+  alias Jido.Browser.Schema
+
   use Jido.Browser.Action,
     name: "browser_extract_content",
     description: "Extract content from the current page as markdown, HTML, or text",
@@ -28,7 +30,7 @@ defmodule Jido.Browser.Actions.ExtractContent do
           |> Zoi.default("body")
           |> Zoi.optional(),
         format:
-          Zoi.enum([:markdown, :html, :text], description: "Output format")
+          Schema.atom_enum([:markdown, :html, :text], description: "Output format")
           |> Zoi.default(:markdown)
           |> Zoi.optional()
       }),
@@ -36,7 +38,7 @@ defmodule Jido.Browser.Actions.ExtractContent do
       Zoi.object(%{
         status: Zoi.literal("success"),
         content: Zoi.string(),
-        format: Zoi.enum([:markdown, :html, :text]),
+        format: Schema.atom_enum([:markdown, :html, :text]),
         length: Zoi.integer(gte: 0),
         session: Zoi.any()
       })
