@@ -27,7 +27,7 @@ jobs:
     name: CI
     uses: agentjido/github-actions/.github/workflows/jido-ci.yml@v5.2.3
     with:
-      docs_command: mix docs -f html
+      docs_command: mix docs -f html -f markdown
       test_command: mix coveralls
       release_validation: ${{ inputs.release_validation || '' }}
       generated_release_command: .github/scripts/validate-generated-release.sh
