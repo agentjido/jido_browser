@@ -517,6 +517,10 @@ end
 
 `Jido.Browser.Plugin` now exposes 38 browser actions, including snapshot/refs workflows, browser state actions, diagnostics, tab management, and stateless web fetch.
 
+## Local Documentation
+
+Run `mix docs` to generate HTML and Markdown documentation in `doc/`, including Markdown pages and `llms.txt`.
+
 ## License
 
 Apache-2.0 - See [LICENSE](LICENSE) for details.
