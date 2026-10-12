@@ -3,7 +3,7 @@ defmodule Jido.Browser do
   Browser automation for Jido AI agents.
 
   `Jido.Browser` provides a flat browser API backed by pluggable adapters.
-  In 2.0, the default adapter is `Jido.Browser.Adapters.AgentBrowser`.
+  The default adapter is `Jido.Browser.Adapters.AgentBrowser`.
   """
 
   alias Jido.Browser.Error
