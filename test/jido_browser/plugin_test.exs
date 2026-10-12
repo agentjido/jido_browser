@@ -30,6 +30,16 @@ defmodule Jido.Browser.PluginTest do
     end
   end
 
+  defmodule ConfiguredProfileAgent do
+    use Jido.Agent, name: "browser_configured_profile_test"
+
+    agent do
+      plugin(Jido.Browser.Plugin.Debug,
+        config: [headless: false, timeout: 60_000, pool: :warm, checkout_timeout: 9_000]
+      )
+    end
+  end
+
   @action_registry_contract [
     {Jido.Browser.Actions.StartSession, "browser.start_session"},
     {Jido.Browser.Actions.EndSession, "browser.end_session"},
@@ -161,6 +171,26 @@ defmodule Jido.Browser.PluginTest do
     assert Plugin.actions() == @core_action_contract
     assert Debug.actions() == @debug_action_contract
     assert All.actions() == all_actions
+  end
+
+  test "initializes browser-owned state through the published V3 Agent facet" do
+    for module <- [DefaultProfileAgent, DebugProfileAgent, AllProfileAgent] do
+      {:ok, agent} = Jido.Agent.instantiate(module)
+      assert agent.state.browser.headless
+      assert agent.state.browser.timeout == 30_000
+      assert agent.state.browser.seen_urls == []
+      assert agent.state.browser.web_fetch_uses == 0
+
+      {:ok, [spec]} = Jido.Plugin.normalize_all(agent.plugins)
+      assert spec.manifest.agent == Jido.Browser.Plugin.Agent
+      assert spec.state_key == :browser
+    end
+
+    {:ok, agent} = Jido.Agent.instantiate(ConfiguredProfileAgent)
+    assert agent.state.browser.headless == false
+    assert agent.state.browser.timeout == 60_000
+    assert agent.state.browser.pool == :warm
+    assert agent.state.browser.checkout_timeout == 9_000
   end
 
   test "rejects the configuration-dependent profile option" do
