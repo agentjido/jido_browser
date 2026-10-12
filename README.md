@@ -30,21 +30,28 @@ removal notices.
 
 The Hex package and OTP app remain `jido_browser`, while the public Elixir namespace is `Jido.Browser.*`.
 
-This `release/v3` branch is active V3 work. It uses sibling `jido` and
-`jido_action` checkouts on compatible `release/v3` branches. Replace these path
-dependencies with published V3 requirements before release.
+This `release/v3` branch contains V3. It uses published Jido and Jido Action
+V3 packages, with Zoi pinned to `0.18.8` for their schema contract. It does not
+select sibling paths automatically. The `main` branch contains V2.
+
+Jido Browser `3.0.0-beta.1` is prepared but is not published to Hex. See the
+[migration guide](guides/migration_3_0.md) for the dependency set and breaking
+changes, and [release preparation](guides/release_preparation.md) for validation
+commands.
 
 ## Installation
 
-Add the dependency:
+Use the V3 Git dependency until the package is published:
 
 ```elixir
 def deps do
   [
-    {:jido_browser, "~> 3.0.0-beta.1"}
+    {:jido_browser, github: "agentjido/jido_browser", branch: "release/v3"}
   ]
 end
 ```
+
+After publication, use `{:jido_browser, "~> 3.0.0-beta.1"}` instead.
 
 Install the default browser backend:
 
@@ -79,7 +86,7 @@ select `Jido.Browser.Adapters.Lightpanda`:
 ```elixir
 def deps do
   [
-    {:jido_browser, "~> 3.0.0-beta.1"},
+    {:jido_browser, github: "agentjido/jido_browser", branch: "release/v3"},
     {:light_cdp, "~> 0.2.1"},
     {:lightpanda_ex, "~> 0.1.0"}
   ]
@@ -94,7 +101,7 @@ end
 {:ok, session, _} = Jido.Browser.navigate(session, "https://example.com")
 {:ok, session, snapshot} = Jido.Browser.snapshot(session)
 
-snapshot["snapshot"] || snapshot[:snapshot]
+snapshot.snapshot
 
 {:ok, session, _} = Jido.Browser.click(session, "@e1")
 {:ok, _session, %{content: markdown}} = Jido.Browser.extract_content(session, format: :markdown)
@@ -102,7 +109,7 @@ snapshot["snapshot"] || snapshot[:snapshot]
 :ok = Jido.Browser.end_session(session)
 ```
 
-Selectors remain supported, but ref-based interaction is the preferred 2.0 flow:
+Selectors remain supported. The preferred V3 interaction sequence is:
 
 1. `snapshot`
 2. act on `@eN` refs
@@ -133,7 +140,7 @@ EPUB, or common email formats:
 ```elixir
 defp deps do
   [
-    {:jido_browser, "~> 3.0"},
+    {:jido_browser, github: "agentjido/jido_browser", branch: "release/v3"},
     {:extractous_ex, "~> 0.2"}
   ]
 end
@@ -506,7 +513,8 @@ defmodule MyBrowsingAgent do
 end
 ```
 
-`Jido.Browser.Plugin` owns browser state and exposes the core static tool profile
+`Jido.Browser.Plugin` uses its Agent facet to initialize `agent.state.browser`
+from the plugin configuration. It exposes the core static tool profile
 through `actions/0`, `signal_routes/0`, and `signal_patterns/0`. Integrations use
 these functions to select 20 actions for navigation, interaction, waits, page
 reading, screenshots, web fetches, and session close operations. Use
@@ -527,6 +535,11 @@ end
 `Jido.Browser.Plugin.All.actions/0` returns all 40 actions, including browser
 state, element queries, tab management, diagnostics, JavaScript evaluation, and
 stateless web fetch.
+
+Tool integrations select these actions and pass the session explicitly in the
+tool context. Jido 3 does not call the V2 lifecycle hooks. Declaring a browser
+plugin does not start a browser or register its Signal routes. See the
+[plugin migration notes](guides/migration_3_0.md#select-a-browser-tool-profile).
 
 ## License
 

@@ -8,8 +8,11 @@ defmodule Jido.Browser.Plugin do
   ## Usage
 
       defmodule MyAgent do
-        use Jido.Agent,
-          plugins: [{Jido.Browser.Plugin, [headless: true]}]
+        use Jido.Agent, name: "browser_agent"
+
+        agent do
+          plugin Jido.Browser.Plugin, config: [headless: true]
+        end
       end
 
   ## Configuration Options

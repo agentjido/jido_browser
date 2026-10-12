@@ -4,14 +4,9 @@ Jido Browser 3.0 removes deprecated adapters and makes its Action, result,
 error, identifier, and tool contracts explicit. This guide lists each required
 application change.
 
-Jido Browser 3.0 is not published. Use the `v3` branch only for integration
-testing. Do not use it as a Hex dependency in a released application.
-
-<!--
-BLOCKED BY #77: Replace this comment with the exact released Jido, Jido Action,
-Jido Signal, Elixir, and OTP requirements. Recheck all plugin profile examples
-against the released Jido compiler before this guide is merged.
--->
+Jido Browser 3.0 is prepared on `release/v3`. It is not published to Hex.
+Use the Git dependency below for integration testing. The other Jido packages
+use published V3 versions. The `main` branch continues to support V2.
 
 ## Migration checklist
 
@@ -24,8 +19,7 @@ against the released Jido compiler before this guide is merged.
 - Treat browser-generated identifiers as opaque UUIDv7 strings.
 - Add ExtractousEx directly if the application reads PDF or office documents.
 - Use `Jido.Browser.Plugin.All` if an existing agent needs all 40 browser actions.
-- Update Jido ecosystem dependencies and the Elixir requirement after #77 is
-  complete.
+- Use the compatible V3 dependencies and runtime versions listed below.
 
 ## Use static Zoi Action schemas
 
@@ -55,7 +49,7 @@ use Jido.Action,
     Zoi.object(%{
       url: Zoi.string(description: "URL to read"),
       format:
-        Zoi.enum([:markdown, :text], description: "Output format")
+        Zoi.enum([markdown: "markdown", text: "text"], coerce: true, description: "Output format")
         |> Zoi.default(:markdown)
     })
 ```
@@ -64,6 +58,13 @@ All 40 browser actions now return a Zoi value from `schema/0`. Required fields,
 optional fields, defaults, enum values, and descriptions stay part of the
 contract. Code that reads the old keyword-list representation must use Zoi
 functions instead.
+
+Use an explicit atom-to-string enum mapping with `coerce: true` when a tool
+accepts strings but its Action uses atoms. For example, `"markdown"` becomes
+`:markdown`, and the exported JSON Schema declares a string type. Browser
+Actions also apply omitted parameter defaults before validation through
+`on_before_validate_params/1`. The Action 2 `on_after_validate_params/1`
+callback is removed.
 
 ### Output schemas
 
@@ -328,7 +329,7 @@ Applications that read PDF or office documents must add ExtractousEx directly:
 ```elixir
 defp deps do
   [
-    {:jido_browser, "~> 3.0"},
+    {:jido_browser, github: "agentjido/jido_browser", branch: "release/v3"},
     {:extractous_ex, "~> 0.2"}
   ]
 end
@@ -386,9 +387,19 @@ end
 The `profile:` option is removed and rejected. Runtime options such as
 `headless:`, `adapter:`, and `pool:` remain plugin configuration. Signal names
 do not change. Each plugin preserves registry order for actions, routes, and
-signal patterns through its profile functions. The Jido Plugin owns browser
-state through the V3 callback contract; tool integrations select actions from
-the static profile explicitly.
+signal patterns through its profile functions.
+
+All three packages select the internal Browser Agent facet,
+[Jido.Browser.Plugin.Agent](https://github.com/agentjido/jido_browser/blob/release/v3/lib/jido_browser/plugin/agent.ex).
+Jido initializes `agent.state.browser` from the declared configuration and
+the outer state schema default. Package modules do not implement Jido facet
+callbacks. The Agent facet owns `state_spec/1`, `prepare/2`, and `reduce/2`.
+
+Jido 3 does not call the V2 `mount/2`, `handle_signal/2`, or
+`transform_result/3` lifecycle hooks. The Browser helper functions remain
+available to tool integrations that call them explicitly. Integrations must
+select actions from `actions/0` and pass browser sessions in the tool context.
+Declaring the plugin does not add Signal routes or start a browser process.
 
 Use the profile-aware registry functions for inspection:
 
@@ -402,9 +413,38 @@ The arity-zero registry functions still return the complete registry.
 
 ## Update the Jido ecosystem
 
-Issue [#77](https://github.com/agentjido/jido_browser/issues/77) will define the
-exact Jido, Jido Action, Jido Signal, Elixir, and OTP requirements. This section
-must be completed from released packages before this guide is merged.
+Issue [#77](https://github.com/agentjido/jido_browser/issues/77) uses this
+published dependency set:
 
-Do not use `override: true` to combine Jido 2 with Jido Action 3. Do not release
-an application against an unpublished Jido branch.
+| Component | Requirement | Version in `mix.lock` |
+| --- | --- | --- |
+| Jido | `~> 3.0.0-beta.1` | `3.0.0-beta.1` |
+| Jido Action | `~> 3.0.0-beta.12` | `3.0.0-beta.12` |
+| Jido Signal, through Jido | `~> 3.0.0-beta.4` | `3.0.0-beta.4` |
+| Zoi | `== 0.18.8` | `0.18.8` |
+| Elixir | `~> 1.18` | CI checks 1.18, 1.19, and 1.20 |
+| Erlang/OTP | 27 or later | CI checks 27, 28, and 29 |
+
+Zoi is pinned to `0.18.8` because Action `3.0.0-beta.12` still refers to
+the legacy Zoi default wrapper. Zoi `0.18.11` removes that module and fails
+to compile with this Action release. Update this pin only after the complete dependency
+set passes the package checks.
+
+Before Jido Browser is published, use:
+
+```elixir
+defp deps do
+  [
+    {:jido_browser, github: "agentjido/jido_browser", branch: "release/v3"}
+  ]
+end
+```
+
+After a maintainer publishes the prepared beta, replace the Git dependency
+with `{:jido_browser, "~> 3.0.0-beta.1"}`. Do not combine Jido 2 with Jido
+Action 3. The Browser package no longer selects sibling paths automatically.
+For local work across packages, add explicit sibling paths with
+`override: true`, then restore the published requirements before packaging.
+
+See [Release Preparation](release_preparation.md) for the checks that do not
+publish a release.

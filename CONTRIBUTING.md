@@ -6,7 +6,7 @@ Thank you for your interest in contributing to Jido Browser!
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/agentjido/jido_browser.git
+   git clone --branch release/v3 https://github.com/agentjido/jido_browser.git
    cd jido_browser
    ```
 
@@ -33,7 +33,8 @@ Thank you for your interest in contributing to Jido Browser!
 4. Ensure `mix quality` passes
 5. Commit using [Conventional Commits](https://www.conventionalcommits.org/)
 6. Give the pull request a Conventional Commit title
-7. Push to your fork and submit a PR
+7. Push to your fork and submit a PR against `release/v3`. V2 maintenance
+   remains on `main`.
 
 Pull requests are squash merged. The Conventional Commit title of the pull request becomes the squash commit and the source for the generated changelog entry. Do not edit generated changelog entries by hand.
 
@@ -43,7 +44,7 @@ Pull requests are squash merged. The Conventional Commit title of the pull reque
 - Add `@moduledoc` and `@doc` for public modules/functions
 - Include typespecs for public functions
 - Use Zoi for struct schemas
-- Use Splode for error types
+- Use the explicit `Jido.Browser.Error` exception modules for browser errors
 
 ## Testing
 
@@ -56,6 +57,11 @@ Pull requests are squash merged. The Conventional Commit title of the pull reque
 raises the coverage baseline, raise this floor in the same pull request.
 
 ## Release Preparation
+
+The V3 package is prepared but is not published. Use the checks in
+[Release Preparation](guides/release_preparation.md) to verify the branch and
+package without publication. Normal dependencies use released V3 packages.
+Use explicit sibling path overrides only for local integration work.
 
 Use the repository release task so version headings, comparison links, and tags
 use the same `v` prefix:
