@@ -22,6 +22,7 @@ Run these commands from this repository:
 ```sh
 git status --short --branch
 mix deps.get
+MIX_ENV=prod mix compile --warnings-as-errors
 mix q
 mix coveralls
 mix docs -f html -f markdown
