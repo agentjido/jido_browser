@@ -12,9 +12,9 @@ defmodule Jido.Browser.Plugin.Profile do
                   checkout_timeout:
                     Zoi.integer(description: "Warm pool checkout timeout in milliseconds") |> Zoi.default(5_000),
                   viewport: Zoi.any(description: "Browser viewport dimensions") |> Zoi.optional(),
-                  base_url: Zoi.string(description: "Base URL for relative navigation") |> Zoi.optional(),
-                  last_url: Zoi.string(description: "Last navigated URL") |> Zoi.optional(),
-                  last_title: Zoi.string(description: "Last page title") |> Zoi.optional(),
+                  base_url: Zoi.string(description: "Base URL for relative navigation") |> Zoi.nullish(),
+                  last_url: Zoi.string(description: "Last navigated URL") |> Zoi.nullish(),
+                  last_title: Zoi.string(description: "Last page title") |> Zoi.nullish(),
                   seen_urls:
                     Zoi.array(Zoi.string(description: "Known URLs discovered during tool use")) |> Zoi.default([]),
                   web_fetch_uses:
@@ -67,23 +67,9 @@ defmodule Jido.Browser.Plugin.Profile do
       alias Jido.Browser.Plugin.Profile, as: ProfileContract
 
       use Jido.Plugin,
+        agent: Jido.Browser.Plugin.Agent,
         vsn: 3,
         option_keys: [agent: [:headless, :timeout, :adapter, :pool, :checkout_timeout, :viewport, :base_url]]
-
-      @doc false
-      @impl Jido.Plugin
-      def state_spec(opts) do
-        :ok = ProfileContract.reject_profile_option!(Map.new(opts))
-        {:browser, ProfileContract.state_schema()}
-      end
-
-      @doc false
-      @impl Jido.Plugin
-      def prepare(%Jido.Agent.Plugin.Preparation{plugin_state: state}, _opts), do: {:ok, state}
-
-      @doc false
-      @impl Jido.Plugin
-      def reduce(%Jido.Agent.Plugin.Reduction{plugin_state: state}, _opts), do: {:ok, state}
 
       @doc false
       def name, do: "browser"
