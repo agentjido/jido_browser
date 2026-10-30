@@ -67,9 +67,17 @@ defmodule Jido.Browser.Plugin.Profile do
       alias Jido.Browser.Plugin.Profile, as: ProfileContract
 
       use Jido.Plugin,
-        agent: Jido.Browser.Plugin.Agent,
         vsn: 3,
         option_keys: [agent: [:headless, :timeout, :adapter, :pool, :checkout_timeout, :viewport, :base_url]]
+
+      @impl true
+      defdelegate state_spec(opts), to: Jido.Browser.Plugin.Agent
+
+      @impl true
+      defdelegate prepare(preparation, opts), to: Jido.Browser.Plugin.Agent
+
+      @impl true
+      defdelegate reduce(reduction, opts), to: Jido.Browser.Plugin.Agent
 
       @doc false
       def name, do: "browser"
@@ -106,9 +114,6 @@ defmodule Jido.Browser.Plugin.Profile do
       @doc false
       def tags, do: ["browser", "web", "automation", "scraping"]
       @doc false
-      def vsn, do: "3.0.0"
-
-      @doc false
       def manifest do
         %{
           name: name(),
@@ -121,7 +126,7 @@ defmodule Jido.Browser.Plugin.Profile do
           description: description(),
           category: category(),
           tags: tags(),
-          vsn: vsn()
+          vsn: "3.0.0"
         }
       end
 

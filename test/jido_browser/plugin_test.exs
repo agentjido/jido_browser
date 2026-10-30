@@ -7,37 +7,29 @@ defmodule Jido.Browser.PluginTest do
   alias Jido.Browser.Plugin.Profile
 
   defmodule DefaultProfileAgent do
-    use Jido.Agent, name: "browser_default_profile_test"
-
-    agent do
-      plugin(Jido.Browser.Plugin)
-    end
+    use Jido.Agent,
+      name: "browser_default_profile_test",
+      plugins: [Jido.Browser.Plugin]
   end
 
   defmodule DebugProfileAgent do
-    use Jido.Agent, name: "browser_debug_profile_test"
-
-    agent do
-      plugin(Jido.Browser.Plugin.Debug)
-    end
+    use Jido.Agent,
+      name: "browser_debug_profile_test",
+      plugins: [Jido.Browser.Plugin.Debug]
   end
 
   defmodule AllProfileAgent do
-    use Jido.Agent, name: "browser_all_profile_test"
-
-    agent do
-      plugin(Jido.Browser.Plugin.All)
-    end
+    use Jido.Agent,
+      name: "browser_all_profile_test",
+      plugins: [Jido.Browser.Plugin.All]
   end
 
   defmodule ConfiguredProfileAgent do
-    use Jido.Agent, name: "browser_configured_profile_test"
-
-    agent do
-      plugin(Jido.Browser.Plugin.Debug,
-        config: [headless: false, timeout: 60_000, pool: :warm, checkout_timeout: 9_000]
-      )
-    end
+    use Jido.Agent,
+      name: "browser_configured_profile_test",
+      plugins: [
+        {Jido.Browser.Plugin.Debug, %{headless: false, timeout: 60_000, pool: :warm, checkout_timeout: 9_000}}
+      ]
   end
 
   @action_registry_contract [
@@ -165,28 +157,38 @@ defmodule Jido.Browser.PluginTest do
   test "keeps each static profile available to compiled Jido agents" do
     all_actions = Enum.map(@action_registry_contract, &elem(&1, 0))
 
-    assert DefaultProfileAgent.definition().plugins == [{Plugin, []}]
-    assert DebugProfileAgent.definition().plugins == [{Debug, []}]
-    assert AllProfileAgent.definition().plugins == [{All, []}]
+    assert [%{provider: Plugin, data: %{}}] = DefaultProfileAgent.definition().plugins
+    assert [%{provider: Debug, data: %{}}] = DebugProfileAgent.definition().plugins
+    assert [%{provider: All, data: %{}}] = AllProfileAgent.definition().plugins
     assert Plugin.actions() == @core_action_contract
     assert Debug.actions() == @debug_action_contract
     assert All.actions() == all_actions
   end
 
   test "initializes browser-owned state through the published V3 Agent facet" do
-    for module <- [DefaultProfileAgent, DebugProfileAgent, AllProfileAgent] do
-      {:ok, agent} = Jido.Agent.instantiate(module)
+    for {module, plugin} <- [
+          {DefaultProfileAgent, Plugin},
+          {DebugProfileAgent, Debug},
+          {AllProfileAgent, All}
+        ] do
+      {:ok, agent} = Jido.Agent.instantiate(module, id: Jido.Signal.ID.generate!())
       assert agent.state.browser.headless
       assert agent.state.browser.timeout == 30_000
       assert agent.state.browser.seen_urls == []
       assert agent.state.browser.web_fetch_uses == 0
 
-      {:ok, [spec]} = Jido.Plugin.normalize_all(agent.plugins)
-      assert spec.manifest.agent == Jido.Browser.Plugin.Agent
-      assert spec.state_key == :browser
+      {:ok, [spec]} =
+        agent
+        |> Jido.Agent.runtime_plugins()
+        |> Jido.Plugin.Normalizer.normalize_all()
+
+      assert spec.manifest.agent == plugin
+      assert spec.agent.state_key == :browser
     end
 
-    {:ok, agent} = Jido.Agent.instantiate(ConfiguredProfileAgent)
+    {:ok, agent} =
+      Jido.Agent.instantiate(ConfiguredProfileAgent, id: Jido.Signal.ID.generate!())
+
     assert agent.state.browser.headless == false
     assert agent.state.browser.timeout == 60_000
     assert agent.state.browser.pool == :warm

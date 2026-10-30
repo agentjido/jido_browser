@@ -2,6 +2,11 @@ defmodule Jido.Browser.Action do
   @moduledoc false
 
   defmacro __using__(opts) do
+    opts =
+      opts
+      |> preserve_unknown_keys(:schema)
+      |> preserve_unknown_keys(:output_schema)
+
     quote do
       use Jido.Action, unquote(opts)
 
@@ -13,6 +18,29 @@ defmodule Jido.Browser.Action do
       defoverridable on_before_validate_params: 1
     end
   end
+
+  defp preserve_unknown_keys(opts, key) do
+    case Keyword.fetch(opts, key) do
+      {:ok, schema} ->
+        Keyword.put(
+          opts,
+          key,
+          quote do
+            Jido.Browser.Action.preserve_unknown_keys(unquote(schema))
+          end
+        )
+
+      :error ->
+        opts
+    end
+  end
+
+  @doc false
+  @spec preserve_unknown_keys(Zoi.schema()) :: Zoi.schema()
+  def preserve_unknown_keys(%Zoi.Types.Map{fields: fields} = schema) when is_list(fields),
+    do: %{schema | unrecognized_keys: :preserve}
+
+  def preserve_unknown_keys(schema), do: schema
 
   @doc false
   @spec apply_schema_defaults(Zoi.schema(), map()) :: map()

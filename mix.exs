@@ -61,12 +61,14 @@ defmodule Jido.Browser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, "~> 3.0.0-beta.1"},
-      {:jido_action, "~> 3.0.0-beta.12"},
+      {:jido, github: "agentjido/jido", branch: "release/v3", override: true},
+      {:jido_action, github: "agentjido/jido_action", branch: "release/v3", override: true},
+      {:jido_signal, github: "agentjido/jido_signal", branch: "release/v3", override: true},
+      {:runic, github: "zblanco/runic", branch: "main", override: true},
 
       # Runtime
-      # Action beta.12 still matches Zoi.Types.Default, removed after 0.18.8.
-      {:zoi, "== 0.18.8"},
+      {:zoi,
+       git: "https://github.com/mikehostetler/zoi.git", ref: "2fff2a23e23e7ac0b26f62f49bbc1b12f7818ac9", override: true},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
       {:floki, "~> 0.38"},
