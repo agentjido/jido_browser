@@ -31,7 +31,7 @@ removal notices.
 The Hex package and OTP app remain `jido_browser`, while the public Elixir namespace is `Jido.Browser.*`.
 
 This local V3 candidate uses consolidated Jido at revision
-`05723b96c6ead47dec04fe69b1c34ad62f999c54` and registry Zoi 0.19.
+`047bf746330a2fbe7c3b25c045552e0303c97eaf` and registry Zoi 0.19.
 Jido supplies Action, Signal, and AI modules. Do not add split core packages.
 
 Jido Browser `3.0.0-beta.1` is prepared but is not published to Hex. See the

@@ -61,7 +61,7 @@ defmodule Jido.Browser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, github: "agentjido/jido", ref: "05723b96c6ead47dec04fe69b1c34ad62f999c54", override: true},
+      {:jido, github: "agentjido/jido", ref: "047bf746330a2fbe7c3b25c045552e0303c97eaf", override: true},
 
       # Runtime
       {:zoi, "~> 0.19.0"},
