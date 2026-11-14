@@ -61,14 +61,10 @@ defmodule Jido.Browser.MixProject do
   defp deps do
     [
       # Jido ecosystem
-      {:jido, github: "agentjido/jido", branch: "release/v3", override: true},
-      {:jido_action, github: "agentjido/jido_action", branch: "release/v3", override: true},
-      {:jido_signal, github: "agentjido/jido_signal", branch: "release/v3", override: true},
-      {:runic, github: "zblanco/runic", branch: "main", override: true},
+      {:jido, github: "agentjido/jido", ref: "05723b96c6ead47dec04fe69b1c34ad62f999c54", override: true},
 
       # Runtime
-      {:zoi,
-       git: "https://github.com/mikehostetler/zoi.git", ref: "2fff2a23e23e7ac0b26f62f49bbc1b12f7818ac9", override: true},
+      {:zoi, "~> 0.19.0"},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
       {:floki, "~> 0.38"},

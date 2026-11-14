@@ -162,7 +162,7 @@ defmodule Jido.Browser.ActionContractAssertions do
       params ->
         required_string_params = Map.new(params, fn {key, value} -> {Atom.to_string(key), value} end)
 
-        assert {:error, %Jido.Action.Error.InvalidInputError{}} =
+        assert {:error, %Jido.Error.ValidationError{}} =
                  action.validate_params(required_string_params)
     end
   end

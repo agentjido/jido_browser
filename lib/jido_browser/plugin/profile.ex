@@ -3,7 +3,7 @@ defmodule Jido.Browser.Plugin.Profile do
 
   alias Jido.Browser.ActionRegistry
 
-  @state_schema Zoi.object(%{
+  @state_schema Jido.Joi.object(%{
                   session: Zoi.any(description: "Active browser session") |> Zoi.optional(),
                   headless: Zoi.boolean(description: "Run browser in headless mode") |> Zoi.default(true),
                   timeout: Zoi.integer(description: "Default timeout in milliseconds") |> Zoi.default(30_000),

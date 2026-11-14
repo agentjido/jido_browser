@@ -5,5 +5,5 @@ defmodule Jido.Browser.ID do
 
   @doc false
   @spec generate() :: t()
-  def generate, do: Jido.generate_id()
+  def generate, do: Jido.Id.uuid7()
 end

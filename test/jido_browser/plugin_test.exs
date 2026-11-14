@@ -171,23 +171,17 @@ defmodule Jido.Browser.PluginTest do
           {DebugProfileAgent, Debug},
           {AllProfileAgent, All}
         ] do
-      {:ok, agent} = Jido.Agent.instantiate(module, id: Jido.Signal.ID.generate!())
+      {:ok, agent} = Jido.Agent.instantiate(module, id: Jido.Id.uuid7())
       assert agent.state.browser.headless
       assert agent.state.browser.timeout == 30_000
       assert agent.state.browser.seen_urls == []
       assert agent.state.browser.web_fetch_uses == 0
 
-      {:ok, [spec]} =
-        agent
-        |> Jido.Agent.runtime_plugins()
-        |> Jido.Plugin.Normalizer.normalize_all()
-
-      assert spec.manifest.agent == plugin
-      assert spec.agent.state_key == :browser
+      assert {:browser, _schema} = plugin.state_spec([])
     end
 
     {:ok, agent} =
-      Jido.Agent.instantiate(ConfiguredProfileAgent, id: Jido.Signal.ID.generate!())
+      Jido.Agent.instantiate(ConfiguredProfileAgent, id: Jido.Id.uuid7())
 
     assert agent.state.browser.headless == false
     assert agent.state.browser.timeout == 60_000

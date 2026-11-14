@@ -376,11 +376,9 @@ After:
 
 ```elixir
 defmodule MyFullBrowsingAgent do
-  use Jido.Agent, name: "full_web_browser"
-
-  agent do
-    plugin Jido.Browser.Plugin.All, config: [headless: true]
-  end
+  use Jido.Agent,
+    name: "full_web_browser",
+    plugins: [{Jido.Browser.Plugin.All, %{headless: true}}]
 end
 ```
 

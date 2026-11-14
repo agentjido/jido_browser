@@ -30,9 +30,9 @@ removal notices.
 
 The Hex package and OTP app remain `jido_browser`, while the public Elixir namespace is `Jido.Browser.*`.
 
-This `release/v3` branch contains V3. It uses published Jido and Jido Action
-V3 packages, with Zoi pinned to `0.18.8` for their schema contract. It does not
-select sibling paths automatically. The `main` branch contains V2.
+This local V3 candidate uses consolidated Jido at revision
+`05723b96c6ead47dec04fe69b1c34ad62f999c54` and registry Zoi 0.19.
+Jido supplies Action, Signal, and AI modules. Do not add split core packages.
 
 Jido Browser `3.0.0-beta.1` is prepared but is not published to Hex. See the
 [migration guide](guides/migration_3_0.md) for the dependency set and breaking
@@ -312,18 +312,18 @@ state remain application concerns.
 
 ```elixir
 defmodule MyBrowsingAgent do
-  use Jido.Agent, name: "browser_agent"
-
-  agent do
-    plugin Jido.Browser.Plugin,
-      config: [
-        adapter: Jido.Browser.Adapters.AgentBrowser,
-        pool: :default,
-        checkout_timeout: 5_000,
-        headless: true,
-        timeout: 30_000
-      ]
-  end
+  use Jido.Agent,
+    name: "browser_agent",
+    plugins: [
+      {Jido.Browser.Plugin,
+       %{
+         adapter: Jido.Browser.Adapters.AgentBrowser,
+         pool: :default,
+         checkout_timeout: 5_000,
+         headless: true,
+         timeout: 30_000
+       }}
+    ]
 end
 ```
 
@@ -505,11 +505,10 @@ Agent-browser-native operations:
 
 ```elixir
 defmodule MyBrowsingAgent do
-  use Jido.Agent, name: "web_browser", description: "An agent that can browse the web"
-
-  agent do
-    plugin Jido.Browser.Plugin, config: [headless: true]
-  end
+  use Jido.Agent,
+    name: "web_browser",
+    description: "An agent that can browse the web",
+    plugins: [{Jido.Browser.Plugin, %{headless: true}}]
 end
 ```
 
@@ -524,11 +523,9 @@ Existing users who need every browser action can use the All plugin:
 
 ```elixir
 defmodule MyFullBrowsingAgent do
-  use Jido.Agent, name: "full_web_browser"
-
-  agent do
-    plugin Jido.Browser.Plugin.All, config: [headless: true]
-  end
+  use Jido.Agent,
+    name: "full_web_browser",
+    plugins: [{Jido.Browser.Plugin.All, %{headless: true}}]
 end
 ```
 
