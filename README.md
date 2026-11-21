@@ -1,5 +1,10 @@
 # Jido Browser
 
+> [!IMPORTANT]
+> **Jido v3 includes opt-in browser tools in [Jido](https://github.com/agentjido/jido).** The standalone `jido_browser` package is planned for deprecation.
+>
+> Use the bundled tools for new v3 Agent integrations. Check the features your application uses before removing the standalone dependency.
+
 [![Hex.pm](https://img.shields.io/hexpm/v/jido_browser.svg)](https://hex.pm/packages/jido_browser)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/jido_browser/)
 [![CI](https://github.com/agentjido/jido_browser/actions/workflows/ci.yml/badge.svg)](https://github.com/agentjido/jido_browser/actions/workflows/ci.yml)
